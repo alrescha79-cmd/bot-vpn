@@ -1,0 +1,45 @@
+/**
+ * Configuration loader
+ * Loads and exports configuration from .vars.json
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+// Load configuration from .vars.json
+const varsPath = path.resolve('./.vars.json');
+const vars = JSON.parse(fs.readFileSync(varsPath, 'utf8'));
+
+const config = {
+  // Bot Configuration
+  BOT_TOKEN: vars.BOT_TOKEN,
+  
+  // Admin Configuration
+  USER_ID: vars.USER_ID,
+  ADMIN_USERNAME: vars.ADMIN_USERNAME || 'Alrescha79',
+  
+  // Group Configuration
+  GROUP_ID: vars.GROUP_ID,
+  
+  // Server Configuration
+  PORT: vars.PORT || 50123,
+  
+  // Store Configuration
+  NAMA_STORE: vars.NAMA_STORE || 'Alrescha79 Store',
+  
+  // QRIS Payment Configuration
+  DATA_QRIS: vars.DATA_QRIS,
+  MERCHANT_ID: vars.MERCHANT_ID,
+  API_KEY: vars.API_KEY,
+  
+  // SSH Configuration
+  SSH_USER: vars.SSH_USER || 'root',
+  SSH_PASS: vars.SSH_PASS || '',
+  
+  // Computed values
+  adminIds: Array.isArray(vars.USER_ID) 
+    ? vars.USER_ID.map(String) 
+    : [String(vars.USER_ID)],
+};
+
+module.exports = config;

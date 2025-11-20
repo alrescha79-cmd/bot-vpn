@@ -1,0 +1,6 @@
+node_modules/
+.vars.json
+bot-error.log
+bot-combined.log
+sellvpn.db
+.github
