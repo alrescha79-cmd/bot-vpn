@@ -54,7 +54,7 @@ module.exports = {
   // File Paths
   TELEGRAM_UPLOAD_DIR: '/backup/bot/uploaded_restore',
   BACKUP_DIR: '/backup/bot/backups',
-  DB_PATH: './sellvpn.db',
+  DB_PATH: './botvpn.db',
   UPLOAD_DIR: '/backup/bot/uploaded_restore',
 
   // Cron Schedules

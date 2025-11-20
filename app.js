@@ -76,7 +76,7 @@ cron.schedule('0 0 * * *', async () => {
 // Jadwal restart harian 04:00
 cron.schedule('0 4 * * *', () => {
   logger.warn('🌀 Restart harian bot (jadwal 04:00)...');
-  exec('pm2 restart sellvpn', async (err, stdout, stderr) => {
+  exec('pm2 restart botvpn', async (err, stdout, stderr) => {
     if (err) {
       logger.error('❌ Gagal restart via PM2:', err.message);
     } else {
@@ -137,7 +137,7 @@ const {
 } = require('./src/modules');
 
 // 🗄️ SQLite Init
-const db = new sqlite3.Database('./sellvpn.db', (err) => {
+const db = new sqlite3.Database('./botvpn.db', (err) => {
   if (err) {
     logger.error('Kesalahan koneksi SQLite3:', err.message);
   } else {
@@ -897,7 +897,7 @@ bot.command('saldo', (ctx) => {
 
 bot.command('readlog', async (ctx) => {
   const userId = String(ctx.from.id);
-  const logFile = '/var/log/sellvpn_backup.log';
+  const logFile = '/var/log/botvpn_backup.log';
 
   if (!adminIds.includes(userId)) {
     return ctx.reply('🚫 *Kamu tidak memiliki izin.*', { parse_mode: 'Markdown' });
@@ -929,7 +929,7 @@ bot.command('readlog', async (ctx) => {
 
 bot.command('clearlog', async (ctx) => {
   const userId = String(ctx.from.id);
-  const logFile = '/var/log/sellvpn_backup.log';
+  const logFile = '/var/log/botvpn_backup.log';
 
   if (!adminIds.includes(userId)) {
     return ctx.reply('🚫 *Kamu tidak memiliki izin.*', { parse_mode: 'Markdown' });
@@ -1425,7 +1425,7 @@ bot.command('restore', async (ctx) => {
   };
 
   await ctx.reply(
-    '📤 Silakan kirim file backup database (.db) yang ingin direstore.\nContoh: sellvpn_2025-06-01_10-00.db'
+    '📤 Silakan kirim file backup database (.db) yang ingin direstore.\nContoh: botvpn_2025-06-01_10-00.db'
   );
 });
 
@@ -2314,7 +2314,7 @@ bot.action('admin_restore2_db', async (ctx) => {
 
   await ctx.reply(
     '📤 *Silakan kirim file backup database (.db) yang ingin direstore.*\n' +
-    '_Contoh: sellvpn_2025-06-01_10-00.db_',
+    '_Contoh: botvpn_2025-06-01_10-00.db_',
     { parse_mode: 'Markdown' }
   );
 });
@@ -5021,7 +5021,7 @@ bot.on('callback_query', async (ctx) => {
   // === Backup DB
   if (data === 'admin_backup_db') {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupFile = path.join(BACKUP_DIR, `sellvpn_${timestamp}.db`);
+    const backupFile = path.join(BACKUP_DIR, `botvpn_${timestamp}.db`);
 
     try {
       fs.copyFileSync(DB_PATH, backupFile);

@@ -7,7 +7,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const logger = require('../utils/logger');
 
-const DB_PATH = path.resolve('./sellvpn.db');
+const DB_PATH = path.resolve('./botvpn.db');
 
 // Initialize SQLite database
 const db = new sqlite3.Database(DB_PATH, (err) => {

@@ -1,6 +1,6 @@
 const axios = require('axios');
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./sellvpn.db');
+const db = new sqlite3.Database('./botvpn.db');
 
 async function renewtrojan(username, exp, quota, limitip, serverId) {
   if (/\s/.test(username) || /[^a-zA-Z0-9]/.test(username)) {

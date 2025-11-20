@@ -1,6 +1,6 @@
 const { Client } = require('ssh2');
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./sellvpn.db');
+const db = new sqlite3.Database('./botvpn.db');
 
 async function trialssh(serverId) {
   console.log(`⚙️ Creating SSH Trial for server ${serverId}`);

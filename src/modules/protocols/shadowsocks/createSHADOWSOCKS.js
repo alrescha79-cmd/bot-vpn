@@ -1,6 +1,6 @@
 const { Client } = require('ssh2');
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./sellvpn.db');
+const db = new sqlite3.Database('./botvpn.db');
 
 async function createshadowsocks(username, exp, quota, limitip, serverId) {
   console.log(`⚙️ Creating SHADOWSOCKS for ${username} | Exp: ${exp} | Quota: ${quota} GB | IP Limit: ${limitip}`);

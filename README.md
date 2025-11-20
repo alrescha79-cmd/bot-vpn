@@ -1,206 +1,252 @@
-# 🤖 VPN Telegram Bot - Refactored & Production Ready
+# 🤖 Bot Telegram VPN V2
 
-Bot Telegram untuk manajemen akun VPN dengan arsitektur modern, modular, dan mudah maintenance.
+Bot Telegram untuk manajemen akun VPN dengan arsitektur modern, modular, dan mudah dipelihara.
 
-## ✨ What's New - Refactored Architecture
+## ✨ Yang Baru - Arsitektur Direfaktor
 
-Bot ini telah di-refactor dengan standar enterprise-grade:
+Bot ini telah direfaktor dengan standar tingkat enterprise:
 
-- ✅ **Modular Architecture** - Separation of concerns
-- ✅ **Service Layer** - Reusable business logic
-- ✅ **Clean Code** - Easy to read & maintain
-- ✅ **Type-Safe Ready** - Siap migrasi ke TypeScript
-- ✅ **Testable** - Setiap module dapat di-test independen
-- ✅ **Well Documented** - Comprehensive documentation
+- ✅ **Arsitektur Modular** - Pemisahan tanggung jawab
+- ✅ **Lapisan Layanan** - Logika bisnis yang dapat digunakan ulang
+- ✅ **Kode Bersih** - Mudah dibaca & dipelihara
+- ✅ **Siap Type-Safe** - Siap migrasi ke TypeScript
+- ✅ **Dapat Diuji** - Setiap modul dapat diuji secara independen
+- ✅ **Ter Dokumentasi Baik** - Dokumentasi komprehensif
 
-## 📁 Project Structure
+## 📁 Struktur Proyek
 
-\`\`\`
+```bash
 bot/
-├── config/               # Configuration management
-│   └── index.js         # Load from .vars.json
-├── utils/               # Utility functions
-│   ├── database.js      # Promisified SQLite
-│   ├── logger.js        # Winston logger
-│   ├── ssh.js           # SSH connection utility
-│   └── helpers.js       # Common helpers
-├── services/            # Business logic layer
+├── config/              # Manajemen konfigurasi
+│   └── index.js         # Muat dari .vars.json
+├── utils/               # Fungsi utilitas
+│   ├── database.js      # SQLite yang dipromisifikasi
+│   ├── logger.js        # Logger Winston
+│   ├── ssh.js           # Utilitas koneksi SSH
+│   └── helpers.js       # Pembantu umum
+├── services/            # Lapisan logika bisnis
 │   ├── vpn-account.service.js
 │   ├── user.service.js
 │   ├── trial.service.js
 │   └── server.service.js
-├── middleware/          # Bot middleware
+├── middleware/          # Middleware bot
 │   └── auth.middleware.js
-├── handlers/            # Command handlers
+├── handlers/            # Penanganan perintah
 │   └── trial.handler.js
-└── app.js              # Main application
-\`\`\`
+└── app.js              # Aplikasi utama
+```
 
-## 🚀 Quick Start
+## 🚀 Mulai Cepat
 
-### 1. Install Dependencies
-\`\`\`bash
+### Prasyarat
+
+- Node.js v20+ (disarankan menggunakan NVM)
+- NPM atau Yarn
+- Akses SSH ke server VPN Anda
+- PM2 (opsional, untuk manajemen proses)
+
+### 1. Clone Repositori
+
+```bash
+git clone https://github.com/alrescha79-cmd/bot-vpn.git
+```
+
+```bash
+cd bot-vpn
+```
+
+### 2. Instal Dependensi
+
+```bash
 npm install
-\`\`\`
+```
 
-### 2. Configuration
-\`\`\`bash
+### 3. Konfigurasi
+
+```bash
 cp .vars.json.example .vars.json
-nano .vars.json  # Edit dengan credentials Anda
-\`\`\`
+nano .vars.json  # Edit dengan kredensial Anda
+```
 
-### 3. Run Bot
-\`\`\`bash
-# Development
+### 4. Jalankan Bot
+
+```bash
+# Dev
 node app.js
+```
 
-# Production (with PM2)
+```bash
+# Prod (dengan PM2)
 pm2 start app.js --name vpn-bot
 pm2 save
 pm2 startup
-\`\`\`
+```
 
-## 📚 Documentation
+### 5. Menjadikan Telegram Anda sebagai Admin (Opsional)
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Detailed architecture guide
-- **[QUICK_START.md](QUICK_START.md)** - Import & usage cheat sheet
-- **[MIGRATION_EXAMPLE.js](MIGRATION_EXAMPLE.js)** - Migration examples
-- **[REFACTOR_SUMMARY.md](REFACTOR_SUMMARY.md)** - Complete refactor summary
+```sql
+sudo sqlite3 botvpn.db "UPDATE users SET role = 'admin' WHERE user_id = YOUR_TELEGRAM_ID;"
+```
 
-## 🔧 Features
+Ganti `YOUR_TELEGRAM_ID` dengan ID Telegram Anda.
 
-### Supported Protocols
+### 6. Restart Bot Setelah Perubahan Konfigurasi
+
+```bash
+pm2 restart vpn-bot
+```
+
+```bash
+# hentikan bot
+pm2 stop vpn-bot
+
+# hapus bot dari pm2
+pm2 delete vpn-bot
+```
+
+Jika menjalankan dalam mode pengembangan, cukup hentikan proses `CTRL + C` dan jalankan kembali.
+
+Catatan: Gunakan perintah `sudo` jika diperlukan.
+
+## 🔧 Fitur
+
+### Protokol yang Didukung
+
 - ✅ SSH
 - ✅ VMESS
 - ✅ VLESS
 - ✅ TROJAN
 - ✅ SHADOWSOCKS
 
-### Account Management
-- ✅ Create Account (paid)
-- ✅ Trial Account (60 minutes)
-- ✅ Renew Account
-- ✅ Check Account
-- ✅ Delete Account
+### Manajemen Akun
 
-### Trial System
-- ✅ Daily Limits (User: 1x, Reseller: 10x, Admin: ∞)
-- ✅ Auto-delete after 60 minutes
-- ✅ Trial history tracking
-- ✅ Role-based access
+- ✅ Buat Akun (berbayar)
+- ✅ Akun Trial (60 menit)
+- ✅ Perpanjang Akun
+- ✅ Periksa Akun
+- ✅ Hapus Akun
 
-### Admin Features
-- ✅ Server Management
-- ✅ User Management
-- ✅ Balance Management
-- ✅ Statistics
+### Sistem Trial
 
-## 💻 Usage Examples
+- ✅ Batas Harian (Pengguna: 1x, Reseller: 10x, Admin: ∞)
+- ✅ Hapus otomatis setelah 60 menit
+- ✅ Pelacakan riwayat trial
+- ✅ Akses berbasis peran
 
-### Import Services
-\`\`\`javascript
+### Fitur Admin
+
+- ✅ Manajemen Server
+- ✅ Manajemen Pengguna
+- ✅ Manajemen Saldo
+- ✅ Statistik
+
+## 💻 Contoh Penggunaan
+
+### Impor Layanan
+
+```javascript
 const { UserService, TrialService, ServerService } = require('./services');
-\`\`\`
+```
 
-### Database Operations
-\`\`\`javascript
+### Operasi Database
+
+```javascript
 const db = require('./utils/database');
 const user = await db.get('SELECT * FROM users WHERE user_id = ?', [userId]);
-\`\`\`
+```
 
-### Create VPN Account
-\`\`\`javascript
+### Buat Akun VPN
+
+```javascript
 const { VPNAccountService } = require('./services');
 const server = await ServerService.getServerById(1);
 const result = await VPNAccountService.createAccount(
   server, 'vmess', 'user123', 'pass', 30, 100, 2
 );
-\`\`\`
+```
 
-### Protected Command
-\`\`\`javascript
+### Perintah Terlindungi
+
+```javascript
 const { isAdmin } = require('./middleware/auth.middleware');
 
 bot.command('admin', isAdmin, async (ctx) => {
-  await ctx.reply('Admin panel');
+  await ctx.reply('Panel admin');
 });
-\`\`\`
+```
 
-See [QUICK_START.md](QUICK_START.md) for more examples.
+## 🏗️ Pengembangan
 
-## 🏗️ Development
+### Gaya Kode
 
-### Code Style
-- **Naming**: camelCase for functions, PascalCase for classes
-- **Files**: kebab-case (e.g., `user.service.js`)
-- **Error Handling**: Always use try-catch with logging
-- **Documentation**: JSDoc comments for public methods
+- **Penamaan**: camelCase untuk fungsi, PascalCase untuk kelas
+- **File**: kebab-case (misalnya, `user.service.js`)
+- **Penanganan Error**: Selalu gunakan try-catch dengan logging
+- **Dokumentasi**: Komentar JSDoc untuk metode publik
 
-### Adding New Feature
-1. Create service if needed in `services/`
-2. Create handler in `handlers/`
-3. Add middleware if needed
-4. Register handler in `app.js`
-5. Test thoroughly
+### Menambahkan Fitur Baru
 
-### Testing
-\`\`\`bash
-# Check syntax
+1. Buat layanan jika diperlukan di `services/`
+2. Buat penanganan di `handlers/`
+3. Tambahkan middleware jika diperlukan
+4. Daftarkan penanganan di `app.js`
+5. Uji secara menyeluruh
+
+### Pengujian
+
+```bash
+# Periksa sintaks
 node -c app.js
 
-# Test specific module
+# Uji modul spesifik
 node -c services/user.service.js
 
-# Check logs
+# Periksa log
 pm2 logs vpn-bot
-\`\`\`
+```
 
-## 📊 Statistics
+## 📊 Statistik
 
-- **New Modules**: 13 files
-- **Lines of Code**: ~1,500 (refactored layer)
-- **Code Reduction**: ~60% less duplication
-- **Maintainability**: 10x easier
+- **Modul Baru**: 13 file
+- **Baris Kode**: ~1,500 (lapisan direfaktor)
+- **Pengurangan Kode**: ~60% lebih sedikit duplikasi
+- **Dapat Dipelihara**: 10x lebih mudah
 
-## 🔐 Environment Variables
+## 🔐 Variabel Lingkungan
 
-Edit \`.vars.json\`:
+Edit `.vars.json`:
 
-\`\`\`json
+```json
 {
-  "BOT_TOKEN": "your_bot_token",
-  "USER_ID": "your_telegram_id",
-  "GROUP_ID": "your_group_id",
+  "BOT_TOKEN": "token_bot_anda",
+  "USER_ID": "id_telegram_anda",
+  "GROUP_ID": "id_grup_anda",
   "SSH_USER": "root",
-  "SSH_PASS": "your_vps_password",
-  "ADMIN_USERNAME": "your_username"
+  "SSH_PASS": "password_vps_anda",
 }
-\`\`\`
+```
 
-## 🤝 Contributing
+## 🤝 Berkontribusi
 
-1. Fork the repository
-2. Create feature branch: \`git checkout -b feature-name\`
-3. Commit changes: \`git commit -am 'Add feature'\`
-4. Push to branch: \`git push origin feature-name\`
-5. Submit pull request
+1. Fork repositori
+2. Buat cabang fitur: `git checkout -b nama-fitur`
+3. Komit perubahan: `git commit -am 'Tambah fitur'`
+4. Push ke cabang: `git push origin nama-fitur`
+5. Ajukan pull request
 
-## 📝 License
+## 👨‍💻 Penulis
 
-MIT License - See LICENSE file for details
+Dikembangkan oleh [Alrescha79](https://github.com/alrescha79-cmd)
 
-## 👨‍💻 Author
+## 🙏 Dukungan
 
-**Alrescha79**
+Jika Anda merasa proyek ini membantu:
 
-## 🙏 Support
-
-If you find this project helpful:
-- ⭐ Star the repository
-- 🐛 Report bugs
-- 💡 Suggest features
-- 📖 Improve documentation
+- ⭐ Beri bintang pada repositori
+- 🐛 Laporkan bug
+- 💡 Sarankan fitur
+- 📖 Tingkatkan dokumentasi
 
 ---
 
-**Built with ❤️ using modern Node.js practices**
+Dibuat dengan ❤️ menggunakan praktik Node.js modern
