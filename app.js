@@ -3991,7 +3991,7 @@ if (state.step === 'await_reseller_id') {
     if (!domain) return ctx.reply('⚠️ *Domain tidak boleh kosong.* Silakan masukkan domain server yang valid.', { parse_mode: 'Markdown' });
     state.domain = domain;
     state.step = 'addserver_auth';
-    return ctx.reply('🔑 *Silakan masukkan password root VPS:*', { parse_mode: 'Markdown' });
+    return ctx.reply('*🔑 Silakan masukkan password root VPS:*', { parse_mode: 'Markdown' });
   }
 
   if (state.step === 'addserver_auth') {
@@ -3999,7 +3999,7 @@ if (state.step === 'await_reseller_id') {
     if (!auth) return ctx.reply('⚠️ *Password root tidak boleh kosong.* Silakan masukkan password root VPS yang valid.', { parse_mode: 'Markdown' });
     state.auth = auth;
     state.step = 'addserver_nama_server';
-    return ctx.reply('🏷️ *Silakan masukkan nama server:*', { parse_mode: 'Markdown' });
+    return ctx.reply('*🏷️ Silakan masukkan nama server:*', { parse_mode: 'Markdown' });
   }
 
   if (state.step === 'addserver_nama_server') {
@@ -4007,7 +4007,7 @@ if (state.step === 'await_reseller_id') {
     if (!nama_server) return ctx.reply('⚠️ *Nama server tidak boleh kosong.*', { parse_mode: 'Markdown' });
     state.nama_server = nama_server;
     state.step = 'addserver_quota';
-    return ctx.reply('📊 *Silakan masukkan quota server:*', { parse_mode: 'Markdown' });
+    return ctx.reply('*📊Silakan masukkan batas kuota (GB),* _cth: 100 (maks 100 GB)_ *:*', { parse_mode: 'Markdown' });
   }
 
   if (state.step === 'addserver_quota') {
@@ -4015,7 +4015,7 @@ if (state.step === 'await_reseller_id') {
     if (isNaN(quota)) return ctx.reply('⚠️ *Quota tidak valid.*', { parse_mode: 'Markdown' });
     state.quota = quota;
     state.step = 'addserver_iplimit';
-    return ctx.reply('🔢 *Silakan masukkan limit IP server:*', { parse_mode: 'Markdown' });
+    return ctx.reply('*🔢 Silakan masukkan limit IP server,* _cth: 5 (maks 5 IP)_ *:*', { parse_mode: 'Markdown' });
   }
 
   if (state.step === 'addserver_iplimit') {
@@ -4023,7 +4023,7 @@ if (state.step === 'await_reseller_id') {
     if (isNaN(iplimit)) return ctx.reply('⚠️ *Limit IP tidak valid.*', { parse_mode: 'Markdown' });
     state.iplimit = iplimit;
     state.step = 'addserver_batas_create_akun';
-    return ctx.reply('🔢 *Silakan masukkan batas create akun server:*', { parse_mode: 'Markdown' });
+    return ctx.reply('*🔢 Silakan masukkan batas create akun server,* _cth: 25 (maks 25 akun)_ *:*', { parse_mode: 'Markdown' });
   }
 
   if (state.step === 'addserver_batas_create_akun') {
@@ -4031,7 +4031,7 @@ if (state.step === 'await_reseller_id') {
     if (isNaN(batas)) return ctx.reply('⚠️ *Batas create akun tidak valid.*', { parse_mode: 'Markdown' });
     state.batas_create_akun = batas;
     state.step = 'addserver_harga';
-    return ctx.reply('💰 *Silakan masukkan harga server:*', { parse_mode: 'Markdown' });
+    return ctx.reply('*💰 Silakan masukkan harga/hari,* _cth: 500 (Rp500 per hari)_ *:*', { parse_mode: 'Markdown' });
   }
 
   if (state.step === 'addserver_harga') {
@@ -4062,7 +4062,11 @@ if (state.step === 'await_reseller_id') {
           `✅ *Server berhasil ditambahkan!*\n\n` +
           `🌐 Domain: ${domain}\n` +
           `📍 Lokasi: ${lokasi}\n` +
-          `🏢 ISP: ${isp}`,
+          `🏢 ISP: ${isp}\n` +
+          `💸 Harga: Rp${harga} per hari\n` +
+          `📶 Kuota: ${quota} GB\n` +
+          `🔢 Limit IP: ${iplimit} IP\n` +
+          `🛒 Batas Create Akun: ${batas_create_akun}\n`,
           { parse_mode: 'Markdown' }
         );
       }
