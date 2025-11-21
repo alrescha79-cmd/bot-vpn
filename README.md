@@ -2,6 +2,71 @@
 
 Bot Telegram untuk manajemen akun VPN dengan arsitektur enterprise-grade yang modular, skalabel, dan mudah dipelihara.
 
+## 🚀 Mulai Cepat
+
+### Prasyarat
+
+- Node.js v20+ (disarankan menggunakan NVM)
+- NPM atau Yarn
+- Akses SSH ke server VPN Anda
+- PM2 (opsional, untuk manajemen proses)
+
+### 1. Clone Repositori
+
+```bash
+git clone https://github.com/alrescha79-cmd/bot-vpn.git
+cd bot-vpn
+```
+
+### 2. Instal Dependensi
+
+```bash
+npm install
+```
+
+### 3. Konfigurasi
+
+```bash
+cp .vars.json.example .vars.json
+nano .vars.json  # Edit dengan kredensial Anda
+```
+
+### 4. Jalankan Bot
+
+```bash
+# Development mode (RECOMMENDED - Full functionality)
+node index.js
+
+# Production mode (dengan PM2)
+pm2 start index.js --name vpn-bot
+pm2 save
+pm2 startup
+```
+
+### 5. Menjadikan Telegram Anda sebagai Admin
+
+```bash
+sqlite3 botvpn.db "UPDATE users SET role = 'admin' WHERE user_id = YOUR_TELEGRAM_ID;"
+```
+
+Ganti `YOUR_TELEGRAM_ID` dengan ID Telegram Anda yang sebenarnya.
+
+### 6. Restart Bot Setelah Perubahan Konfigurasi
+
+```bash
+# Dengan PM2
+pm2 restart vpn-bot
+
+# Atau stop/start manual
+pm2 stop vpn-bot
+pm2 start vpn-bot
+
+# Hapus dari PM2
+pm2 delete vpn-bot
+```
+
+Jika menjalankan dalam mode development, cukup hentikan proses dengan `CTRL + C` dan jalankan kembali dengan `node index.js`.
+
 ## ✨ Arsitektur Enterprise-Grade
 
 Bot ini telah direfaktor sepenuhnya mengikuti standar enterprise dengan pemisahan layer yang jelas:
@@ -11,16 +76,26 @@ Bot ini telah direfaktor sepenuhnya mengikuti standar enterprise dengan pemisaha
 - ✅ **Infrastructure Layer** - Database dan cache terkelola
 - ✅ **100% Async/Await** - Tanpa callback hell
 - ✅ **JSDoc Lengkap** - Dokumentasi komprehensif pada setiap fungsi
-- ✅ **Clean Code** - File rata-rata ~150 baris (dari 6,057 baris monolitik)
+- ✅ **Clean Code** - File rata-rata ~150 baris
 - ✅ **Siap Production** - Error handling & logging terpusat
 
 ## 📁 Struktur Proyek
 
 ```bash
 src/
-├── infrastructure/               # Layer infrastruktur
-│   ├── database.js               # Koneksi DB & helper (promisified)
-│   └── cache.js                  # In-memory caching untuk performa
+├── config/                       # Konfigurasi aplikasi
+│   ├── index.js                  # Load dari .vars.json
+│   └── constants.js              # Konstanta aplikasi
+│
+├── database/                     # Database & queries
+│   ├── connection.js             # Koneksi SQLite (promisified)
+│   ├── schema.js                 # Skema database
+│   └── queries/                  # Query modules
+│       ├── accounts.js
+│       ├── servers.js
+│       ├── transactions.js
+│       ├── users.js
+│       └── ...
 │
 ├── repositories/                 # Layer akses data (Repository Pattern)
 │   ├── userRepository.js         # Operasi user (14 methods)
@@ -29,49 +104,78 @@ src/
 │   ├── transactionRepository.js  # Transaksi & invoice (9 methods)
 │   ├── resellerRepository.js     # Operasi reseller (10 methods)
 │   ├── trialRepository.js        # Trial logs (5 methods)
-│   ├── depositRepository.js      # Pending deposits (6 methods)
+│   ├── depositRepository.js      # Deposit QRIS (6 methods)
 │   └── index.js                  # Barrel export
 │
 ├── services/                     # Layer logika bisnis
-│   ├── user.service.js
-│   ├── reseller.service.js
-│   └── ssh.service.js
+│   ├── user.service.js           # User business logic
+│   ├── reseller.service.js       # Reseller operations
+│   ├── ssh.service.js            # SSH service operations
+│   ├── depositService.js         # Deposit flow management
+│   └── ...
+│
+├── handlers/                     # Bot command & action handlers
+│   ├── commands/                 # Command handlers
+│   │   ├── userCommands.js       # User commands (/start, /menu, dll)
+│   │   ├── adminCommands.js      # Admin commands
+│   │   ├── resellerCommands.js   # Reseller commands
+│   │   ├── index.js
+│   │   └── ...
+│   ├── actions/                  # Callback query handlers
+│   │   ├── serviceActions.js     # Service-related actions
+│   │   ├── adminActions.js       # Admin actions
+│   │   ├── resellerActions.js    # Reseller actions
+│   │   ├── trialActions.js       # Trial account actions
+│   │   ├── serverEditActions.js  # Server edit actions
+│   │   ├── ...
+│   │   └── index.js
+│   ├── events/                   # Event handlers
+│   │   ├── textHandler.js        # Text message routing
+│   │   └── index.js
+│   └── helpers/                  # Handler utilities
+│       ├── callbackRouter.js     # Centralized callback routing
+│       ├── menuHelper.js         # Menu builders
+│       └── ...
+│
+├── modules/                      # Protocol modules
+│   ├── protocols/                # Protocol handlers
+│   │   ├── ssh/                  # SSH protocol
+│   │   │   ├── createSSH.js
+│   │   │   ├── renewSSH.js
+│   │   │   ├── trialSSH.js
+│   │   │   └── ...
+│   │   ├── vmess/                # VMESS protocol
+│   │   ├── vless/                # VLESS protocol
+│   │   ├── trojan/               # TROJAN protocol
+│   │   └── shadowsocks/          # SHADOWSOCKS protocol
+│   ├── renew.js                  # Renewal logic
+│   ├── stats.js                  # Statistics module
+│   └── index.js
 │
 ├── utils/                        # Utilitas & helpers
-│   ├── helpers.js                # Utilities umum (flags, DNS, ISP, etc)
-│   ├── formatter.js              # Format display (invoice, stats, etc)
+│   ├── helpers.js                # Utilities umum (flags, DNS, ISP, dll)
+│   ├── formatter.js              # Format display (invoice, stats, dll)
 │   ├── markdown.js               # Telegram markdown escape
 │   ├── validation.js             # Input validation
 │   ├── keyboard.js               # Inline keyboard builders
-│   └── logger.js                 # Winston logger
+│   ├── logger.js                 # Winston logger
+│   ├── serverEditHelpers.js      # Server editing utilities
+│   └── ...
 │
 ├── middleware/                   # Bot middleware
-│   ├── auth.js
-│   └── errorHandler.js
+│   ├── auth.js                   # Authentication middleware
+│   ├── errorHandler.js           # Error handling middleware
+│   └── ...
 │
-├── modules/                      # Protocol handlers
-│   ├── protocols/
-│   │   ├── ssh/                  # SSH create/renew/trial
-│   │   ├── vmess/                # VMESS handlers
-│   │   ├── vless/                # VLESS handlers
-│   │   ├── trojan/               # TROJAN handlers
-│   │   └── shadowsocks/          # SHADOWSOCKS handlers
-│   └── index.js
+├── infrastructure/               # Layer infrastruktur (opsional)
+│   └── ...
 │
-├── config/                       # Konfigurasi
-│   ├── index.js                  # Load dari .vars.json
-│   └── constants.js              # Konstanta aplikasi
-│
-├── handlers/                     # Command & action handlers (ready for extraction)
-│   └── commands/
-│
-└── database/                     # Database queries (legacy)
-    ├── connection.js
-    ├── schema.js
-    └── queries/
+└── app/                          # Application loaders
+    └── ...
 
-app.js                            # Entry point utama (6,057 lines - dapat dimigrasikan)
+index.js                          # Entry point utama (239 baris)
 botvpn.db                         # SQLite database
+.vars.json                        # Environment configuration
 ```
 
 ## 🏛️ Penjelasan Arsitektur
@@ -152,95 +256,30 @@ Handlers khusus untuk setiap protokol VPN:
 - ⏰ **Scheduled Jobs** - Cron tasks untuk cleanup & notifications
 - 🌐 **Webhook Ready** - Express server untuk payment callbacks
 
-## 🚀 Mulai Cepat
-
-### Prasyarat
-
-- Node.js v20+ (disarankan menggunakan NVM)
-- NPM atau Yarn
-- Akses SSH ke server VPN Anda
-- PM2 (opsional, untuk manajemen proses)
-
-### 1. Clone Repositori
-
-```bash
-git clone https://github.com/alrescha79-cmd/bot-vpn.git
-cd bot-vpn
-```
-
-### 2. Instal Dependensi
-
-```bash
-npm install
-```
-
-### 3. Konfigurasi
-
-```bash
-cp .vars.json.example .vars.json
-nano .vars.json  # Edit dengan kredensial Anda
-```
-
-### 4. Jalankan Bot
-
-```bash
-# Development mode
-node app.js
-
-# Production mode (dengan PM2)
-pm2 start app.js --name vpn-bot
-pm2 save
-pm2 startup
-```
-
-### 5. Menjadikan Telegram Anda sebagai Admin
-
-```bash
-sqlite3 botvpn.db "UPDATE users SET role = 'admin' WHERE user_id = YOUR_TELEGRAM_ID;"
-```
-
-Ganti `YOUR_TELEGRAM_ID` dengan ID Telegram Anda yang sebenarnya.
-
-### 6. Restart Bot Setelah Perubahan Konfigurasi
-
-```bash
-# Dengan PM2
-pm2 restart vpn-bot
-
-# Atau stop/start manual
-pm2 stop vpn-bot
-pm2 start vpn-bot
-
-# Hapus dari PM2
-pm2 delete vpn-bot
-```
-
-Jika menjalankan dalam mode development, cukup hentikan proses dengan `CTRL + C` dan jalankan kembali dengan `node app.js`.
-
 ## 🔧 Fitur Lengkap
 
 ### Protokol yang Didukung
 
-- ✅ **SSH** - Secure Shell tunneling
-- ✅ **VMESS** - V2Ray protocol dengan WebSocket
-- ✅ **VLESS** - V2Ray lightweight protocol
-- ✅ **TROJAN** - Trojan-GFW protocol
-- ✅ **SHADOWSOCKS** - High-performance proxy
+- ✅ **SSH** - Tunneling Secure Shell
+- ✅ **VMESS** - Protokol V2Ray dengan WebSocket
+- ✅ **VLESS** - Protokol V2Ray ringan
+- ✅ **TROJAN** - Protokol Trojan-GFW
+- ✅ **SHADOWSOCKS** - Proxy berkinerja tinggi
 
 ### Manajemen Akun
 
 - ✅ **Buat Akun** - Pembuatan akun berbayar dengan berbagai durasi
-- ✅ **Akun Trial** - Trial gratis 60 menit dengan rate limiting
-- ✅ **Perpanjang Akun** - Extend existing accounts
-- ✅ **Cek Status** - Real-time account status & expiry
-- ✅ **Hapus Akun** - Manual & automatic cleanup
+- ✅ **Akun Trial** - Trial gratis 60 menit dengan pembatasan penggunaan
+- ✅ **Perpanjang Akun** - Perpanjangan akun yang sudah ada
+- ✅ **Cek Status** - Status dan masa aktif akun secara real-time
+- ✅ **Hapus Akun** - Pembersihan manual dan otomatis
 
 ### Sistem Trial
 
-- ✅ **Rate Limiting** - User: 1x/hari, Reseller: 10x/hari, Admin: unlimited
-- ✅ **Auto-Cleanup** - Hapus otomatis setelah 60 menit
+- ✅ **Rate Limiting** - User: 1x/hari, Reseller: 10x/hari, Admin: tidak terbatas
+- ✅ **Auto-Cleanup** - Penghapusan otomatis setelah 60 menit
 - ✅ **History Tracking** - Pelacakan riwayat trial lengkap
-- ✅ **Role-Based Access** - Kontrol akses berdasarkan role
+- ✅ **Role-Based Access** - Kontrol akses berdasarkan peran
 
 ### Fitur Admin & Owner
 
@@ -257,29 +296,29 @@ Jika menjalankan dalam mode development, cukup hentikan proses dengan `CTRL + C`
 const { UserService, TrialService, ServerService } = require('./services');
 ```
 
-### Admin & Owner Features
+### Fitur untuk Admin & Owner
 
-- ✅ **Manajemen Server** - Add/edit/remove VPN servers
-- ✅ **Manajemen User** - Update roles, balance, suspend accounts
-- ✅ **Broadcast** - Kirim pesan ke semua users
-- ✅ **Statistics** - View system-wide analytics
-- ✅ **Manual Approval** - Verify pending deposits
+- ✅ **Manajemen Server** - Tambah/edit/hapus server VPN
+- ✅ **Manajemen User** - Perbarui peran, saldo, suspend akun
+- ✅ **Broadcast** - Kirim pesan ke semua pengguna
+- ✅ **Statistik** - Lihat analitik seluruh sistem
+- ✅ **Persetujuan Manual** - Verifikasi deposit yang tertunda
 
 ### Sistem Reseller
 
-- ✅ **5-Level System** - Bronze, Silver, Gold, Platinum, Diamond
-- ✅ **Auto Discount** - 5% - 25% based on total sales
-- ✅ **Sales Tracking** - Real-time sales & earnings reports
-- ✅ **Leaderboard** - Weekly top resellers ranking
-- ✅ **Transfer Balance** - P2P transfer antar users
+- ✅ **Sistem 5 Level** - Bronze, Silver, Gold, Platinum, Diamond
+- ✅ **Diskon Otomatis** - 5% - 25% berdasarkan total penjualan
+- ✅ **Pelacakan Penjualan** - Laporan penjualan & pendapatan real-time
+- ✅ **Papan Peringkat** - Peringkat reseller terbaik mingguan
+- ✅ **Transfer Saldo** - Transfer P2P antar pengguna
 
 ### Sistem Pembayaran
 
-- ✅ **QRIS Integration** - Auto-generate payment QR codes
-- ✅ **Invoice System** - Trackable invoice dengan unique IDs
-- ✅ **Manual Topup** - Admin dapat menambah saldo manual
-- ✅ **Payment Verification** - Automatic & manual verification
-- ✅ **Transaction History** - Complete audit trail
+- ✅ **Integrasi QRIS** - Pembuatan kode QR pembayaran otomatis
+- ✅ **Sistem Invoice** - Invoice dapat dilacak dengan ID unik
+- ✅ **Topup Manual** - Admin dapat menambah saldo secara manual
+- ✅ **Verifikasi Pembayaran** - Verifikasi otomatis & manual
+- ✅ **Riwayat Transaksi** - Jejak audit lengkap
 
 ## 💻 Penggunaan API/Repository
 
@@ -352,24 +391,24 @@ const discount = helpers.getResellerDiscount(5000000); // returns 15% for 5M sal
 
 ## 🏗️ Pengembangan & Kontribusi
 
-### Standar Code Style
+### Standar Gaya Kode
 
-- **Naming**: camelCase untuk functions/variables, PascalCase untuk classes
-- **Files**: kebab-case (`user-service.js`) atau camelCase (`userService.js`)
-- **Error Handling**: Selalu gunakan try-catch dengan centralized logging
-- **Documentation**: JSDoc comments untuk semua public methods
-- **Async/Await**: Gunakan async/await, hindari callbacks
+- **Penamaan**: camelCase untuk fungsi/variabel, PascalCase untuk kelas
+- **File**: kebab-case (`user-service.js`) atau camelCase (`userService.js`)
+- **Penanganan Error**: Selalu gunakan try-catch dengan logging terpusat
+- **Dokumentasi**: Komentar JSDoc untuk semua method publik
+- **Async/Await**: Gunakan async/await, hindari callback
 - **Modular**: Satu file = satu tanggung jawab (Single Responsibility)
 
 ### Menambahkan Fitur Baru
 
-1. **Tentukan Layer** - Repository untuk data access, Service untuk business logic
-2. **Buat Repository Methods** - Jika perlu akses database baru
-3. **Implementasi Logic** - Di service layer atau langsung di handler
-4. **Update Commands** - Tambahkan command/action baru di `app.js`
-5. **Testing** - Test secara menyeluruh sebelum production
+1. **Tentukan Layer** - Repository untuk akses data, Service untuk logika bisnis
+2. **Buat Repository Methods** - Jika memerlukan akses database baru
+3. **Implementasi Logika** - Di service layer atau langsung di handler
+4. **Perbarui Command** - Tambahkan command/action baru di `app.js`
+5. **Pengujian** - Uji secara menyeluruh sebelum production
 
-### Testing & Debugging
+### Pengujian & Debugging
 
 ```bash
 # Check syntax errors
@@ -387,11 +426,11 @@ pm2 monit
 
 ## 📊 Statistik Refactoring
 
-- **Original Code**: 6,057 lines (monolithic `app.js`)
-- **New Modules**: 80+ repository methods, 2 infrastructure modules, 6 utility files
-- **Code Reduction**: ~60% less duplication
-- **Maintainability**: 10x easier to maintain & extend
-- **Test Coverage**: Ready for unit testing per module
+- **Kode Asli**: 6.057 baris (monolitik `app.js`)
+- **Modul Baru**: 80+ method repository, 2 modul infrastruktur, 6 file utilitas
+- **Pengurangan Kode**: ~60% lebih sedikit duplikasi
+- **Kemudahan Pemeliharaan**: 10x lebih mudah dipelihara & dikembangkan
+- **Cakupan Pengujian**: Siap untuk unit testing per modul
 
 ## 🔐 Konfigurasi Environment
 
@@ -417,28 +456,28 @@ Edit file `.vars.json`:
 
 ## 🔄 Migrasi dari Versi Lama
 
-Jika Anda upgrade dari versi monolithic:
+Jika Anda melakukan upgrade dari versi monolitik:
 
-1. **Database tetap kompatibel** - Tidak perlu migrasi schema
-2. **app.js tetap berfungsi** - Backward compatibility 100%
-3. **Gunakan repository** - Untuk code baru gunakan repository pattern
-4. **Gradual migration** - Pindahkan logic ke modules secara bertahap
+1. **Database tetap kompatibel** - Tidak perlu migrasi skema
+2. **app.js tetap berfungsi** - Kompatibilitas mundur 100%
+3. **Gunakan repository** - Untuk kode baru gunakan pola repository
+4. **Migrasi bertahap** - Pindahkan logika ke modul secara bertahap
 
 ## 📚 Dokumentasi Lanjutan
 
-### Repository Methods Reference
+### Referensi Method Repository
 
-Lihat file-file di `src/repositories/` untuk daftar lengkap methods yang tersedia:
+Lihat file-file di `src/repositories/` untuk daftar lengkap method yang tersedia:
 
-- `userRepository.js` - 14 methods untuk user management
-- `serverRepository.js` - 9 methods untuk server operations
-- `accountRepository.js` - 6 methods untuk account tracking
-- `transactionRepository.js` - 9 methods untuk invoices & transactions
-- `resellerRepository.js` - 10 methods untuk reseller operations
-- `trialRepository.js` - 5 methods untuk trial management
-- `depositRepository.js` - 6 methods untuk QRIS deposits
+- `userRepository.js` - 14 method untuk manajemen pengguna
+- `serverRepository.js` - 9 method untuk operasi server
+- `accountRepository.js` - 6 method untuk pelacakan akun
+- `transactionRepository.js` - 9 method untuk invoice & transaksi
+- `resellerRepository.js` - 10 method untuk operasi reseller
+- `trialRepository.js` - 5 method untuk manajemen trial
+- `depositRepository.js` - 6 method untuk deposit QRIS
 
-Setiap method memiliki JSDoc documentation lengkap dengan contoh penggunaan.
+Setiap method memiliki dokumentasi JSDoc lengkap dengan contoh penggunaan.
 
 ## 🤝 Berkontribusi
 
@@ -446,31 +485,31 @@ Kontribusi sangat diterima! Silakan ikuti langkah berikut:
 
 1. **Fork** repositori ini
 2. **Clone** fork Anda: `git clone https://github.com/YOUR_USERNAME/bot-vpn.git`
-3. **Create branch**: `git checkout -b feature/nama-fitur-anda`
-4. **Make changes** dengan mengikuti code style guidelines
-5. **Test** perubahan Anda secara menyeluruh
+3. **Buat branch**: `git checkout -b feature/nama-fitur-anda`
+4. **Lakukan perubahan** dengan mengikuti panduan gaya kode
+5. **Uji** perubahan Anda secara menyeluruh
 6. **Commit**: `git commit -am 'Add: fitur baru xyz'`
 7. **Push**: `git push origin feature/nama-fitur-anda`
 8. **Pull Request** dengan deskripsi lengkap
 
-### Guidelines Kontribusi
+### Panduan Kontribusi
 
-- Ikuti existing code style
+- Ikuti gaya kode yang ada
 - Tambahkan JSDoc untuk fungsi baru
-- Gunakan async/await, bukan callbacks
-- Test sebelum submit PR
-- Update README jika perlu
+- Gunakan async/await, bukan callback
+- Uji sebelum mengirim PR
+- Perbarui README jika diperlukan
 
-## 🐛 Bug Reports & Feature Requests
+## 🐛 Laporan Bug & Permintaan Fitur
 
-- **Bug Report**: Buka issue dengan label `bug` dan berikan detail lengkap
-- **Feature Request**: Buka issue dengan label `enhancement` dan jelaskan use case
+- **Laporan Bug**: Buka issue dengan label `bug` dan berikan detail lengkap
+- **Permintaan Fitur**: Buka issue dengan label `enhancement` dan jelaskan kasus penggunaan
 
-## 👨‍💻 Author & Credits
+## 👨‍💻 Penulis & Kredit
 
-**Developed by**: [Alrescha79](https://github.com/alrescha79-cmd)
+**Dikembangkan oleh**: [Alrescha79](https://github.com/alrescha79-cmd)
 
-**Refactored to Enterprise Architecture**: 2024
+**Direfaktor ke Arsitektur Enterprise**: 2024
 
 **Tech Stack**:
 
@@ -481,22 +520,14 @@ Kontribusi sangat diterima! Silakan ikuti langkah berikut:
 - Express (Webhooks)
 - node-cron (Scheduled Tasks)
 
-## 📄 License
-
-This project is licensed under the MIT License - lihat file LICENSE untuk details.
-
-## 🙏 Support & Acknowledgments
+## 🙏 Dukungan & Ucapan Terima Kasih
 
 Jika proyek ini membantu Anda:
 
-- ⭐ **Star** repositori ini
-- 🐛 **Report bugs** yang Anda temukan
-- 💡 **Suggest features** yang berguna
-- 📖 **Improve documentation**
-- 🤝 **Contribute code**
+- ⭐ **Beri bintang** repositori ini
+- 🐛 **Laporkan bug** yang Anda temukan
+- 💡 **Sarankan fitur** yang berguna
+- 📖 **Tingkatkan dokumentasi**
+- 🤝 **Kontribusi kode**
 
 ---
-
-Dibuat dengan ❤️ menggunakan praktik enterprise Node.js modern
-
-> 💡 **Note**: Proyek ini telah direfaktor dari 6,057 baris kode monolithic menjadi arsitektur modular dengan 80+ repository methods, infrastructure layer, dan utilities yang dapat digunakan kembali.

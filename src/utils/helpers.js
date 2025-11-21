@@ -235,6 +235,85 @@ function getTrialLimit(role) {
   return 1;
 }
 
+/**
+ * Cleanup orphan resellers from reseller_sales table
+ * Removes sales records for resellers that no longer exist in users table
+ * @returns {Promise<number>} Number of rows cleaned up
+ */
+async function cleanupOrphanResellers() {
+  const { dbAll, dbRun } = require('../infrastructure/database');
+  
+  try {
+    const rows = await dbAll(`
+      SELECT DISTINCT reseller_id FROM reseller_sales
+      WHERE reseller_id NOT IN (SELECT user_id FROM users)
+    `);
+
+    if (rows.length === 0) {
+      logger.info('✅ No orphan resellers found');
+      return 0;
+    }
+
+    const orphanIds = rows.map(row => row.reseller_id);
+    logger.warn(`⚠️ Found ${orphanIds.length} orphan reseller(s): ${orphanIds.join(', ')}`);
+
+    const placeholders = orphanIds.map(() => '?').join(',');
+    const result = await dbRun(`
+      DELETE FROM reseller_sales WHERE reseller_id IN (${placeholders})
+    `, orphanIds);
+
+    logger.info(`✅ Cleaned up ${result.changes} reseller_sales row(s)`);
+    return result.changes;
+  } catch (err) {
+    logger.error('❌ Failed to cleanup orphan resellers:', err.message);
+    return 0;
+  }
+}
+
+/**
+ * Validate username format
+ * @param {string} username
+ * @returns {boolean}
+ */
+function isValidUsername(username) {
+  // Username: alphanumeric, underscore, hyphen, 3-32 chars
+  return /^[a-zA-Z0-9_-]{3,32}$/.test(username);
+}
+
+/**
+ * Validate password format
+ * @param {string} password
+ * @returns {boolean}
+ */
+function isValidPassword(password) {
+  // Password: at least 6 chars, alphanumeric
+  return /^[a-zA-Z0-9]{6,}$/.test(password);
+}
+
+/**
+ * Generate random username
+ * @param {string} prefix
+ * @returns {string}
+ */
+function generateUsername(prefix = 'user') {
+  const randomNum = Math.floor(10000 + Math.random() * 90000);
+  return `${prefix}${randomNum}`;
+}
+
+/**
+ * Generate random password
+ * @param {number} length
+ * @returns {string}
+ */
+function generatePassword(length = 8) {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
+
 module.exports = {
   getFlagEmoji,
   parseJsonOutput,
@@ -249,5 +328,10 @@ module.exports = {
   calculateResellerLevel,
   getLevelPriority,
   getResellerDiscount,
-  getTrialLimit
+  getTrialLimit,
+  cleanupOrphanResellers,
+  isValidUsername,
+  isValidPassword,
+  generateUsername,
+  generatePassword
 };

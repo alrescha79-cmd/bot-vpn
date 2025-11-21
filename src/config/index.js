@@ -40,6 +40,11 @@ const config = {
   adminIds: Array.isArray(vars.USER_ID) 
     ? vars.USER_ID.map(String) 
     : [String(vars.USER_ID)],
+  
+  // Additional computed values
+  ADMIN_IDS: Array.isArray(vars.USER_ID) 
+    ? vars.USER_ID.map(id => Number(id))
+    : [Number(vars.USER_ID)],
 };
 
 module.exports = config;
