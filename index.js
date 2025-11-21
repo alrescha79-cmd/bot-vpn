@@ -1,4 +1,5 @@
 /**
+ * Last Update 21 November 2025
  * @fileoverview Main Application Entry Point (Modular Architecture)
  * Clean, enterprise-grade entry point for the VPN Telegram Bot
  * 
