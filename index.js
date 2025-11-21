@@ -26,13 +26,13 @@ const sqlite3 = require('sqlite3').verbose();
 const { Telegraf, session } = require('telegraf');
 
 // Refactored modules
-const config = require('./src/config');
-const constants = require('./src/config/constants');
-const logger = require('./src/utils/logger');
-const { dbRunAsync, dbGetAsync, dbAllAsync } = require('./src/database/connection');
+const config = require('./dist/config');
+const constants = require('./dist/config/constants');
+const logger = require('./dist/utils/logger');
+const { dbRunAsync, dbGetAsync, dbAllAsync } = require('./dist/database/connection');
 
 // Load all handlers
-const { loadAllHandlers } = require('./src/app/loader');
+const { loadAllHandlers } = require('./dist/app/loader');
 
 // Constants
 const {
