@@ -3812,6 +3812,87 @@ ${isReseller ? `📊 𝗞𝗼𝗺𝗶𝘀𝗶: Rp${komisi?.toLocaleString('id-ID
   }
 
 
+       // Edit Nama Server - Step 1: Select Server ID
+     if (state.step === 'select_server_for_edit_nama') {
+       const serverId = parseInt(text);
+       if (isNaN(serverId)) {
+         return ctx.reply('❌ *ID server tidak valid. Masukkan angka.*', { parse_mode: 'Markdown' });
+       }
+
+       // Verify server exists
+       const server = await dbGetAsync('SELECT id, nama_server FROM Server WHERE id = ?', [serverId]);
+       if (!server) {
+         return ctx.reply('❌ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+       }
+
+       // Update state to next step
+       state.step = 'edit_nama';
+       state.serverId = serverId;
+
+       return ctx.reply(`📝 *Server dipilih:* ${server.nama_server}\n\n💡 *Silakan ketik nama server baru:*`, { 
+         parse_mode: 'Markdown' 
+       });
+     }
+
+     // Edit Nama Server - Step 2: Input New Name
+     if (state.step === 'edit_nama') {
+       return await handleEditNama(ctx, state, text);
+     }
+
+     // Edit Auth Server - Step 1: Select Server ID
+     if (state.step === 'select_server_for_edit_auth') {
+       const serverId = parseInt(text);
+       if (isNaN(serverId)) {
+         return ctx.reply('❌ *ID server tidak valid. Masukkan angka.*', { parse_mode: 'Markdown' });
+       }
+
+       // Verify server exists
+       const server = await dbGetAsync('SELECT id, nama_server FROM Server WHERE id = ?', [serverId]);
+       if (!server) {
+         return ctx.reply('❌ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+       }
+
+       // Update state to next step
+       state.step = 'edit_auth';
+       state.serverId = serverId;
+
+       return ctx.reply(`🔐 *Server dipilih:* ${server.nama_server}\n\n💡 *Silakan ketik auth/password server baru:*`, { 
+         parse_mode: 'Markdown' 
+       });
+     }
+
+     // Edit Auth Server - Step 2: Input New Auth
+     if (state.step === 'edit_auth') {
+       return await handleEditAuth(ctx, state, text);
+     }
+
+     // Edit Domain Server - Step 1: Select Server ID
+     if (state.step === 'select_server_for_edit_domain') {
+       const serverId = parseInt(text);
+       if (isNaN(serverId)) {
+         return ctx.reply('❌ *ID server tidak valid. Masukkan angka.*', { parse_mode: 'Markdown' });
+       }
+
+       // Verify server exists
+       const server = await dbGetAsync('SELECT id, nama_server, domain FROM Server WHERE id = ?', [serverId]);
+       if (!server) {
+         return ctx.reply('❌ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+       }
+
+       // Update state to next step
+       state.step = 'edit_domain';
+       state.serverId = serverId;
+
+       return ctx.reply(`🌐 *Server dipilih:* ${server.nama_server}\n 🔗 *Domain Saat Ini:* ${server.domain}\n\n💡 *Silakan ketik domain/IP server baru:*`, { 
+         parse_mode: 'Markdown' 
+       });
+     }
+
+     // Edit Domain Server - Step 2: Input New Domain
+     if (state.step === 'edit_domain') {
+       return await handleEditDomain(ctx, state, text);
+     }
+
        ///ubahLevel
      if (state.step === 'await_level_change') {
   const [idStr, level] = text.split(' ');
@@ -4680,20 +4761,17 @@ bot.action('editserver_auth', async (ctx) => {
       return ctx.reply('⚠️ *PERHATIAN! Tidak ada server yang tersedia untuk diedit.*', { parse_mode: 'Markdown' });
     }
 
-    const buttons = servers.map(server => ({
-      text: server.nama_server,
-      callback_data: `edit_auth_${server.id}`
-    }));
-
-    const inlineKeyboard = [];
-    for (let i = 0; i < buttons.length; i += 2) {
-      inlineKeyboard.push(buttons.slice(i, i + 2));
-    }
-
-    await ctx.reply('🌐 *Silakan pilih server untuk mengedit auth:*', {
-      reply_markup: { inline_keyboard: inlineKeyboard },
-      parse_mode: 'Markdown'
+    // Format daftar server
+    let serverList = '🔐 *Daftar Server:*\n\n';
+    servers.forEach(server => {
+      serverList += `📍 ID: *${server.id}* - ${server.nama_server}\n`;
     });
+    serverList += '\n💡 *Silakan ketik ID server yang ingin diedit auth-nya:*';
+
+    // Set user state untuk menunggu input ID server
+    userState[ctx.chat.id] = { step: 'select_server_for_edit_auth' };
+
+    await ctx.reply(serverList, { parse_mode: 'Markdown' });
   } catch (error) {
     logger.error('❌ Kesalahan saat memulai proses edit auth server:', error);
     await ctx.reply(`❌ *${error}*`, { parse_mode: 'Markdown' });
@@ -4758,20 +4836,17 @@ bot.action('editserver_domain', async (ctx) => {
       return ctx.reply('⚠️ *PERHATIAN! Tidak ada server yang tersedia untuk diedit.*', { parse_mode: 'Markdown' });
     }
 
-    const buttons = servers.map(server => ({
-      text: server.nama_server,
-      callback_data: `edit_domain_${server.id}`
-    }));
-
-    const inlineKeyboard = [];
-    for (let i = 0; i < buttons.length; i += 2) {
-      inlineKeyboard.push(buttons.slice(i, i + 2));
-    }
-
-    await ctx.reply('🌐 *Silakan pilih server untuk mengedit domain:*', {
-      reply_markup: { inline_keyboard: inlineKeyboard },
-      parse_mode: 'Markdown'
+    // Format daftar server
+    let serverList = '🌐 *Daftar Server:*\n\n';
+    servers.forEach(server => {
+      serverList += `📍 ID: *${server.id}* - ${server.nama_server}\n`;
     });
+    serverList += '\n💡 *Silakan ketik ID server yang ingin diedit domain-nya:*';
+
+    // Set user state untuk menunggu input ID server
+    userState[ctx.chat.id] = { step: 'select_server_for_edit_domain' };
+
+    await ctx.reply(serverList, { parse_mode: 'Markdown' });
   } catch (error) {
     logger.error('❌ Kesalahan saat memulai proses edit domain server:', error);
     await ctx.reply(`❌ *${error}*`, { parse_mode: 'Markdown' });
@@ -4797,20 +4872,17 @@ bot.action('nama_server_edit', async (ctx) => {
       return ctx.reply('⚠️ *PERHATIAN! Tidak ada server yang tersedia untuk diedit.*', { parse_mode: 'Markdown' });
     }
 
-    const buttons = servers.map(server => ({
-      text: server.nama_server,
-      callback_data: `edit_nama_${server.id}`
-    }));
-
-    const inlineKeyboard = [];
-    for (let i = 0; i < buttons.length; i += 2) {
-      inlineKeyboard.push(buttons.slice(i, i + 2));
-    }
-
-    await ctx.reply('🏷️ *Silakan pilih server untuk mengedit nama:*', {
-      reply_markup: { inline_keyboard: inlineKeyboard },
-      parse_mode: 'Markdown'
+    // Format daftar server
+    let serverList = '🏷️ *Daftar Server:*\n\n';
+    servers.forEach(server => {
+      serverList += `📍 ID: *${server.id}* - ${server.nama_server}\n`;
     });
+    serverList += '\n💡 *Silakan ketik ID server yang ingin diedit namanya:*';
+
+    // Set user state untuk menunggu input ID server
+    userState[ctx.chat.id] = { step: 'select_server_for_edit_nama' };
+
+    await ctx.reply(serverList, { parse_mode: 'Markdown' });
   } catch (error) {
     logger.error('❌ Kesalahan saat memulai proses edit nama server:', error);
     await ctx.reply(`❌ *${error}*`, { parse_mode: 'Markdown' });
@@ -4906,36 +4978,9 @@ bot.action(/edit_quota_(\d+)/, async (ctx) => {
     parse_mode: 'Markdown'
   });
 });
-bot.action(/edit_auth_(\d+)/, async (ctx) => {
-  const serverId = ctx.match[1];
-  logger.info(`User ${ctx.from.id} memilih untuk mengedit auth server dengan ID: ${serverId}`);
-  userState[ctx.chat.id] = { step: 'edit_auth', serverId: serverId };
-
-  await ctx.reply('?? *Silakan masukkan auth server baru:*', {
-    reply_markup: { inline_keyboard: keyboard_full() },
-    parse_mode: 'Markdown'
-  });
-});
-bot.action(/edit_domain_(\d+)/, async (ctx) => {
-  const serverId = ctx.match[1];
-  logger.info(`User ${ctx.from.id} memilih untuk mengedit domain server dengan ID: ${serverId}`);
-  userState[ctx.chat.id] = { step: 'edit_domain', serverId: serverId };
-
-  await ctx.reply('🌐 *Silakan masukkan domain server baru:*', {
-    reply_markup: { inline_keyboard: keyboard_full() },
-    parse_mode: 'Markdown'
-  });
-});
-bot.action(/edit_nama_(\d+)/, async (ctx) => {
-  const serverId = ctx.match[1];
-  logger.info(`User ${ctx.from.id} memilih untuk mengedit nama server dengan ID: ${serverId}`);
-  userState[ctx.chat.id] = { step: 'edit_nama', serverId: serverId };
-
-  await ctx.reply('🏷️ *Silakan masukkan nama server baru:*', {
-    reply_markup: { inline_keyboard: keyboard_abc() },
-    parse_mode: 'Markdown'
-  });
-});
+// Action edit_auth removed - now uses manual text input instead
+// Action edit_domain removed - now uses manual text input instead
+// Action edit_nama removed - now uses manual text input instead
 bot.action(/confirm_delete_server_(\d+)/, async (ctx) => {
   try {
     db.run('DELETE FROM Server WHERE id = ?', [ctx.match[1]], function(err) {
@@ -5011,10 +5056,7 @@ bot.on('callback_query', async (ctx) => {
       case 'edit_batas_create_akun': return await handleEditBatasCreateAkun(ctx, userStateData, data);
       case 'edit_limit_ip': return await handleEditiplimit(ctx, userStateData, data);
       case 'edit_quota': return await handleEditQuota(ctx, userStateData, data);
-      case 'edit_auth': return await handleEditAuth(ctx, userStateData, data);
-      case 'edit_domain': return await handleEditDomain(ctx, userStateData, data);
       case 'edit_harga': return await handleEditHarga(ctx, userStateData, data);
-      case 'edit_nama': return await handleEditNama(ctx, userStateData, data);
       case 'edit_total_create_akun': return await handleEditTotalCreateAkun(ctx, userStateData, data);
     }
   }
@@ -5364,12 +5406,64 @@ async function handleEditQuota(ctx, userStateData, data) {
   await handleEditField(ctx, userStateData, data, 'quota', 'quota', 'UPDATE Server SET quota = ? WHERE id = ?');
 }
 
-async function handleEditAuth(ctx, userStateData, data) {
-  await handleEditField(ctx, userStateData, data, 'auth', 'auth', 'UPDATE Server SET auth = ? WHERE id = ?');
+async function handleEditAuth(ctx, userStateData, newAuth) {
+  // Validate input
+  if (!newAuth || newAuth.trim().length === 0) {
+    return ctx.reply('⚠️ *Auth server tidak boleh kosong!*', { parse_mode: 'Markdown' });
+  }
+
+  try {
+    await new Promise((resolve, reject) => {
+      db.run('UPDATE Server SET auth = ? WHERE id = ?', [newAuth.trim(), userStateData.serverId], function (err) {
+        if (err) {
+          logger.error('⚠️ Kesalahan saat mengupdate auth server:', err.message);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+
+    ctx.reply(`✅ *Auth server berhasil diupdate.*\n\n📄 *Detail Server:*\n- Auth: *${newAuth.trim()}*`, { parse_mode: 'Markdown' });
+    logger.info(`✅ Server ID ${userStateData.serverId} auth diupdate menjadi: ${newAuth.trim()}`);
+  } catch (err) {
+    ctx.reply('❌ *Terjadi kesalahan saat mengupdate auth server.*', { parse_mode: 'Markdown' });
+  }
+
+  delete userState[ctx.chat.id];
 }
 
-async function handleEditDomain(ctx, userStateData, data) {
-  await handleEditField(ctx, userStateData, data, 'domain', 'domain', 'UPDATE Server SET domain = ? WHERE id = ?');
+async function handleEditDomain(ctx, userStateData, newDomain) {
+  // Validate input
+  if (!newDomain || newDomain.trim().length === 0) {
+    return ctx.reply('⚠️ *Domain server tidak boleh kosong!*', { parse_mode: 'Markdown' });
+  }
+
+  // Basic domain validation (optional but recommended)
+  const domainPattern = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  if (!domainPattern.test(newDomain.trim())) {
+    return ctx.reply('⚠️ *Format domain tidak valid! Contoh: example.com atau 192.168.1.1*', { parse_mode: 'Markdown' });
+  }
+
+  try {
+    await new Promise((resolve, reject) => {
+      db.run('UPDATE Server SET domain = ? WHERE id = ?', [newDomain.trim(), userStateData.serverId], function (err) {
+        if (err) {
+          logger.error('⚠️ Kesalahan saat mengupdate domain server:', err.message);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+
+    ctx.reply(`✅ *Domain server berhasil diupdate.*\n\n📄 *Detail Server:*\n- Domain: *${newDomain.trim()}*`, { parse_mode: 'Markdown' });
+    logger.info(`✅ Server ID ${userStateData.serverId} domain diupdate menjadi: ${newDomain.trim()}`);
+  } catch (err) {
+    ctx.reply('❌ *Terjadi kesalahan saat mengupdate domain server.*', { parse_mode: 'Markdown' });
+  }
+
+  delete userState[ctx.chat.id];
 }
 
 async function handleEditHarga(ctx, userStateData, data) {
@@ -5414,8 +5508,31 @@ async function handleEditHarga(ctx, userStateData, data) {
   }
 }
 
-async function handleEditNama(ctx, userStateData, data) {
-  await handleEditField(ctx, userStateData, data, 'name', 'nama server', 'UPDATE Server SET nama_server = ? WHERE id = ?');
+async function handleEditNama(ctx, userStateData, newName) {
+  // Validate input
+  if (!newName || newName.trim().length === 0) {
+    return ctx.reply('⚠️ *Nama server tidak boleh kosong!*', { parse_mode: 'Markdown' });
+  }
+
+  try {
+    await new Promise((resolve, reject) => {
+      db.run('UPDATE Server SET nama_server = ? WHERE id = ?', [newName.trim(), userStateData.serverId], function (err) {
+        if (err) {
+          logger.error('⚠️ Kesalahan saat mengupdate nama server:', err.message);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+
+    ctx.reply(`✅ *Nama server berhasil diupdate.*\n\n📄 *Detail Server:*\n- Nama: *${newName.trim()}*`, { parse_mode: 'Markdown' });
+    logger.info(`✅ Server ID ${userStateData.serverId} nama diupdate menjadi: ${newName.trim()}`);
+  } catch (err) {
+    ctx.reply('❌ *Terjadi kesalahan saat mengupdate nama server.*', { parse_mode: 'Markdown' });
+  }
+
+  delete userState[ctx.chat.id];
 }
 
 async function handleEditField(ctx, userStateData, data, field, fieldName, query) {
