@@ -8,7 +8,7 @@ Bot Telegram untuk manajemen akun VPN dengan arsitektur enterprise-grade yang mo
 
 - Node.js v20+ (disarankan menggunakan NVM)
 - NPM atau Yarn
-- Akses SSH ke server VPN Anda
+- Akses SSH ke server VPN Anda (hanya password-based untuk saat ini)
 - PM2 (opsional, untuk manajemen proses)
 
 ### 1. Clone Repositori
@@ -35,7 +35,7 @@ nano .vars.json  # Edit dengan kredensial Anda
 
 ```bash
 # Development mode (RECOMMENDED - Full functionality)
-node index.js
+npm start
 
 # Production mode (dengan PM2)
 pm2 start index.js --name vpn-bot
@@ -65,7 +65,7 @@ pm2 start vpn-bot
 pm2 delete vpn-bot
 ```
 
-Jika menjalankan dalam mode development, cukup hentikan proses dengan `CTRL + C` dan jalankan kembali dengan `node index.js`.
+Jika menjalankan dalam mode development, cukup hentikan proses dengan `CTRL + C` dan jalankan kembali dengan `npm start`.
 
 ## ✨ Arsitektur Enterprise-Grade
 
@@ -405,14 +405,14 @@ const discount = helpers.getResellerDiscount(5000000); // returns 15% for 5M sal
 1. **Tentukan Layer** - Repository untuk akses data, Service untuk logika bisnis
 2. **Buat Repository Methods** - Jika memerlukan akses database baru
 3. **Implementasi Logika** - Di service layer atau langsung di handler
-4. **Perbarui Command** - Tambahkan command/action baru di `app.js`
+4. **Perbarui Command** - Tambahkan command/action baru di `index.js`
 5. **Pengujian** - Uji secara menyeluruh sebelum production
 
 ### Pengujian & Debugging
 
 ```bash
 # Check syntax errors
-node -c app.js
+node -c index.js
 
 # Test specific module
 node -e "require('./src/repositories/userRepository')"
@@ -421,16 +421,8 @@ node -e "require('./src/repositories/userRepository')"
 pm2 logs vpn-bot --lines 100
 
 # Monitor performance
-pm2 monit
+pm2 monitor vpn-bot
 ```
-
-## 📊 Statistik Refactoring
-
-- **Kode Asli**: 6.057 baris (monolitik `app.js`)
-- **Modul Baru**: 80+ method repository, 2 modul infrastruktur, 6 file utilitas
-- **Pengurangan Kode**: ~60% lebih sedikit duplikasi
-- **Kemudahan Pemeliharaan**: 10x lebih mudah dipelihara & dikembangkan
-- **Cakupan Pengujian**: Siap untuk unit testing per modul
 
 ## 🔐 Konfigurasi Environment
 
@@ -438,11 +430,13 @@ Edit file `.vars.json`:
 
 ```json
 {
-  "BOT_TOKEN": "your_telegram_bot_token",
-  "USER_ID": "your_telegram_user_id",
-  "GROUP_ID": "your_telegram_group_id",
-  "SSH_USER": "root",
-  "SSH_PASS": "your_vps_password"
+  "BOT_TOKEN": "bot_token_anda",
+  "USER_ID": "telegram_user_id_anda",
+  "GROUP_ID": "telegram_group_id_anda", // Opsional
+  "NAMA_STORE": "nama_store_anda",
+  "DATA_QRIS": "data_qris_anda", // Untuk pembayaran QRIS
+  "MERCHANT_ID": "merchant_qris_anda", // Untuk pembayaran QRIS
+  "API_KEY": "api_key_qris_anda" // Untuk pembayaran QRIS
 }
 ```
 
@@ -451,17 +445,10 @@ Edit file `.vars.json`:
 - `BOT_TOKEN` - Token bot dari [@BotFather](https://t.me/botfather)
 - `USER_ID` - Telegram User ID Anda (owner/admin)
 - `GROUP_ID` - Group ID untuk notifikasi (optional)
-- `SSH_USER` - Username SSH untuk VPS servers
-- `SSH_PASS` - Password SSH untuk VPS servers
-
-## 🔄 Migrasi dari Versi Lama
-
-Jika Anda melakukan upgrade dari versi monolitik:
-
-1. **Database tetap kompatibel** - Tidak perlu migrasi skema
-2. **app.js tetap berfungsi** - Kompatibilitas mundur 100%
-3. **Gunakan repository** - Untuk kode baru gunakan pola repository
-4. **Migrasi bertahap** - Pindahkan logika ke modul secara bertahap
+- `NAMA_STORE` - Nama toko Anda
+- `DATA_QRIS` - Data QRIS untuk pembayaran
+- `MERCHANT_ID` - Merchant ID untuk QRIS
+- `API_KEY` - API Key untuk integrasi QRIS
 
 ## 📚 Dokumentasi Lanjutan
 
@@ -509,11 +496,12 @@ Kontribusi sangat diterima! Silakan ikuti langkah berikut:
 
 **Dikembangkan oleh**: [Alrescha79](https://github.com/alrescha79-cmd)
 
-**Direfaktor ke Arsitektur Enterprise**: 2024
+**Direfaktor ke Arsitektur Enterprise**: 2025
 
 **Tech Stack**:
 
 - Node.js v20+
+- TypeScript
 - Telegraf (Telegram Bot Framework)
 - SQLite3 (Database)
 - Winston (Logging)
