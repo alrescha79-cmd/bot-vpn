@@ -1,9 +1,14 @@
 node_modules/
+dist/
 .vars.json
 bot-error.log
 bot-combined.log
 botvpn.db
 .github
 
-# TypeScript - compiled JS files are committed alongside TS source
-# Do not add *.js to gitignore as we're using in-place compilation
+
+# Temporary scripts
+*.sh
+*.swp
+*.swo
+.DS_Store
