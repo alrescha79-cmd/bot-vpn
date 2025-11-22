@@ -2,8 +2,6 @@
  * @fileoverview Main Application Entry Point (Modular Architecture)
  * Clean, enterprise-grade entry point for the VPN Telegram Bot
  * 
- * This replaces the monolithic 6,057-line app.js with a modular architecture
- * 
  * Architecture Layers:
  * - Config Layer: Environment & constants
  * - Infrastructure Layer: Database, cache, HTTP clients

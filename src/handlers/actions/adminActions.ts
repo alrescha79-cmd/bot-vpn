@@ -226,12 +226,12 @@ function registerListServersAction(bot) {
 
       const list = rows.map((row, i) => {
         return `${i + 1}. *${row.nama_server}*\n` +
-          `   🌐 Domain  : ${row.domain}\n` +
-          `   🔑 Auth    : ${row.auth}\n` +
-          `   🌍 IP Limit: ${row.iplimit}\n` +
-          `   📦 Harga   : Rp${row.harga.toLocaleString('id-ID')}\n` +
-          `   🧮 Total   : ${row.total_create_akun}`;
-      }).join('\n──────────────\n');
+          `   🌐 Domain     : ${row.domain}\n` +
+          `   🔑 Auth           : ${row.auth}\n` +
+          `   🌍 IP Limit      : ${row.iplimit}\n` +
+          `   📦 Harga         : Rp${row.harga.toLocaleString('id-ID')}\n` +
+          `   🧮 Total Akun : ${row.total_create_akun}`;
+      }).join('\n────────────────────────────\n');
 
       const msg = `📄 *List Server Tersimpan:*\n\n${list}`;
       
@@ -255,20 +255,22 @@ function registerAdminStatsAction(bot) {
     }
 
     try {
-      const [jumlahUser, jumlahReseller, jumlahServer, totalSaldo] = await Promise.all([
+      const [jumlahUser, jumlahAkun, jumlahReseller, jumlahServer, totalSaldo] = await Promise.all([
         dbGetAsync('SELECT COUNT(*) AS count FROM users'),
+        dbGetAsync('SELECT COUNT(*) AS count FROM akun_aktif'),
         dbGetAsync("SELECT COUNT(*) AS count FROM users WHERE role = 'reseller'"),
         dbGetAsync('SELECT COUNT(*) AS count FROM Server'),
         dbGetAsync('SELECT SUM(saldo) AS total FROM users')
       ]);
 
       const replyText = `
-📊 *Statistik Sistem:*
+📊 *Statistik Sistem*
 
-👥 Total Pengguna : *${jumlahUser.count}*
-👑 Total Reseller : *${jumlahReseller.count}*
-🖥️ Total Server   : *${jumlahServer.count}*
-💰 Total Saldo     : *Rp${(totalSaldo.total || 0).toLocaleString('id-ID')}*
+👥 Total Pengguna     : *${jumlahUser.count}*
+🆔 Total Akun Aktif     : *${jumlahAkun.count}*
+👑 Total Reseller         : *${jumlahReseller.count}*
+🖥 Total Server            : *${jumlahServer.count}*
+💰 Total Saldo              : *Rp${(totalSaldo.total || 0).toLocaleString('id-ID')}*
       `.trim();
 
       await ctx.reply(replyText, { parse_mode: 'Markdown' });

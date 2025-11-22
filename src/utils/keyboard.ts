@@ -167,6 +167,42 @@ export function buildBackButton(callbackData: string = 'back'): any {
   ]);
 }
 
+/**
+ * Build numeric keyboard for number input
+ * @returns {Array} - Inline keyboard array
+ */
+export function keyboard_nomor(): any[][] {
+  return [
+    [
+      { text: '1', callback_data: 'num_1' },
+      { text: '2', callback_data: 'num_2' },
+      { text: '3', callback_data: 'num_3' }
+    ],
+    [
+      { text: '4', callback_data: 'num_4' },
+      { text: '5', callback_data: 'num_5' },
+      { text: '6', callback_data: 'num_6' }
+    ],
+    [
+      { text: '7', callback_data: 'num_7' },
+      { text: '8', callback_data: 'num_8' },
+      { text: '9', callback_data: 'num_9' }
+    ],
+    [
+      { text: '0', callback_data: 'num_0' },
+      { text: '00', callback_data: 'num_00' },
+      { text: '000', callback_data: 'num_000' }
+    ],
+    [
+      { text: '⬅️ Hapus', callback_data: 'num_backspace' },
+      { text: '✅ Kirim', callback_data: 'num_submit' }
+    ],
+    [
+      { text: '❌ Batal', callback_data: 'num_cancel' }
+    ]
+  ];
+}
+
 module.exports = {
   buildPaginatedKeyboard,
   buildMainMenuKeyboard,
@@ -174,5 +210,6 @@ module.exports = {
   buildServerKeyboard,
   buildConfirmationKeyboard,
   buildAdminMenuKeyboard,
-  buildBackButton
+  buildBackButton,
+  keyboard_nomor
 };

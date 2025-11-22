@@ -171,11 +171,11 @@ function registerTrialSSHAction(bot) {
       const replyText = `
 ⚡ *AKUN SSH TRIAL*
 
-👤 \`User:\` ${username}
-🔐 \`Pass:\` ${password}
-🌍 \`Domain:\` ${domain}
-🏙️ \`Kota:\` ${city}
-🔑 \`PubKey:\` ${public_key}
+👤 User: \`${username}\`
+🔐 Pass: \`${password}\`
+🌍 Domain: \`${domain}\`
+🏙️ Kota: \`${city}\`
+🔑 PubKey: \`${public_key}\`
 
 🔌 *PORT*
 ${ports}
@@ -260,12 +260,12 @@ function registerTrialVMESSAction(bot) {
       const replyText = `
 ⚡ *AKUN VMESS TRIAL*
 
-👤 \`User:\` ${username}
-🔐 \`UUID:\` ${uuid}
-🌍 \`Domain:\` ${domain}
-🏙️ \`Kota:\` ${city}
-📡 \`NS:\` ${ns_domain}
-🔑 \`PubKey:\` ${public_key}
+👤 User: \`${username}\`
+🔐 UUID: \`${uuid}\`
+🌍 Domain: \`${domain}\`
+🏙️ Kota: ${city}
+📡 NS: ${ns_domain}
+🔑 PubKey: ${public_key}
 
 🔌 *PORT*
 TLS 443 | NTLS 80/8080 | gRPC 443
@@ -348,12 +348,12 @@ function registerTrialVLESSAction(bot) {
       const replyText = `
 ⚡ *AKUN VLESS TRIAL*
 
-👤 \`User:\` ${username}
-🔐 \`UUID:\` ${uuid}
-🌍 \`Domain:\` ${domain}
-🏙️ \`Kota:\` ${city}
-📡 \`NS:\` ${ns_domain}
-🔑 \`PubKey:\` ${public_key}
+👤 User: \`${username}\`
+🔐 UUID: \`${uuid}\`
+🌍 Domain: \`${domain}\`
+🏙️ Kota: ${city}
+📡 NS: ${ns_domain}
+🔑 PubKey: ${public_key}
 
 🔌 *PORT*
 TLS 443 | NTLS 80/8080 | gRPC 443
@@ -436,12 +436,12 @@ function registerTrialTROJANAction(bot) {
       const replyText = `
 ⚡ *AKUN TROJAN TRIAL*
 
-👤 \`User:\` ${username}
-🔐 \`UUID:\` ${uuid}
-🌍 \`Domain:\` ${domain}
-🏙️ \`Kota:\` ${city}
-📡 \`NS:\` ${ns_domain}
-🔑 \`PubKey:\` ${public_key}
+👤 User: \`${username}\`
+🔐 UUID: \`${uuid}\`
+🌍 Domain: \`${domain}\`
+🏙️ Kota: ${city}
+📡 NS: ${ns_domain}
+🔑 PubKey: ${public_key}
 
 🔌 *PORT*
 TLS 443 | NTLS 80/8080 | gRPC 443
@@ -524,12 +524,12 @@ function registerTrialSHADOWSOCKSAction(bot) {
       const replyText = `
 ⚡ *AKUN SHADOWSOCKS TRIAL*
 
-👤 \`User:\` ${username}
-🔐 \`UUID:\` ${uuid}
-🌍 \`Domain:\` ${domain}
-🏙️ \`Kota:\` ${city}
-📡 \`NS:\` ${ns_domain}
-🔑 \`PubKey:\` ${public_key}
+👤 User: \`${username}\`
+🔐 UUID: \`${uuid}\`
+🌍 Domain: \`${domain}\`
+🏙️ Kota: \`${city}\`
+📡 NS: \`${ns_domain}\`
+🔑 PubKey: \`${public_key}\`
 
 🔌 *PORT*
 TLS 443 | NTLS 80/8080 | gRPC 443

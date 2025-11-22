@@ -38,19 +38,19 @@ async function sendMainMenu(ctx) {
     }[user.role] || '👤';
 
     const welcomeText = `
-      ${roleEmoji} *Selamat Datang ${user.first_name} di BOT VPN VVIP*
-        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Selamat Datang *${user.first_name}* di BOT VPN *${vars.NAMA_STORE}*!
 
-      📋 *Informasi Akun:*
+╔═══════════════════════════════════╗
+                          📋 *Informasi Akun*
+╠═══════════════════════════════════╣
+      🛍 *Store              : ${vars.NAMA_STORE}*
+      💰 *Saldo              : Rp${user.saldo.toLocaleString('id-ID')}*
+      📊 *Role                : ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}* ${roleEmoji}
+      📜 *Akun Dibuat : ${totalAccountCreated}*
+      🔒 *Admin Bot     : @${vars.ADMIN_USERNAME}*
+╚═══════════════════════════════════╝
 
-      🛍 *Store: ${vars.NAMA_STORE}*
-      💰 *Saldo: Rp${user.saldo.toLocaleString('id-ID')}*
-      📊 *Role: ${roleEmoji} ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}*
-      📜 *Akun Dibuat: ${totalAccountCreated}*
-      🔒 *Admin Bot: @${vars.ADMIN_USERNAME}*
-
-      Silakan pilih menu di bawah:
-        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Silakan pilih menu di bawah:
         `.trim();
 
     const keyboard = [

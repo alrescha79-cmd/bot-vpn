@@ -165,16 +165,19 @@ function registerCancelActions(bot) {
 
 /**
  * Handle confirm actions (generic)
+ * NOTE: This is a fallback handler - specific confirm actions should be handled in their respective modules
+ * and registered BEFORE this generic handler to avoid conflicts.
  */
 function registerConfirmActions(bot) {
-  // These are placeholders - specific confirm actions should be in their respective modules
-  bot.action(/confirm_(.+)/, async (ctx) => {
-    const [, operation] = ctx.match;
+  // Generic handler - will only catch confirm_* that aren't already handled
+  // Specific handlers like confirm_delete_server_* should be registered in serverEditActions
+  bot.action(/confirm_(?!delete_server_|resetdb)(.+)/, async (ctx) => {
+    const operation = ctx.match[0].replace('confirm_', '');
     
     await ctx.answerCbQuery('⏳ Memproses...');
-    logger.info(`Confirm action triggered: ${operation} by user ${ctx.from.id}`);
+    logger.info(`Generic confirm action triggered: ${operation} by user ${ctx.from.id}`);
     
-    // Specific confirmations should be handled in their respective action files
+    // This is a fallback - specific confirmations should be handled in their respective action files
     await ctx.reply('⚠️ Konfirmasi tidak dikenali. Silakan coba lagi.');
   });
 }

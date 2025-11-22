@@ -24,14 +24,26 @@ function registerEditHargaAction(bot) {
 
     logger.info(`User ${userId} memilih untuk mengedit harga server dengan ID: ${serverId}`);
 
+    // Get current server data
+    const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]);
+
+    if (!server) {
+      return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+    }
+
     // Set user state
     if (!global.userState) global.userState = {};
     global.userState[ctx.chat.id] = { step: 'edit_harga', serverId: serverId };
 
-    await ctx.reply('💰 *Silakan masukkan harga server baru:*', {
-      reply_markup: { inline_keyboard: keyboard_nomor() },
-      parse_mode: 'Markdown'
-    });
+    await ctx.reply(
+      `🌐 *Server dipilih:* ${server.nama_server}\n` +
+      `Harga saat ini: *Rp ${server.harga.toLocaleString('id-ID')}/hari*\n\n` +
+      `💡 *Silakan masukkan harga server baru (Rp/hari):*`,
+      {
+        reply_markup: { inline_keyboard: keyboard_nomor() },
+        parse_mode: 'Markdown'
+      }
+    );
   });
 }
 
@@ -87,14 +99,26 @@ function registerEditLimitIPAction(bot) {
 
     logger.info(`User ${userId} memilih untuk mengedit limit IP server dengan ID: ${serverId}`);
 
+    // Get current server data
+    const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]);
+
+    if (!server) {
+      return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+    }
+
     // Set user state
     if (!global.userState) global.userState = {};
     global.userState[ctx.chat.id] = { step: 'edit_limit_ip', serverId: serverId };
 
-    await ctx.reply('📊 *Silakan masukkan limit IP server baru:*', {
-      reply_markup: { inline_keyboard: keyboard_nomor() },
-      parse_mode: 'Markdown'
-    });
+    await ctx.reply(
+      `🌐 *Server dipilih:* ${server.nama_server}\n` +
+      `Limit IP saat ini: *${server.iplimit}*\n\n` +
+      `💡 *Silakan masukkan limit IP (Device) server baru:*`,
+      {
+        reply_markup: { inline_keyboard: keyboard_nomor() },
+        parse_mode: 'Markdown'
+      }
+    );
   });
 }
 
@@ -106,16 +130,28 @@ function registerEditQuotaAction(bot) {
     const serverId = ctx.match[1];
     const userId = ctx.from.id;
 
-    logger.info(`User ${userId} memilih untuk mengedit quota server dengan ID: ${serverId}`);
+    logger.info(`User ${userId} memilih untuk mengedit kuota server dengan ID: ${serverId}`);
+
+    // Get current server data
+    const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]);
+
+    if (!server) {
+      return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+    }
 
     // Set user state
     if (!global.userState) global.userState = {};
     global.userState[ctx.chat.id] = { step: 'edit_quota', serverId: serverId };
 
-    await ctx.reply('📊 *Silakan masukkan quota server baru (GB):*', {
-      reply_markup: { inline_keyboard: keyboard_nomor() },
-      parse_mode: 'Markdown'
-    });
+    await ctx.reply(
+      `🌐 *Server dipilih:* ${server.nama_server}\n` +
+      `Kuota saat ini: *${server.quota} GB*\n\n` +
+      `💡 *Silakan masukkan kuota server baru (GB):*`,
+      {
+        reply_markup: { inline_keyboard: keyboard_nomor() },
+        parse_mode: 'Markdown'
+      }
+    );
   });
 }
 
