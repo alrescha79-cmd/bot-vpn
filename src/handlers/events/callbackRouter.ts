@@ -16,7 +16,6 @@ const { handleDepositState } = require('../../services/depositService');
 const {
   handleAddSaldo,
   handleEditBatasCreateAkun,
-  handleEditTotalCreateAkun,
   handleEditiplimit,
   handleEditQuota,
   handleEditHarga
@@ -63,8 +62,7 @@ function registerCallbackRouter(bot) {
           return await handleEditQuota(ctx, userStateData, data);
         case 'edit_harga':
           return await handleEditHarga(ctx, userStateData, data);
-        case 'edit_total_create_akun':
-          return await handleEditTotalCreateAkun(ctx, userStateData, data);
+        // edit_total_create_akun removed - now read-only display
       }
     }
 

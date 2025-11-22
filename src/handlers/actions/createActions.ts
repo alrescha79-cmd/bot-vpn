@@ -17,36 +17,249 @@ const createSHADOWSOCKS = require('../../modules/protocols/shadowsocks/createSHA
  * Register all create account actions
  */
 function registerCreateActions(bot) {
-  // SSH Create
-  bot.action(/^create_server_ssh_(\d+)$/, async (ctx) => {
-    await handleCreateAccount(ctx, 'ssh', ctx.match[1], createSSH);
+  // Server selection handlers - redirect to username input
+  const protocols = ['ssh', 'vmess', 'vless', 'trojan', 'shadowsocks'];
+  
+  protocols.forEach(protocol => {
+    bot.action(new RegExp(`^create_server_${protocol}_(\\d+)$`), async (ctx) => {
+      const serverId = ctx.match[1];
+      await handleServerSelection(ctx, protocol, serverId, 'create');
+    });
   });
 
-  // VMESS Create
-  bot.action(/^create_server_vmess_(\d+)$/, async (ctx) => {
-    await handleCreateAccount(ctx, 'vmess', ctx.match[1], createVMESS);
+  // Duration selection handlers - show username input
+  bot.action(/^duration_create_([a-z]+)_(\d+)_(\d+)$/, async (ctx) => {
+    await handleDurationSelection(ctx, 'create');
   });
 
-  // VLESS Create
-  bot.action(/^create_server_vless_(\d+)$/, async (ctx) => {
-    await handleCreateAccount(ctx, 'vless', ctx.match[1], createVLESS);
+  // Payment confirmation handlers
+  bot.action(/^pay_create_([a-z]+)_(\d+)_(\d+)$/, async (ctx) => {
+    await handlePaymentConfirmation(ctx, 'create');
   });
 
-  // TROJAN Create
-  bot.action(/^create_server_trojan_(\d+)$/, async (ctx) => {
-    await handleCreateAccount(ctx, 'trojan', ctx.match[1], createTROJAN);
-  });
-
-  // SHADOWSOCKS Create
-  bot.action(/^create_server_shadowsocks_(\d+)$/, async (ctx) => {
-    await handleCreateAccount(ctx, 'shadowsocks', ctx.match[1], createSHADOWSOCKS);
+  // Cancel handlers
+  bot.action(/^cancel_create_([a-z]+)_(\d+)_(\d+)$/, async (ctx) => {
+    await ctx.editMessageText('❌ *Pembuatan akun dibatalkan.*', { parse_mode: 'Markdown' });
+    delete global.userState[ctx.chat.id];
   });
 
   logger.info('✅ Create account actions registered');
 }
 
 /**
- * Handle account creation
+ * Handle server selection - ask for username
+ */
+async function handleServerSelection(ctx, protocol, serverId, action) {
+  await ctx.answerCbQuery();
+
+  try {
+    // Get server
+    const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]);
+    if (!server) {
+      return ctx.reply('❌ Server tidak ditemukan.');
+    }
+
+    // Set user state
+    if (!global.userState) global.userState = {};
+    global.userState[ctx.chat.id] = {
+      step: `username_${action}_${protocol}`,
+      action: action,
+      type: protocol,
+      serverId: serverId,
+      serverName: server.nama_server,
+      serverDomain: server.domain,
+      harga: server.harga
+    };
+
+    // Ask for username
+    await ctx.editMessageText(
+      `📝 Masukkan Username\n\n` +
+      `Format: huruf kecil, angka, underscore (3-20 karakter)\n` +
+      `Contoh: user123, my_vpn\n\n` +
+      `Ketik username yang diinginkan:`
+    );
+
+  } catch (error) {
+    logger.error(`❌ Error handling server selection:`, error);
+    await ctx.reply('❌ Terjadi kesalahan. Silakan coba lagi.');
+  }
+}
+
+/**
+ * Handle duration selection - set duration and continue to next step
+ */
+async function handleDurationSelection(ctx, action) {
+  const protocol = ctx.match[1];   // protocol name
+  const serverId = ctx.match[2];   // server id
+  const duration = parseInt(ctx.match[3]);  // duration in days
+  const userId = ctx.from.id;
+  const chatId = ctx.chat.id;
+
+  await ctx.answerCbQuery();
+
+  try {
+    const state = global.userState[chatId];
+    if (!state) {
+      return ctx.reply('❌ Session expired. Silakan mulai lagi.');
+    }
+
+    // Update state with duration
+    state.duration = duration;
+
+    // For SSH, ask for password
+    if (protocol === 'ssh' && action === 'create') {
+      state.step = `password_${action}_${protocol}`;
+      await ctx.editMessageText(
+        `🔑 Masukkan Password\n\n` +
+        `Password untuk akun SSH (minimal 6 karakter):`
+      );
+      return;
+    }
+
+    // For other protocols or renew, show payment confirmation
+    const { showPaymentConfirmation } = require('../events/textHandler');
+    await showPaymentConfirmation(ctx, state);
+
+  } catch (error) {
+    logger.error(`❌ Error handling duration selection:`, error);
+    await ctx.reply('❌ Terjadi kesalahan. Silakan coba lagi.');
+  }
+}
+
+/**
+ * Handle payment confirmation and create account
+ */
+async function handlePaymentConfirmation(ctx, action) {
+  const protocol = ctx.match[1];
+  const serverId = ctx.match[2];
+  const duration = parseInt(ctx.match[3]);
+  const userId = ctx.from.id;
+  const chatId = ctx.chat.id;
+
+  await ctx.answerCbQuery();
+
+  try {
+    const state = global.userState[chatId];
+    if (!state) {
+      return ctx.reply('❌ Session expired. Silakan mulai lagi.');
+    }
+
+    const { username, password, harga } = state;
+    
+    // Get server
+    const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]);
+    if (!server) {
+      return ctx.reply('❌ Server tidak ditemukan.');
+    }
+
+    // Get user
+    const { dbRunAsync } = require('../../database/connection');
+    let user = await dbGetAsync('SELECT * FROM users WHERE user_id = ?', [userId]);
+    
+    if (!user) {
+      await dbRunAsync(
+        `INSERT INTO users (user_id, username, saldo, role, reseller_level) VALUES (?, ?, 0, 'user', 'silver')`,
+        [userId, ctx.from.username]
+      );
+      user = { saldo: 0, role: 'user', reseller_level: 'silver' };
+    }
+
+    // Calculate price with reseller discount
+    const diskon = user.role === 'reseller'
+      ? user.reseller_level === 'gold' ? 0.2
+      : user.reseller_level === 'platinum' ? 0.3
+      : 0.1
+      : 0;
+
+    const hargaSatuan = Math.floor(server.harga * (1 - diskon));
+    const totalHarga = hargaSatuan * duration;
+
+    // Check balance again
+    if (user.saldo < totalHarga) {
+      return ctx.editMessageText(
+        `❌ *Saldo Tidak Mencukupi*\n\n` +
+        `Saldo Anda hanya Rp${user.saldo.toLocaleString('id-ID')}.\n` +
+        `Untuk melanjutkan silakan top up terlebih dahulu.`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[{ text: '💰 Top Up', callback_data: 'deposit' }]]
+          }
+        }
+      );
+    }
+
+    // Deduct balance
+    await dbRunAsync('UPDATE users SET saldo = saldo - ? WHERE user_id = ?', [totalHarga, userId]);
+
+    // Handler mapping
+    const handlerMap = {
+      ssh: () => createSSH.createssh(username, password, duration, server.iplimit, serverId, totalHarga, duration),
+      vmess: () => createVMESS.createvmess(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration),
+      vless: () => createVLESS.createvless(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration),
+      trojan: () => createTROJAN.createtrojan(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration),
+      shadowsocks: () => createSHADOWSOCKS.createshadowsocks(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration)
+    };
+
+    const handler = handlerMap[protocol];
+    if (!handler) {
+      return ctx.reply('❌ Protocol tidak dikenali.');
+    }
+
+    await ctx.editMessageText('⏳ *Sedang membuat akun...* Mohon tunggu.', { parse_mode: 'Markdown' });
+
+    // Execute handler
+    const msg = await handler();
+
+    // Validate response
+    if (!msg || typeof msg !== 'string') {
+      logger.error('❌ Invalid response from handler:', { msg, type: typeof msg });
+      return ctx.reply('❌ *Terjadi kesalahan saat membuat akun.*', { parse_mode: 'Markdown' });
+    }
+
+    // Check for error message
+    if (msg.startsWith('❌')) {
+      // Refund if creation failed
+      await dbRunAsync('UPDATE users SET saldo = saldo + ? WHERE user_id = ?', [totalHarga, userId]);
+      return ctx.reply(msg, { parse_mode: 'Markdown' });
+    }
+
+    // Update server statistics
+    await dbRunAsync('UPDATE Server SET total_create_akun = total_create_akun + 1 WHERE id = ?', [serverId]);
+
+    // Log invoice
+    const komisi = user.role === 'reseller' ? Math.floor(server.harga * duration * 0.1) : 0;
+    await dbRunAsync(`
+      INSERT INTO invoice_log (user_id, username, layanan, akun, hari, harga, komisi, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `, [userId, ctx.from.username || ctx.from.first_name, protocol, username, duration, totalHarga, komisi]);
+
+    // Mark account as active
+    await dbRunAsync('INSERT OR REPLACE INTO akun_aktif (username, jenis) VALUES (?, ?)', [username, protocol]);
+
+    // Handle reseller commission
+    if (user.role === 'reseller') {
+      await dbRunAsync('UPDATE users SET saldo = saldo + ? WHERE user_id = ?', [komisi, userId]);
+      await dbRunAsync(`
+        INSERT INTO reseller_sales (reseller_id, buyer_id, akun_type, username, komisi, created_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'))
+      `, [userId, userId, protocol, username, komisi]);
+    }
+
+    // Send success message
+    await ctx.reply(msg, { parse_mode: 'Markdown' });
+
+    // Clean up state
+    delete global.userState[chatId];
+
+  } catch (error) {
+    logger.error(`❌ Error in payment confirmation:`, error);
+    await ctx.reply('❌ Terjadi kesalahan. Silakan coba lagi.');
+  }
+}
+
+/**
+ * Handle account creation (OLD FUNCTION - DEPRECATED)
  */
 async function handleCreateAccount(ctx, protocol, serverId, createFunction) {
   const userId = ctx.from.id;

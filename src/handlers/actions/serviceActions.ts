@@ -124,6 +124,59 @@ Pilih server yang tersedia:
 }
 
 /**
+ * Show duration selection after server selection
+ * @param {Object} ctx - Telegraf context
+ * @param {string} protocol - Protocol name
+ * @param {string} action - Action type (create/renew)
+ * @param {number} serverId - Server ID
+ */
+async function showDurationSelection(ctx, protocol, action, serverId) {
+  try {
+    const durationButtons = [
+      [
+        Markup.button.callback('7 Hari', `duration_${action}_${protocol}_${serverId}_7`),
+        Markup.button.callback('20 Hari', `duration_${action}_${protocol}_${serverId}_20`)
+      ],
+      [
+        Markup.button.callback('30 Hari', `duration_${action}_${protocol}_${serverId}_30`),
+        Markup.button.callback('45 Hari', `duration_${action}_${protocol}_${serverId}_45`)
+      ],
+      [
+        Markup.button.callback('🔙 Kembali', `${action}_${protocol}`)
+      ]
+    ];
+
+    const protocolLabels = {
+      ssh: '🔐 SSH',
+      vmess: '📡 VMESS',
+      vless: '🌐 VLESS',
+      trojan: '🔒 TROJAN',
+      shadowsocks: '🕶️ SHADOWSOCKS'
+    };
+
+    const message = `
+${protocolLabels[protocol] || protocol.toUpperCase()}
+
+Pilih durasi masa aktif:
+    `.trim();
+
+    // Use reply instead of editMessageText when called from text handler
+    if (ctx.message) {
+      await ctx.reply(message, {
+        ...Markup.inlineKeyboard(durationButtons)
+      });
+    } else {
+      await ctx.editMessageText(message, {
+        ...Markup.inlineKeyboard(durationButtons)
+      });
+    }
+  } catch (err) {
+    logger.error(`❌ Error showing duration selection:`, err.message);
+    await ctx.reply('❌ Gagal menampilkan pilihan durasi.');
+  }
+}
+
+/**
  * Register service action: service_create
  */
 function registerServiceCreateAction(bot) {
@@ -194,6 +247,7 @@ module.exports = {
   registerServiceActions,
   handleServiceAction,
   showServerSelection,
+  showDurationSelection,
   registerServiceCreateAction,
   registerServiceRenewAction,
   registerServiceTrialAction,

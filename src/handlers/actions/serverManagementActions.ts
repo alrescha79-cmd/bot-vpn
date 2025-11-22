@@ -248,20 +248,46 @@ function registerEditServerMenuActions(bot) {
         return ctx.reply('⚠️ *PERHATIAN! Tidak ada server yang tersedia untuk diedit.*', { parse_mode: 'Markdown' });
       }
 
-      let serverList = '🔐 *Daftar Server:*\n\n';
-      servers.forEach(server => {
-        serverList += `📍 ID: *${server.id}* - ${server.nama_server}\n`;
+      const { Markup } = require('telegraf');
+      const buttons = servers.map(server => ([
+        Markup.button.callback(server.nama_server, `edit_auth_server_${server.id}`)
+      ]));
+
+      await ctx.reply('🔐 *Pilih Server untuk Edit Auth:*', {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard(buttons)
       });
-      serverList += '\n💡 *Silakan ketik ID server yang ingin diedit auth-nya:*';
-
-      if (!global.userState) global.userState = {};
-      global.userState[ctx.chat.id] = { step: 'select_server_for_edit_auth' };
-
-      await ctx.reply(serverList, { parse_mode: 'Markdown' });
     } catch (error) {
       logger.error('❌ Kesalahan saat memulai proses edit auth server:', error);
       await ctx.reply(`❌ *${error}*`, { parse_mode: 'Markdown' });
     }
+  });
+
+  // Handle edit auth server selection
+  bot.action(/^edit_auth_server_(\d+)$/, async (ctx) => {
+    const serverId = ctx.match[1];
+    await ctx.answerCbQuery();
+
+    // Get current server data
+    const server = await new Promise<any>((resolve, reject) => {
+      global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
+        if (err || !server) {
+          logger.error('❌ Server tidak ditemukan:', err?.message);
+          return reject('Server tidak ditemukan.');
+        }
+        resolve(server);
+      });
+    });
+
+    if (!global.userState) global.userState = {};
+    global.userState[ctx.chat.id] = { step: 'edit_auth', serverId: serverId };
+
+    await ctx.editMessageText(
+      `🌐 *Server dipilih:* ${server.nama_server}\n` +
+      `Auth/Password saat ini: *${server.auth}*\n\n` +
+      `💡 *Silakan ketik auth/password baru:*`,
+      { parse_mode: 'Markdown' }
+    );
   });
 
   // Edit server domain
@@ -284,20 +310,46 @@ function registerEditServerMenuActions(bot) {
         return ctx.reply('⚠️ *PERHATIAN! Tidak ada server yang tersedia untuk diedit.*', { parse_mode: 'Markdown' });
       }
 
-      let serverList = '🌐 *Daftar Server:*\n\n';
-      servers.forEach(server => {
-        serverList += `📍 ID: *${server.id}* - ${server.nama_server}\n`;
+      const { Markup } = require('telegraf');
+      const buttons = servers.map(server => ([
+        Markup.button.callback(server.nama_server, `edit_domain_server_${server.id}`)
+      ]));
+
+      await ctx.reply('🌐 *Pilih Server untuk Edit Domain:*', {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard(buttons)
       });
-      serverList += '\n💡 *Silakan ketik ID server yang ingin diedit domain-nya:*';
-
-      if (!global.userState) global.userState = {};
-      global.userState[ctx.chat.id] = { step: 'select_server_for_edit_domain' };
-
-      await ctx.reply(serverList, { parse_mode: 'Markdown' });
     } catch (error) {
       logger.error('❌ Kesalahan saat memulai proses edit domain server:', error);
       await ctx.reply(`❌ *${error}*`, { parse_mode: 'Markdown' });
     }
+  });
+
+  // Handle edit domain server selection
+  bot.action(/^edit_domain_server_(\d+)$/, async (ctx) => {
+    const serverId = ctx.match[1];
+    await ctx.answerCbQuery();
+
+    // Get current server data
+    const server = await new Promise<any>((resolve, reject) => {
+      global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
+        if (err || !server) {
+          logger.error('❌ Server tidak ditemukan:', err?.message);
+          return reject('Server tidak ditemukan.');
+        }
+        resolve(server);
+      });
+    });
+
+    if (!global.userState) global.userState = {};
+    global.userState[ctx.chat.id] = { step: 'edit_domain', serverId: serverId };
+
+    await ctx.editMessageText(
+      `🌐 *Server dipilih:* ${server.nama_server}\n` +
+      `Domain saat ini: *${server.domain}*\n\n` +
+      `💡 *Silakan ketik domain/IP baru:*`,
+      { parse_mode: 'Markdown' }
+    );
   });
 
   // Edit server nama
@@ -320,20 +372,46 @@ function registerEditServerMenuActions(bot) {
         return ctx.reply('⚠️ *PERHATIAN! Tidak ada server yang tersedia untuk diedit.*', { parse_mode: 'Markdown' });
       }
 
-      let serverList = '🏷️ *Daftar Server:*\n\n';
-      servers.forEach(server => {
-        serverList += `📍 ID: *${server.id}* - ${server.nama_server}\n`;
+      const { Markup } = require('telegraf');
+      const buttons = servers.map(server => ([
+        Markup.button.callback(server.nama_server, `edit_nama_server_${server.id}`)
+      ]));
+
+      await ctx.reply('🏷️ *Pilih Server untuk Edit Nama:*', {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard(buttons)
       });
-      serverList += '\n💡 *Silakan ketik ID server yang ingin diedit namanya:*';
-
-      if (!global.userState) global.userState = {};
-      global.userState[ctx.chat.id] = { step: 'select_server_for_edit_nama' };
-
-      await ctx.reply(serverList, { parse_mode: 'Markdown' });
     } catch (error) {
       logger.error('❌ Kesalahan saat memulai proses edit nama server:', error);
       await ctx.reply(`❌ *${error}*`, { parse_mode: 'Markdown' });
     }
+  });
+
+  // Handle edit nama server selection
+  bot.action(/^edit_nama_server_(\d+)$/, async (ctx) => {
+    const serverId = ctx.match[1];
+    await ctx.answerCbQuery();
+
+    // Get current server data
+    const server = await new Promise<any>((resolve, reject) => {
+      global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
+        if (err || !server) {
+          logger.error('❌ Server tidak ditemukan:', err?.message);
+          return reject('Server tidak ditemukan.');
+        }
+        resolve(server);
+      });
+    });
+
+    if (!global.userState) global.userState = {};
+    global.userState[ctx.chat.id] = { step: 'edit_nama', serverId: serverId };
+
+    await ctx.editMessageText(
+      `🌐 *Server dipilih:* ${server.nama_server}\n` +
+      `Nama saat ini: *${server.nama_server}*\n\n` +
+      `💡 *Silakan ketik nama server baru:*`,
+      { parse_mode: 'Markdown' }
+    );
   });
 
   // Edit server harga (with buttons)
