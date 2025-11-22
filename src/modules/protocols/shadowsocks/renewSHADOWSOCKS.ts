@@ -4,7 +4,7 @@ const axios = require('axios');
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('./botvpn.db');
 
-async function renewshadowsocks(username, exp, quota, limitip, serverId) {
+async function renewshadowsocks(username, exp, quota, limitip, serverId, harga = 0, hari = exp) {
   if (/\s/.test(username) || /[^a-zA-Z0-9]/.test(username)) {
     return '❌ Username tidak valid.';
   }
@@ -18,16 +18,23 @@ async function renewshadowsocks(username, exp, quota, limitip, serverId) {
         .then(res => {
           if (res.data.status === "success") {
             const data = res.data.data;
+            
+            // Parse the expired date string and add timestamp
+            const expDate = new Date(data.exp);
+            const expiredStr = expDate.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+            
             return resolve(`
 ♻️ *RENEW SHADOWSOCKS PREMIUM* ♻️
 
-🔹 *Informasi Akun*
-┌─────────────────────────────
-│ Username : \`${username}\`
-│ Kadaluarsa : \`${data.exp}\`
-│ Kuota : \`${data.quota} GB\`
-│ Batas IP : \`${data.limitip} IP\`
-└─────────────────────────────
+🔹 *Informasi Perpanjangan*
+┌─────────────────────
+│🏷 *Harga           :* Rp ${harga.toLocaleString('id-ID')}
+│🗓 *Perpanjang :* ${hari} Hari
+│👤 *Username   :* \`${username}\`
+│📦 *Kuota           :* \`${data.quota} GB\`
+│📱 *Batas IP       :* \`${data.limitip} IP\`
+│🕒 *Expired        :* \`${expiredStr}\`
+└─────────────────────
 ✅ Akun berhasil diperpanjang.
 `);
           } else {

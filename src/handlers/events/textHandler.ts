@@ -144,18 +144,18 @@ async function handleServiceFlow(ctx, state, text, bot) {
       // Handler mapping
       const handlerMap = {
         create: {
-          vmess: () => createvmess(username, days, server.quota, server.iplimit, serverId),
-          vless: () => createvless(username, days, server.quota, server.iplimit, serverId),
-          trojan: () => createtrojan(username, days, server.quota, server.iplimit, serverId),
-          shadowsocks: () => createshadowsocks(username, days, server.quota, server.iplimit, serverId),
-          ssh: () => createssh(username, password, days, server.iplimit, serverId)
+          vmess: () => createvmess(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
+          vless: () => createvless(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
+          trojan: () => createtrojan(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
+          shadowsocks: () => createshadowsocks(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
+          ssh: () => createssh(username, password, days, server.iplimit, serverId, totalHarga, days)
         },
         renew: {
-          vmess: () => renewvmess(username, days, server.quota, server.iplimit, serverId),
-          vless: () => renewvless(username, days, server.quota, server.iplimit, serverId),
-          trojan: () => renewtrojan(username, days, server.quota, server.iplimit, serverId),
-          shadowsocks: () => renewshadowsocks(username, days, server.quota, server.iplimit, serverId),
-          ssh: () => renewssh(username, days, server.iplimit, serverId)
+          vmess: () => renewvmess(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
+          vless: () => renewvless(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
+          trojan: () => renewtrojan(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
+          shadowsocks: () => renewshadowsocks(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
+          ssh: () => renewssh(username, days, server.iplimit, serverId, totalHarga, days)
         }
       };
 
