@@ -4,7 +4,7 @@ const { Client } = require('ssh2');
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('./botvpn.db');
 
-async function createssh(username, password, exp, iplimit, serverId) {
+async function createssh(username, password, exp, iplimit, serverId, harga = 0, hari = exp) {
   console.log(`⚙️ Creating SSH for ${username} | Exp: ${exp} | IP Limit: ${iplimit}`);
 
   if (/\s/.test(username) || /[^a-zA-Z0-9]/.test(username)) {
@@ -84,37 +84,42 @@ async function createssh(username, password, exp, iplimit, serverId) {
             const expDateDisplay = new Date();
             expDateDisplay.setDate(expDateDisplay.getDate() + parseInt(exp));
             
+            const varsPath = require('path').join(__dirname, '../../../../.vars.json');
+            const vars = JSON.parse(require('fs').readFileSync(varsPath, 'utf8'));
+            const namaStore = vars.NAMA_STORE || 'Default Store';
+            
             const msg = `
-🔥 *AKUN SSH PREMIUM* 
-
+         🔥 *SSH PREMIUM ACCOUNT*
+         
 🔹 *Informasi Akun*
 ┌─────────────────────
-│👤 Username   : \`${username}\`
-│🔑 Password   : \`${password}\`
-│🌐 Domain     : \`${server.domain}\`
+│🏷 *Harga           :* Rp ${harga.toLocaleString('id-ID')}
+│🗓 *Masa Aktif   :* ${hari} Hari
+│👤 *Username   :* \`${username}\`
+│🔑 *Password     :* \`${password}\`
+│🌐 *Domain        :* \`${server.domain}\`
 └─────────────────────
 ┌─────────────────────
-│🔒 TLS        : 443
-│🌍 HTTP       : 80
-│🛡️ SSH        : 22
-│🌐 SSH WS     : 80
-│🔐 SSL WS     : 443
-│🧱 Dropbear   : 109, 443
-│🧭 DNS        : 53, 443, 22
-│📥 OVPN       : 1194, 2200, 443
+│🔐 *Port TLS     :* \`443\`
+│🌍 *Port HTTP  :* \`80\`
+│🛡 *Port SSH    :* \`22\`
+│🌐 *SSH WS      :* \`80\`
+│🔐 *SSL WS       :* \`443\`
+│🧱 *Dropbear   :* \`109, 443\`
+│🧭 *DNS             :* \`53, 443, 22\`
+│📥 *OVPN           :* \`1194, 2200, 443\`
+│📱 *IP Limit        :* ${iplimit === 0 || iplimit === '0' ? 'Unlimited' : iplimit + ' IP'}
 └─────────────────────
-
-📁 *Link Simpan Akun:*
-\`https://${server.domain}:81/ssh-${username}.txt\`
-
-📦 *Download OVPN:*
-\`https://${server.domain}:81/allovpn.zip\`
-
 ┌─────────────────────
-│📅 *Expired:* \`${expDateDisplay.toLocaleDateString('id-ID')}\`
-│🌐 *IP Limit:* \`${iplimit} IP\`
+│🕒 *Expired   :* \`${expDateDisplay.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}\`
+│
+│📥 Save         : https://${server.domain}:81/ssh-${username}.txt
+│📦 OVPN       : https://${server.domain}:81/allovpn.zip
 └─────────────────────
-✨ By : *Alrescha79*! ✨
+
+✨ By : *${namaStore}* ✨
+
+
             `.trim();
 
             resolve(msg);

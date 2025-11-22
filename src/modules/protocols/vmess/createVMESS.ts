@@ -2,9 +2,11 @@
 import type { BotContext, DatabaseUser, DatabaseServer } from "../../../types";
 const { Client } = require('ssh2');
 const sqlite3 = require('sqlite3').verbose();
+const fs = require('fs');
+const path = require('path');
 const db = new sqlite3.Database('./botvpn.db');
 
-async function createvmess(username, exp, quota, limitip, serverId) {
+async function createvmess(username, exp, quota, limitip, serverId, harga = 0, hari = exp) {
   console.log(`⚙️ Creating VMESS for ${username} | Exp: ${exp} | Quota: ${quota} GB | IP Limit: ${limitip}`);
 
   if (/\s/.test(username) || /[^a-zA-Z0-9]/.test(username)) {
@@ -187,20 +189,36 @@ EOFDATA
               const escapedNonTlsLink = data.vmess_nontls_link.replace(/#/g, '%23');
               const escapedGrpcLink = data.vmess_grpc_link.replace(/#/g, '%23');
 
+              const varsPath = path.join(__dirname, '../../../../.vars.json');
+              const vars = JSON.parse(fs.readFileSync(varsPath, 'utf8'));
+              const namaStore = vars.NAMA_STORE || 'Default Store';
+              
+              const expDate = new Date();
+              expDate.setDate(expDate.getDate() + parseInt(exp));
+
               const msg = `
          🔥 *VMESS PREMIUM ACCOUNT*
          
 🔹 *Informasi Akun*
 ┌─────────────────────
-│👤 *Username:* \`${data.username}\`
-│🌐 *Domain:* \`${data.domain}\`
+│🏷 *Harga           :* Rp ${harga.toLocaleString('id-ID')}
+│🗓 *Masa Aktif   :* ${hari} Hari
+│👤 *Username   :* \`${data.username}\`
+│🌐 *Domain        :* \`${data.domain}\`
+│🧾 *UUID             :* \`${data.uuid}\`
+│ ╱ *Path                 :* \`/whatever/vmess\`
 └─────────────────────
 ┌─────────────────────
-│🔐 *Port TLS:* \`443\`
-│📡 *Port HTTP:* \`80\`
-│🔁 *Network:* WebSocket
-│📦 *Quota:* ${data.quota === '0 GB' ? 'Unlimited' : data.quota}
-│🌍 *IP Limit:* ${data.ip_limit === '0' ? 'Unlimited' : data.ip_limit}
+│🔐 *Port TLS     :* \`443\`
+│📡 *Port HTTP  :* \`80\`
+│🔁 *Network     :* WebSocket
+│📦 *Quota         :* ${data.quota === '0 GB' ? 'Unlimited' : data.quota}
+│📱 *IP Limit       :* ${data.ip_limit === '0' ? 'Unlimited' : data.ip_limit}
+└─────────────────────
+┌─────────────────────
+│🕒 *Expired   :* \`${expDate.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}\`
+│
+│📥 Save          : https://${data.domain}:81/vmess-${data.username}.txt
 └─────────────────────
 
 🔗 *VMESS TLS:*
@@ -216,15 +234,8 @@ ${data.vmess_nontls_link}
 ${data.vmess_grpc_link}
 \`\`\`
 
-🧾 *UUID:* \`${data.uuid}\`
-🔏 *PUBKEY:* \`${data.pubkey || 'N/A'}\`
-┌─────────────────────
-│🕒 *Expired:* \`${data.expired}\`
-│
-│📥 Save: https://${data.domain}:81/vmess-${data.username}.txt
-└─────────────────────
-✨ By : *Alrescha79* ✨
-`.trim();
+✨ By : *${namaStore}* ✨
+              `.trim();
 
               console.log('✅ VMESS created for', username);
               resolve(msg);

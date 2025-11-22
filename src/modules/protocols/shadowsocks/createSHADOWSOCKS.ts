@@ -1,10 +1,11 @@
-
+const fs = require('fs');
+const path = require('path');
 import type { BotContext, DatabaseUser, DatabaseServer } from "../../../types";
 const { Client } = require('ssh2');
 const sqlite3 = require('sqlite3').verbose();
 const db = new sqlite3.Database('./botvpn.db');
 
-async function createshadowsocks(username, exp, quota, limitip, serverId) {
+async function createshadowsocks(username, exp, quota, limitip, serverId, harga = 0, hari = exp) {
   console.log(`⚙️ Creating SHADOWSOCKS for ${username} | Exp: ${exp} | Quota: ${quota} GB | IP Limit: ${limitip}`);
 
   if (/\s/.test(username) || /[^a-zA-Z0-9]/.test(username)) {
@@ -162,21 +163,36 @@ EOFDATA
                 throw new Error('Status not success');
               }
 
+              const varsPath = path.join(__dirname, '../../../../.vars.json');
+              const vars = JSON.parse(fs.readFileSync(varsPath, 'utf8'));
+              const namaStore = vars.NAMA_STORE || 'Default Store';
+              
+              const expDate = new Date();
+              expDate.setDate(expDate.getDate() + parseInt(exp));
+
               const msg = `
          🔥 *SHADOWSOCKS PREMIUM ACCOUNT*
          
 🔹 *Informasi Akun*
 ┌─────────────────────
-│👤 *Username:* \`${data.username}\`
-│🔑 *Password:* \`${data.password}\`
-│🌐 *Domain:* \`${data.domain}\`
-│🔐 *Method:* \`${data.method}\`
+│🏷 *Harga           :* Rp ${harga.toLocaleString('id-ID')}
+│🗓 *Masa Aktif   :* ${hari} Hari
+│👤 *Username   :* \`${data.username}\`
+│🔑 *Password     :* \`${data.password}\`
+│🌐 *Domain         :* \`${data.domain}\`
+│🔐 *Method         :* \`${data.method}\`
+│ ╱ *Path                  :* \`/whatever/shadowsocks\`
 └─────────────────────
 ┌─────────────────────
-│🔐 *Port:* \`443\`
-│🔁 *Network:* Shadowsocks / gRPC
-│📦 *Quota:* ${data.quota === '0 GB' ? 'Unlimited' : data.quota}
-│🌍 *IP Limit:* ${data.ip_limit === '0' ? 'Unlimited' : data.ip_limit}
+│🔐 *Port            :* \`443\`
+│🔁 *Network    :* Shadowsocks / gRPC
+│📦 *Quota         :* ${data.quota === '0 GB' ? 'Unlimited' : data.quota}
+│📱 *IP Limit       :* ${data.ip_limit === '0' ? 'Unlimited' : data.ip_limit}
+└─────────────────────
+┌─────────────────────
+│🕒 *Expired   :* \`${expDate.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}\`
+│
+│📥 Save          : https://${data.domain}:81/shadowsocks-${data.username}.txt
 └─────────────────────
 
 🔗 *SHADOWSOCKS TLS:*
@@ -189,12 +205,9 @@ ${data.ss_grpc_link}
 \`\`\`
 
 🔏 *PUBKEY:* \`${data.pubkey || 'N/A'}\`
-┌─────────────────────
-│🕒 *Expired:* \`${data.expired}\`
-│
-│📥 Save: https://${data.domain}:81/shadowsocks-${data.username}.txt
-└─────────────────────
-✨ By : *EXTRIMER TUNNEL* ✨
+
+✨ By : *${namaStore}* ✨
+
 `.trim();
 
               console.log('✅ SHADOWSOCKS created for', username);
