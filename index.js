@@ -25,14 +25,33 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const { Telegraf, session } = require('telegraf');
 
+// Auto-detect development or production mode
+const isDev = process.env.NODE_ENV === 'development';
+const srcPath = isDev ? './src' : './dist';
+
+// Register ts-node in development mode
+if (isDev) {
+  require('ts-node').register({
+    transpileOnly: true,
+    compilerOptions: {
+      module: 'commonjs',
+      target: 'ES2020',
+      esModuleInterop: true
+    }
+  });
+  console.log('🔥 Development mode: Loading from src/\n');
+} else {
+  console.log('🚀 Production mode: Loading from dist/\n');
+}
+
 // Refactored modules
-const config = require('./dist/config');
-const constants = require('./dist/config/constants');
-const logger = require('./dist/utils/logger');
-const { dbRunAsync, dbGetAsync, dbAllAsync } = require('./dist/database/connection');
+const config = require(`${srcPath}/config`);
+const constants = require(`${srcPath}/config/constants`);
+const logger = require(`${srcPath}/utils/logger`);
+const { dbRunAsync, dbGetAsync, dbAllAsync } = require(`${srcPath}/database/connection`);
 
 // Load all handlers
-const { loadAllHandlers } = require('./dist/app/loader');
+const { loadAllHandlers } = require(`${srcPath}/app/loader`);
 
 // Constants
 const {

@@ -15,6 +15,8 @@ const { registerAllServerEditActions } = require('./serverEditActions');
 const { registerAllAdminToolsActions } = require('./adminToolsActions');
 const { registerAllServerManagementActions } = require('./serverManagementActions');
 const { registerAllBackupRestoreActions } = require('./backupRestoreActions');
+const { registerCreateActions } = require('./createActions');
+const { registerRenewActions } = require('./renewActions');
 
 /**
  * Register all actions to the bot
@@ -30,6 +32,8 @@ function registerAllActions(bot, options: { adminIds?: number[] } = {}) {
   registerResellerActions(bot);
   registerNavigationActions(bot);
   registerAllTrialActions(bot);
+  registerCreateActions(bot);
+  registerRenewActions(bot);
   registerAllServerEditActions(bot);
   registerAllAdminToolsActions(bot);
   registerAllServerManagementActions(bot);
