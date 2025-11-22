@@ -299,23 +299,172 @@ function registerTextHandler(bot) {
         return await handleServiceFlow(ctx, state, text, bot);
       }
 
-      // Note: The following handlers reference functions from app.js
-      // They should be extracted into separate modules and imported
+      // Server edit nama flow
+      if (state.step === 'select_server_for_edit_nama') {
+        const serverId = parseInt(text);
+        
+        if (isNaN(serverId)) {
+          return ctx.reply('❌ *ID server tidak valid. Harap masukkan angka.*', { parse_mode: 'Markdown' });
+        }
 
-      // Server edit flows (these need the handler functions to be extracted)
-      if (state.step === 'select_server_for_edit_nama' || state.step === 'edit_nama') {
-        // handleEditNama should be extracted and imported
-        logger.info('Edit nama server flow - requires handleEditNama function');
+        // Verify server exists
+        const server = await new Promise<any>((resolve) => {
+          global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
+            if (err) {
+              logger.error('❌ Error getting server:', err);
+              return resolve(null);
+            }
+            resolve(server);
+          });
+        });
+
+        if (!server) {
+          return ctx.reply('⚠️ *Server dengan ID tersebut tidak ditemukan.*', { parse_mode: 'Markdown' });
+        }
+
+        // Update state to edit nama
+        global.userState[ctx.chat.id] = { step: 'edit_nama', serverId: serverId };
+        await ctx.reply(`🏷️ *Server dipilih: ${server.nama_server}*\n\n💡 *Silakan masukkan nama server baru:*`, { 
+          parse_mode: 'Markdown' 
+        });
+        return;
       }
 
-      if (state.step === 'select_server_for_edit_auth' || state.step === 'edit_auth') {
-        // handleEditAuth should be extracted and imported
-        logger.info('Edit auth server flow - requires handleEditAuth function');
+      if (state.step === 'edit_nama') {
+        const newNama = text.trim();
+        const serverId = state.serverId;
+
+        if (!newNama) {
+          return ctx.reply('❌ *Nama server tidak boleh kosong.*', { parse_mode: 'Markdown' });
+        }
+
+        // Update server nama
+        await new Promise<void>((resolve, reject) => {
+          global.db.run('UPDATE Server SET nama_server = ? WHERE id = ?', [newNama, serverId], function (err) {
+            if (err) {
+              logger.error('❌ Error updating server nama:', err);
+              return reject(err);
+            }
+            resolve();
+          });
+        });
+
+        delete global.userState[ctx.chat.id];
+        await ctx.reply(`✅ *Nama server berhasil diubah menjadi: ${newNama}*`, { parse_mode: 'Markdown' });
+        return;
       }
 
-      if (state.step === 'select_server_for_edit_domain' || state.step === 'edit_domain') {
-        // handleEditDomain should be extracted and imported
-        logger.info('Edit domain server flow - requires handleEditDomain function');
+      // Server edit auth flow
+      if (state.step === 'select_server_for_edit_auth') {
+        const serverId = parseInt(text);
+        
+        if (isNaN(serverId)) {
+          return ctx.reply('❌ *ID server tidak valid. Harap masukkan angka.*', { parse_mode: 'Markdown' });
+        }
+
+        // Verify server exists
+        const server = await new Promise<any>((resolve) => {
+          global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
+            if (err) {
+              logger.error('❌ Error getting server:', err);
+              return resolve(null);
+            }
+            resolve(server);
+          });
+        });
+
+        if (!server) {
+          return ctx.reply('⚠️ *Server dengan ID tersebut tidak ditemukan.*', { parse_mode: 'Markdown' });
+        }
+
+        // Update state to edit auth
+        global.userState[ctx.chat.id] = { step: 'edit_auth', serverId: serverId };
+        await ctx.reply(`🔐 *Server dipilih: ${server.nama_server}*\n\n💡 *Silakan masukkan auth baru (password root):*`, { 
+          parse_mode: 'Markdown' 
+        });
+        return;
+      }
+
+      if (state.step === 'edit_auth') {
+        const newAuth = text.trim();
+        const serverId = state.serverId;
+
+        if (!newAuth) {
+          return ctx.reply('❌ *Auth tidak boleh kosong.*', { parse_mode: 'Markdown' });
+        }
+
+        // Update server auth
+        await new Promise<void>((resolve, reject) => {
+          global.db.run('UPDATE Server SET auth = ? WHERE id = ?', [newAuth, serverId], function (err) {
+            if (err) {
+              logger.error('❌ Error updating server auth:', err);
+              return reject(err);
+            }
+            resolve();
+          });
+        });
+
+        delete global.userState[ctx.chat.id];
+        await ctx.reply('✅ *Auth server berhasil diubah.*', { parse_mode: 'Markdown' });
+        return;
+      }
+
+      // Server edit domain flow
+      if (state.step === 'select_server_for_edit_domain') {
+        const serverId = parseInt(text);
+        
+        if (isNaN(serverId)) {
+          return ctx.reply('❌ *ID server tidak valid. Harap masukkan angka.*', { parse_mode: 'Markdown' });
+        }
+
+        // Verify server exists
+        const server = await new Promise<any>((resolve) => {
+          global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
+            if (err) {
+              logger.error('❌ Error getting server:', err);
+              return resolve(null);
+            }
+            resolve(server);
+          });
+        });
+
+        if (!server) {
+          return ctx.reply('⚠️ *Server dengan ID tersebut tidak ditemukan.*', { parse_mode: 'Markdown' });
+        }
+
+        // Update state to edit domain
+        global.userState[ctx.chat.id] = { step: 'edit_domain', serverId: serverId };
+        await ctx.reply(
+          `🌐 *Server dipilih:* ${server.nama_server}\n` +
+          `Domain saat ini: *${server.domain}*\n\n` +
+          `💡 *Silakan masukkan domain/IP baru:*`,
+          { parse_mode: 'Markdown' }
+        );
+        return;
+      }
+
+      if (state.step === 'edit_domain') {
+        const newDomain = text.trim();
+        const serverId = state.serverId;
+
+        if (!newDomain) {
+          return ctx.reply('❌ *Domain tidak boleh kosong.*', { parse_mode: 'Markdown' });
+        }
+
+        // Update server domain
+        await new Promise<void>((resolve, reject) => {
+          global.db.run('UPDATE Server SET domain = ? WHERE id = ?', [newDomain, serverId], function (err) {
+            if (err) {
+              logger.error('❌ Error updating server domain:', err);
+              return reject(err);
+            }
+            resolve();
+          });
+        });
+
+        delete global.userState[ctx.chat.id];
+        await ctx.reply(`✅ *Domain server berhasil diubah menjadi: ${newDomain}*`, { parse_mode: 'Markdown' });
+        return;
       }
 
       // User management flows

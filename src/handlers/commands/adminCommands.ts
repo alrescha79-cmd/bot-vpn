@@ -45,20 +45,22 @@ function registerStatAdminCommand(bot, adminIds) {
     }
 
     try {
-      const [jumlahUser, jumlahReseller, jumlahServer, totalSaldo] = await Promise.all([
+      const [jumlahUser, jumlahAkun, jumlahReseller, jumlahServer, totalSaldo] = await Promise.all([
         dbGetAsync('SELECT COUNT(*) AS count FROM users'),
+        dbGetAsync('SELECT COUNT(*) AS count FROM akun_aktif'),
         dbGetAsync("SELECT COUNT(*) AS count FROM users WHERE role = 'reseller'"),
         dbGetAsync('SELECT COUNT(*) AS count FROM Server'),
         dbGetAsync('SELECT SUM(saldo) AS total FROM users')
       ]);
 
       const replyText = `
-📊 *Statistik Sistem*:
+📊 *Statistik Sistem*
 
-👥 Total Pengguna : *${jumlahUser.count}*
-👑 Total Reseller : *${jumlahReseller.count}*
-🖥️ Total Server   : *${jumlahServer.count}*
-💰 Total Saldo     : *Rp${(totalSaldo.total || 0).toLocaleString('id-ID')}*
+👥 Total Pengguna     : *${jumlahUser.count}*
+🆔 Total Akun Aktif     : *${jumlahAkun.count}*
+👑 Total Reseller         : *${jumlahReseller.count}*
+🖥 Total Server            : *${jumlahServer.count}*
+💰 Total Saldo              : *Rp${(totalSaldo.total || 0).toLocaleString('id-ID')}*
       `.trim();
 
       await ctx.reply(replyText, { parse_mode: 'Markdown' });

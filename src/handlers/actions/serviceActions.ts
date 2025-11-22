@@ -91,8 +91,9 @@ async function showServerSelection(ctx, protocol, action) {
     }
 
     const buttons = servers.map(server => {
-      const flag = getFlagEmoji(server.location || '');
-      const label = `${flag} ${server.nama_server}`;
+      const flag = getFlagEmoji(server.lokasi || '');
+      const harga = server.harga || 0;
+      const label = `${flag} ${server.nama_server} (Rp ${harga.toLocaleString('id-ID')}/Hari)`;
       return [Markup.button.callback(label, `${action}_server_${protocol}_${server.id}`)];
     });
 

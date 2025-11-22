@@ -22,27 +22,150 @@ export interface RandomAmount {
 
 /**
  * Get flag emoji by location
- * @param {string} location - Location name
+ * @param {string} location - Location name (e.g., "Jakarta, ID" or "Singapore")
  * @returns {string}
  */
 export function getFlagEmoji(location: string): string {
-  const map: Record<string, string> = {
-    'Singapore, SG': '🇸🇬',
-    'Singapore': '🇸🇬',
-    'Indonesia': '🇮🇩',
-    'Japan': '🇯🇵',
-    'USA': '🇺🇸',
-    'Germany': '🇩🇪',
-    'Malaysia': '🇲🇾',
-    'France': '🇫🇷',
-    'Netherlands': '🇳🇱',
-    'United Kingdom': '🇬🇧',
-    'India': '🇮🇳',
-    'Thailand': '🇹🇭',
-    'Hong Kong': '🇭🇰'
+  if (!location) return '🌐';
+  
+  const locationLower = location.toLowerCase().trim();
+  
+  // Map country/city names and country codes to flag emojis
+  const countryMap: Record<string, string> = {
+    // Singapore
+    'singapore': '🇸🇬',
+    'sg': '🇸🇬',
+    ', sg': '🇸🇬',
+    
+    // Indonesia
+    'indonesia': '🇮🇩',
+    'id': '🇮🇩',
+    ', id': '🇮🇩',
+    'jakarta': '🇮🇩',
+    'surabaya': '🇮🇩',
+    'bandung': '🇮🇩',
+    
+    // Japan
+    'japan': '🇯🇵',
+    'jp': '🇯🇵',
+    ', jp': '🇯🇵',
+    'tokyo': '🇯🇵',
+    'osaka': '🇯🇵',
+    
+    // USA
+    'usa': '🇺🇸',
+    'us': '🇺🇸',
+    ', us': '🇺🇸',
+    'united states': '🇺🇸',
+    'america': '🇺🇸',
+    'new york': '🇺🇸',
+    'california': '🇺🇸',
+    'miami': '🇺🇸',
+    'los angeles': '🇺🇸',
+    
+    // Germany
+    'germany': '🇩🇪',
+    'de': '🇩🇪',
+    ', de': '🇩🇪',
+    'berlin': '🇩🇪',
+    'frankfurt': '🇩🇪',
+    
+    // Malaysia
+    'malaysia': '🇲🇾',
+    'my': '🇲🇾',
+    ', my': '🇲🇾',
+    'kuala lumpur': '🇲🇾',
+    
+    // France
+    'france': '🇫🇷',
+    'fr': '🇫🇷',
+    ', fr': '🇫🇷',
+    'paris': '🇫🇷',
+    
+    // Netherlands
+    'netherlands': '🇳🇱',
+    'nl': '🇳🇱',
+    ', nl': '🇳🇱',
+    'amsterdam': '🇳🇱',
+    
+    // United Kingdom
+    'united kingdom': '🇬🇧',
+    'uk': '🇬🇧',
+    'gb': '🇬🇧',
+    ', gb': '🇬🇧',
+    ', uk': '🇬🇧',
+    'england': '🇬🇧',
+    'london': '🇬🇧',
+    
+    // India
+    'india': '🇮🇳',
+    'in': '🇮🇳',
+    ', in': '🇮🇳',
+    'mumbai': '🇮🇳',
+    'delhi': '🇮🇳',
+    
+    // Thailand
+    'thailand': '🇹🇭',
+    'th': '🇹🇭',
+    ', th': '🇹🇭',
+    'bangkok': '🇹🇭',
+    
+    // Hong Kong
+    'hong kong': '🇭🇰',
+    'hk': '🇭🇰',
+    ', hk': '🇭🇰',
+    'hongkong': '🇭🇰',
+    
+    // Australia
+    'australia': '🇦🇺',
+    'au': '🇦🇺',
+    ', au': '🇦🇺',
+    'sydney': '🇦🇺',
+    
+    // Canada
+    'canada': '🇨🇦',
+    'ca': '🇨🇦',
+    ', ca': '🇨🇦',
+    'toronto': '🇨🇦',
+    
+    // South Korea
+    'korea': '🇰🇷',
+    'kr': '🇰🇷',
+    ', kr': '🇰🇷',
+    'south korea': '🇰🇷',
+    'seoul': '🇰🇷',
+    
+    // Vietnam
+    'vietnam': '🇻🇳',
+    'vn': '🇻🇳',
+    ', vn': '🇻🇳',
+    'hanoi': '🇻🇳',
+    
+    // Philippines
+    'philippines': '🇵🇭',
+    'ph': '🇵🇭',
+    ', ph': '🇵🇭',
+    'manila': '🇵🇭',
+    
+    // Taiwan
+    'taiwan': '🇹🇼',
+    'tw': '🇹🇼',
+    ', tw': '🇹🇼',
+    
+    // China
+    'china': '🇨🇳',
+    'cn': '🇨🇳',
+    ', cn': '🇨🇳'
   };
-
-  return map[location?.trim()] || '🌐';
+  
+  // Check for exact match or partial match
+  for (const [key, flag] of Object.entries(countryMap)) {
+    if (locationLower.includes(key)) {
+      return flag;
+    }
+  }
+  
+  return '🌐';
 }
 
 /**

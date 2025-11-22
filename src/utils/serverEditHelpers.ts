@@ -51,20 +51,42 @@ export interface DatabaseResult {
  * @param {string} query - SQL update query
  */
 export async function handleEditField(
-  ctx: TelegrafContext, 
-  userStateData: UserStateData, 
-  data: string, 
-  field: keyof UserStateData, 
-  fieldName: string, 
+  ctx: TelegrafContext,
+  userStateData: UserStateData,
+  data: string,
+  field: keyof UserStateData,
+  fieldName: string,
   query: string
 ): Promise<void> {
   let currentValue = (userStateData[field] as string) || '';
 
-  if (data === 'delete') {
+  // Map numeric keyboard callbacks to actions
+  let action = data;
+  if (data.startsWith('num_')) {
+    if (data === 'num_backspace') {
+      action = 'delete';
+    } else if (data === 'num_submit') {
+      action = 'confirm';
+    } else if (data === 'num_cancel') {
+      delete (global as any).userState[ctx.chat.id];
+      return await ctx.reply('❌ *Operasi dibatalkan.*', { parse_mode: 'Markdown' });
+    } else if (data === 'num_0') {
+      action = '0';
+    } else if (data === 'num_00') {
+      action = '00';
+    } else if (data === 'num_000') {
+      action = '000';
+    } else {
+      // Extract number from num_X
+      action = data.replace('num_', '');
+    }
+  }
+
+  if (action === 'delete') {
     currentValue = currentValue.slice(0, -1);
-  } else if (data === 'confirm') {
+  } else if (action === 'confirm') {
     if (currentValue.length === 0) {
-      return await ctx.answerCbQuery(`⚠️ *${fieldName} tidak boleh kosong!*`, { show_alert: true });
+      return await ctx.answerCbQuery(`⚠️ ${fieldName} tidak boleh kosong!`, { show_alert: true });
     }
     try {
       await updateServerField(userStateData.serverId!, currentValue, query);
@@ -82,20 +104,21 @@ export async function handleEditField(
     delete (global as any).userState[ctx.chat.id];
     return;
   } else {
-    if (!/^[a-zA-Z0-9.-]+$/.test(data)) {
-      return await ctx.answerCbQuery(`⚠️ *${fieldName} tidak valid!*`, { show_alert: true });
+    // Validate numeric input
+    if (!/^[0-9]+$/.test(action)) {
+      return await ctx.answerCbQuery(`⚠️ Input tidak valid!`, { show_alert: true });
     }
-    if (currentValue.length < 253) {
-      currentValue += data;
+    if (currentValue.length < 20) {
+      currentValue += action;
     } else {
-      return await ctx.answerCbQuery(`⚠️ *${fieldName} maksimal adalah 253 karakter!*`, { show_alert: true });
+      return await ctx.answerCbQuery(`⚠️ Nilai maksimal 20 digit!`, { show_alert: true });
     }
   }
 
   (userStateData[field] as any) = currentValue;
-  const newMessage = `📊 *Silakan masukkan ${fieldName} server baru:*\n\n${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} saat ini: *${currentValue}*`;
+  const newMessage = `📊 *Silakan masukkan ${fieldName} server baru:*\n\n${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} saat ini: *${currentValue || '(kosong)'}*`;
   
-  if (ctx.callbackQuery && newMessage !== ctx.callbackQuery.message.text) {
+  if (ctx.callbackQuery && ctx.callbackQuery.message && newMessage !== ctx.callbackQuery.message.text) {
     await ctx.editMessageText(newMessage, {
       reply_markup: { inline_keyboard: keyboard_nomor() },
       parse_mode: 'Markdown'
@@ -223,11 +246,33 @@ export async function handleEditDomain(ctx: TelegrafContext, userStateData: User
 export async function handleEditHarga(ctx: TelegrafContext, userStateData: UserStateData, data: string): Promise<void> {
   let currentAmount = userStateData.amount || '';
 
-  if (data === 'delete') {
+  // Map numeric keyboard callbacks to actions
+  let action = data;
+  if (data.startsWith('num_')) {
+    if (data === 'num_backspace') {
+      action = 'delete';
+    } else if (data === 'num_submit') {
+      action = 'confirm';
+    } else if (data === 'num_cancel') {
+      delete (global as any).userState[ctx.chat.id];
+      return await ctx.reply('❌ *Operasi dibatalkan.*', { parse_mode: 'Markdown' });
+    } else if (data === 'num_0') {
+      action = '0';
+    } else if (data === 'num_00') {
+      action = '00';
+    } else if (data === 'num_000') {
+      action = '000';
+    } else {
+      // Extract number from num_X
+      action = data.replace('num_', '');
+    }
+  }
+
+  if (action === 'delete') {
     currentAmount = currentAmount.slice(0, -1);
-  } else if (data === 'confirm') {
+  } else if (action === 'confirm') {
     if (currentAmount.length === 0) {
-      return await ctx.answerCbQuery('⚠️ *Jumlah tidak boleh kosong!*', { show_alert: true });
+      return await ctx.answerCbQuery('⚠️ Jumlah tidak boleh kosong!', { show_alert: true });
     }
     const hargaBaru = parseFloat(currentAmount);
     if (isNaN(hargaBaru) || hargaBaru <= 0) {
@@ -238,7 +283,7 @@ export async function handleEditHarga(ctx: TelegrafContext, userStateData: UserS
       ctx.reply(
         `✅ *Harga server berhasil diupdate.*\n\n` +
         `📄 *Detail Server:*\n` +
-        `- Harga Baru: *Rp ${hargaBaru}*`,
+        `- Harga Baru: *Rp ${hargaBaru.toLocaleString('id-ID')}*`,
         { parse_mode: 'Markdown' }
       );
       logger.info(`✅ Server ${userStateData.serverId} harga updated to: ${hargaBaru}`);
@@ -249,20 +294,20 @@ export async function handleEditHarga(ctx: TelegrafContext, userStateData: UserS
     delete (global as any).userState[ctx.chat.id];
     return;
   } else {
-    if (!/^\d+$/.test(data)) {
-      return await ctx.answerCbQuery('⚠️ *Hanya angka yang diperbolehkan!*', { show_alert: true });
+    if (!/^\d+$/.test(action)) {
+      return await ctx.answerCbQuery('⚠️ Hanya angka yang diperbolehkan!', { show_alert: true });
     }
     if (currentAmount.length < 12) {
-      currentAmount += data;
+      currentAmount += action;
     } else {
-      return await ctx.answerCbQuery('⚠️ *Jumlah maksimal adalah 12 digit!*', { show_alert: true });
+      return await ctx.answerCbQuery('⚠️ Jumlah maksimal adalah 12 digit!', { show_alert: true });
     }
   }
 
   userStateData.amount = currentAmount;
-  const newMessage = `💰 *Silakan masukkan harga server baru:*\n\nJumlah saat ini: *Rp ${currentAmount}*`;
+  const newMessage = `💰 *Silakan masukkan harga server baru:*\n\nJumlah saat ini: *Rp ${currentAmount || '0'}*`;
   
-  if (ctx.callbackQuery && newMessage !== ctx.callbackQuery.message.text) {
+  if (ctx.callbackQuery && ctx.callbackQuery.message && newMessage !== ctx.callbackQuery.message.text) {
     await ctx.editMessageText(newMessage, {
       reply_markup: { inline_keyboard: keyboard_nomor() },
       parse_mode: 'Markdown'
@@ -302,11 +347,33 @@ export async function handleEditNama(ctx: TelegrafContext, userStateData: UserSt
 export async function handleAddSaldo(ctx: TelegrafContext, userStateData: UserStateData, data: string): Promise<void> {
   let currentSaldo = userStateData.saldo || '';
 
-  if (data === 'delete') {
+  // Map numeric keyboard callbacks to actions
+  let action = data;
+  if (data.startsWith('num_')) {
+    if (data === 'num_backspace') {
+      action = 'delete';
+    } else if (data === 'num_submit') {
+      action = 'confirm';
+    } else if (data === 'num_cancel') {
+      delete (global as any).userState[ctx.chat.id];
+      return await ctx.reply('❌ *Operasi dibatalkan.*', { parse_mode: 'Markdown' });
+    } else if (data === 'num_0') {
+      action = '0';
+    } else if (data === 'num_00') {
+      action = '00';
+    } else if (data === 'num_000') {
+      action = '000';
+    } else {
+      // Extract number from num_X
+      action = data.replace('num_', '');
+    }
+  }
+
+  if (action === 'delete') {
     currentSaldo = currentSaldo.slice(0, -1);
-  } else if (data === 'confirm') {
+  } else if (action === 'confirm') {
     if (currentSaldo.length === 0) {
-      return await ctx.answerCbQuery('⚠️ *Jumlah saldo tidak boleh kosong!*', { show_alert: true });
+      return await ctx.answerCbQuery('⚠️ Jumlah saldo tidak boleh kosong!', { show_alert: true });
     }
 
     try {
@@ -314,7 +381,7 @@ export async function handleAddSaldo(ctx: TelegrafContext, userStateData: UserSt
       ctx.reply(
         `✅ *Saldo user berhasil ditambahkan.*\n\n` +
         `📄 *Detail Saldo:*\n` +
-        `- Jumlah Saldo: *Rp ${currentSaldo}*`,
+        `- Jumlah Saldo: *Rp ${parseInt(currentSaldo).toLocaleString('id-ID')}*`,
         { parse_mode: 'Markdown' }
       );
       logger.info(`✅ User ${userStateData.userId} saldo added: ${currentSaldo}`);
@@ -325,20 +392,20 @@ export async function handleAddSaldo(ctx: TelegrafContext, userStateData: UserSt
     delete (global as any).userState[ctx.chat.id];
     return;
   } else {
-    if (!/^[0-9]+$/.test(data)) {
-      return await ctx.answerCbQuery('⚠️ *Jumlah saldo tidak valid!*', { show_alert: true });
+    if (!/^[0-9]+$/.test(action)) {
+      return await ctx.answerCbQuery('⚠️ Jumlah saldo tidak valid!', { show_alert: true });
     }
     if (currentSaldo.length < 10) {
-      currentSaldo += data;
+      currentSaldo += action;
     } else {
-      return await ctx.answerCbQuery('⚠️ *Jumlah saldo maksimal adalah 10 karakter!*', { show_alert: true });
+      return await ctx.answerCbQuery('⚠️ Jumlah saldo maksimal adalah 10 karakter!', { show_alert: true });
     }
   }
 
   userStateData.saldo = currentSaldo;
-  const newMessage = `📊 *Silakan masukkan jumlah saldo yang ingin ditambahkan:*\n\nJumlah saldo saat ini: *${currentSaldo}*`;
+  const newMessage = `📊 *Silakan masukkan jumlah saldo yang ingin ditambahkan:*\n\nJumlah saldo saat ini: *${currentSaldo || '0'}*`;
   
-  if (ctx.callbackQuery && newMessage !== ctx.callbackQuery.message.text) {
+  if (ctx.callbackQuery && ctx.callbackQuery.message && newMessage !== ctx.callbackQuery.message.text) {
     await ctx.editMessageText(newMessage, {
       reply_markup: { inline_keyboard: keyboard_nomor() },
       parse_mode: 'Markdown'
