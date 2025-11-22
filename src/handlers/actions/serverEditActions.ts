@@ -57,35 +57,55 @@ function registerEditBatasCreateAkunAction(bot) {
 
     logger.info(`User ${userId} memilih untuk mengedit batas create akun server dengan ID: ${serverId}`);
 
+    // Get current server data
+    const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]);
+
+    if (!server) {
+      return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+    }
+
     // Set user state
     if (!global.userState) global.userState = {};
     global.userState[ctx.chat.id] = { step: 'edit_batas_create_akun', serverId: serverId };
 
-    await ctx.reply('📊 *Silakan masukkan batas create akun server baru:*', {
-      reply_markup: { inline_keyboard: keyboard_nomor() },
-      parse_mode: 'Markdown'
-    });
+    await ctx.reply(
+      `🌐 *Server dipilih:* ${server.nama_server}\n` +
+      `Batas Create Akun saat ini: *${server.batas_create_akun}*\n\n` +
+      `💡 *Silakan masukkan batas create akun server baru:*`,
+      {
+        reply_markup: { inline_keyboard: keyboard_nomor() },
+        parse_mode: 'Markdown'
+      }
+    );
   });
 }
 
 /**
- * Register edit total account creation action
+ * Register view total account creation action (display only)
  */
 function registerEditTotalCreateAkunAction(bot) {
   bot.action(/edit_total_create_akun_(\d+)/, async (ctx) => {
     const serverId = ctx.match[1];
     const userId = ctx.from.id;
 
-    logger.info(`User ${userId} memilih untuk mengedit total create akun server dengan ID: ${serverId}`);
+    logger.info(`User ${userId} melihat total create akun server dengan ID: ${serverId}`);
 
-    // Set user state
-    if (!global.userState) global.userState = {};
-    global.userState[ctx.chat.id] = { step: 'edit_total_create_akun', serverId: serverId };
+    // Get current server data
+    const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]);
 
-    await ctx.reply('📊 *Silakan masukkan total create akun server baru:*', {
-      reply_markup: { inline_keyboard: keyboard_nomor() },
-      parse_mode: 'Markdown'
-    });
+    if (!server) {
+      return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+    }
+
+    // Display total create - read only
+    await ctx.reply(
+      `📊 *Total Create Akun Server*\n\n` +
+      `🌐 *Server:* ${server.nama_server}\n` +
+      `📈 *Total Akun Dibuat:* ${server.total_create_akun}\n` +
+      `🔢 *Batas Maksimal:* ${server.batas_create_akun}\n\n` +
+      `ℹ️ _Total create akun dihitung otomatis setiap kali akun baru dibuat. Tidak dapat diedit manual._`,
+      { parse_mode: 'Markdown' }
+    );
   });
 }
 

@@ -44,30 +44,36 @@ const adminIds = (process.env.ADMIN_IDS || '').split(',').filter(Boolean);
 
 /**
  * Handle service creation/renewal flow
- * Steps: username → password (SSH only) → expiry → create/renew
+ * NEW FLOW: username → password (SSH only) → payment confirmation → create
  */
 async function handleServiceFlow(ctx, state, text, bot) {
   const chatId = ctx.chat.id;
   const userId = ctx.from.id;
+  const { Markup } = require('telegraf');
 
   try {
     // Step 1: Username input
     if (typeof state.step === 'string' && state.step.startsWith('username_')) {
-      if (!/^[a-zA-Z0-9]{3,20}$/.test(text)) {
-        return ctx.reply('❌ *Username tidak valid.*', { parse_mode: 'Markdown' });
+      if (!/^[a-zA-Z0-9_]{3,20}$/.test(text)) {
+        return ctx.reply('❌ *Username tidak valid.* Gunakan huruf, angka, underscore (3-20 karakter).', { parse_mode: 'Markdown' });
       }
 
       state.username = text;
 
-      // SSH requires password
-      if (state.action === 'create' && state.type === 'ssh') {
-        state.step = `password_${state.action}_${state.type}`;
-        return ctx.reply('🔑 *Masukkan password:*', { parse_mode: 'Markdown' });
+      // For renew action, check if account exists
+      if (state.action === 'renew') {
+        const row = await dbGetAsync(
+          'SELECT * FROM akun_aktif WHERE username = ? AND jenis = ?',
+          [text, state.type]
+        );
+        if (!row) {
+          return ctx.reply('❌ *Akun tidak ditemukan atau tidak aktif.*', { parse_mode: 'Markdown' });
+        }
       }
 
-      // Other protocols skip to expiry
-      state.step = `exp_${state.action}_${state.type}`;
-      return ctx.reply('⏳ *Masukkan masa aktif (hari):*', { parse_mode: 'Markdown' });
+      // Show duration selection
+      const { showDurationSelection } = require('../actions/serviceActions');
+      return await showDurationSelection(ctx, state.type, state.action, state.serverId);
     }
 
     // Step 2: Password input (SSH only)
@@ -77,10 +83,13 @@ async function handleServiceFlow(ctx, state, text, bot) {
       }
 
       state.password = text;
-      state.step = `exp_${state.action}_${state.type}`;
-      return ctx.reply('⏳ *Masukkan masa aktif (hari):*', { parse_mode: 'Markdown' });
+      
+      // Show duration selection
+      const { showDurationSelection } = require('../actions/serviceActions');
+      return await showDurationSelection(ctx, state.type, state.action, state.serverId);
     }
 
+    // OLD FLOW BELOW - Keep for backward compatibility with old renew flow
     // Step 3: Expiry input and service execution
     if (state.step.startsWith('exp_')) {
       const days = parseInt(text);
@@ -299,18 +308,19 @@ function registerTextHandler(bot) {
         return await handleServiceFlow(ctx, state, text, bot);
       }
 
-      // Server edit nama flow
-      if (state.step === 'select_server_for_edit_nama') {
-        const serverId = parseInt(text);
-        
-        if (isNaN(serverId)) {
-          return ctx.reply('❌ *ID server tidak valid. Harap masukkan angka.*', { parse_mode: 'Markdown' });
+      // Server edit nama flow (only handle text input after button selection)
+      if (state.step === 'edit_nama') {
+        const newNama = text.trim();
+        const serverId = state.serverId;
+
+        if (!newNama) {
+          return ctx.reply('❌ *Nama server tidak boleh kosong.*', { parse_mode: 'Markdown' });
         }
 
-        // Verify server exists
+        // Get current server data
         const server = await new Promise<any>((resolve) => {
           global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
-            if (err) {
+            if (err || !server) {
               logger.error('❌ Error getting server:', err);
               return resolve(null);
             }
@@ -319,23 +329,7 @@ function registerTextHandler(bot) {
         });
 
         if (!server) {
-          return ctx.reply('⚠️ *Server dengan ID tersebut tidak ditemukan.*', { parse_mode: 'Markdown' });
-        }
-
-        // Update state to edit nama
-        global.userState[ctx.chat.id] = { step: 'edit_nama', serverId: serverId };
-        await ctx.reply(`🏷️ *Server dipilih: ${server.nama_server}*\n\n💡 *Silakan masukkan nama server baru:*`, { 
-          parse_mode: 'Markdown' 
-        });
-        return;
-      }
-
-      if (state.step === 'edit_nama') {
-        const newNama = text.trim();
-        const serverId = state.serverId;
-
-        if (!newNama) {
-          return ctx.reply('❌ *Nama server tidak boleh kosong.*', { parse_mode: 'Markdown' });
+          return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
         }
 
         // Update server nama
@@ -350,22 +344,29 @@ function registerTextHandler(bot) {
         });
 
         delete global.userState[ctx.chat.id];
-        await ctx.reply(`✅ *Nama server berhasil diubah menjadi: ${newNama}*`, { parse_mode: 'Markdown' });
+        await ctx.reply(
+          `✅ *Server berhasil diperbarui!*\n\n` +
+          `Nama server: *${newNama}*\n` +
+          `IP/Host: *${server.domain}*\n` +
+          `Status: Aktif`,
+          { parse_mode: 'Markdown' }
+        );
         return;
       }
 
-      // Server edit auth flow
-      if (state.step === 'select_server_for_edit_auth') {
-        const serverId = parseInt(text);
-        
-        if (isNaN(serverId)) {
-          return ctx.reply('❌ *ID server tidak valid. Harap masukkan angka.*', { parse_mode: 'Markdown' });
+      // Server edit auth flow (only handle text input after button selection)
+      if (state.step === 'edit_auth') {
+        const newAuth = text.trim();
+        const serverId = state.serverId;
+
+        if (!newAuth) {
+          return ctx.reply('❌ *Auth tidak boleh kosong.*', { parse_mode: 'Markdown' });
         }
 
-        // Verify server exists
+        // Get current server data
         const server = await new Promise<any>((resolve) => {
           global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
-            if (err) {
+            if (err || !server) {
               logger.error('❌ Error getting server:', err);
               return resolve(null);
             }
@@ -374,23 +375,7 @@ function registerTextHandler(bot) {
         });
 
         if (!server) {
-          return ctx.reply('⚠️ *Server dengan ID tersebut tidak ditemukan.*', { parse_mode: 'Markdown' });
-        }
-
-        // Update state to edit auth
-        global.userState[ctx.chat.id] = { step: 'edit_auth', serverId: serverId };
-        await ctx.reply(`🔐 *Server dipilih: ${server.nama_server}*\n\n💡 *Silakan masukkan auth baru (password root):*`, { 
-          parse_mode: 'Markdown' 
-        });
-        return;
-      }
-
-      if (state.step === 'edit_auth') {
-        const newAuth = text.trim();
-        const serverId = state.serverId;
-
-        if (!newAuth) {
-          return ctx.reply('❌ *Auth tidak boleh kosong.*', { parse_mode: 'Markdown' });
+          return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
         }
 
         // Update server auth
@@ -405,22 +390,30 @@ function registerTextHandler(bot) {
         });
 
         delete global.userState[ctx.chat.id];
-        await ctx.reply('✅ *Auth server berhasil diubah.*', { parse_mode: 'Markdown' });
+        await ctx.reply(
+          `✅ *Server berhasil diperbarui!*\n\n` +
+          `Nama server: *${server.nama_server}*\n` +
+          `IP/Host: *${server.domain}*\n` +
+          `Auth: *diperbarui*\n` +
+          `Status: Aktif`,
+          { parse_mode: 'Markdown' }
+        );
         return;
       }
 
-      // Server edit domain flow
-      if (state.step === 'select_server_for_edit_domain') {
-        const serverId = parseInt(text);
-        
-        if (isNaN(serverId)) {
-          return ctx.reply('❌ *ID server tidak valid. Harap masukkan angka.*', { parse_mode: 'Markdown' });
+      // Server edit domain flow (only handle text input after button selection)
+      if (state.step === 'edit_domain') {
+        const newDomain = text.trim();
+        const serverId = state.serverId;
+
+        if (!newDomain) {
+          return ctx.reply('❌ *Domain tidak boleh kosong.*', { parse_mode: 'Markdown' });
         }
 
-        // Verify server exists
+        // Get current server data
         const server = await new Promise<any>((resolve) => {
           global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
-            if (err) {
+            if (err || !server) {
               logger.error('❌ Error getting server:', err);
               return resolve(null);
             }
@@ -429,26 +422,7 @@ function registerTextHandler(bot) {
         });
 
         if (!server) {
-          return ctx.reply('⚠️ *Server dengan ID tersebut tidak ditemukan.*', { parse_mode: 'Markdown' });
-        }
-
-        // Update state to edit domain
-        global.userState[ctx.chat.id] = { step: 'edit_domain', serverId: serverId };
-        await ctx.reply(
-          `🌐 *Server dipilih:* ${server.nama_server}\n` +
-          `Domain saat ini: *${server.domain}*\n\n` +
-          `💡 *Silakan masukkan domain/IP baru:*`,
-          { parse_mode: 'Markdown' }
-        );
-        return;
-      }
-
-      if (state.step === 'edit_domain') {
-        const newDomain = text.trim();
-        const serverId = state.serverId;
-
-        if (!newDomain) {
-          return ctx.reply('❌ *Domain tidak boleh kosong.*', { parse_mode: 'Markdown' });
+          return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
         }
 
         // Update server domain
@@ -463,7 +437,13 @@ function registerTextHandler(bot) {
         });
 
         delete global.userState[ctx.chat.id];
-        await ctx.reply(`✅ *Domain server berhasil diubah menjadi: ${newDomain}*`, { parse_mode: 'Markdown' });
+        await ctx.reply(
+          `✅ *Server berhasil diperbarui!*\n\n` +
+          `Nama server: *${server.nama_server}*\n` +
+          `IP/Host: *${newDomain}*\n` +
+          `Status: Aktif`,
+          { parse_mode: 'Markdown' }
+        );
         return;
       }
 
@@ -655,7 +635,100 @@ function registerTextHandler(bot) {
   logger.info('✅ Text event handler registered');
 }
 
+/**
+ * Show payment confirmation screen
+ * @param {Object} ctx - Telegraf context
+ * @param {Object} state - User state
+ */
+async function showPaymentConfirmation(ctx, state) {
+  const { Markup } = require('telegraf');
+  const { username, password, serverId, type, action, duration, serverName, serverDomain, harga } = state;
+  const userId = ctx.from.id;
+
+  try {
+    // Get server details
+    const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]);
+    if (!server) {
+      return ctx.reply('❌ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+    }
+
+    // Get user details
+    let user = await dbGetAsync('SELECT * FROM users WHERE user_id = ?', [userId]);
+    if (!user) {
+      await dbRunAsync(
+        `INSERT INTO users (user_id, username, saldo, role, reseller_level) VALUES (?, ?, 0, 'user', 'silver')`,
+        [userId, ctx.from.username]
+      );
+      user = { saldo: 0, role: 'user', reseller_level: 'silver' };
+    }
+
+    // Calculate price with reseller discount
+    const diskon = user.role === 'reseller'
+      ? user.reseller_level === 'gold' ? 0.2
+      : user.reseller_level === 'platinum' ? 0.3
+      : 0.1
+      : 0;
+
+    const hargaSatuan = Math.floor(server.harga * (1 - diskon));
+    const totalHarga = hargaSatuan * duration;
+
+    // Protocol label
+    const protocolLabels = {
+      ssh: 'SSH',
+      vmess: 'VMESS',
+      vless: 'VLESS',
+      trojan: 'TROJAN',
+      shadowsocks: 'SHADOWSOCKS'
+    };
+
+    // Check balance
+    const cukup = user.saldo >= totalHarga;
+
+    const message = `
+💳 *Konfirmasi Pembayaran*
+
+📦 Akun premium *${protocolLabels[type] || type.toUpperCase()}*
+🌐 Host: \`${server.domain}\`
+👤 Username: \`${username}\`
+⏱ Masa aktif: *${duration} Hari*
+💰 Total harga: *Rp ${totalHarga.toLocaleString('id-ID')}*
+💵 Saldo tersedia: *Rp ${user.saldo.toLocaleString('id-ID')}*
+    `.trim();
+
+    if (!cukup) {
+      // Insufficient balance
+      return ctx.reply(
+        `${message}\n\n❌ *Saldo Tidak Mencukupi*\n\nSaldo Anda hanya Rp${user.saldo.toLocaleString('id-ID')}.\nUntuk melanjutkan silakan top up terlebih dahulu.`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [[{ text: '💰 Top Up', callback_data: 'deposit' }]]
+          }
+        }
+      );
+    }
+
+    // Sufficient balance - show payment buttons
+    const buttons = [
+      [
+        Markup.button.callback('❌ Batal', `cancel_${action}_${type}_${serverId}_${duration}`),
+        Markup.button.callback('✅ Bayar', `pay_${action}_${type}_${serverId}_${duration}`)
+      ]
+    ];
+
+    return ctx.reply(message, {
+      parse_mode: 'Markdown',
+      ...Markup.inlineKeyboard(buttons)
+    });
+
+  } catch (error) {
+    logger.error('❌ Error showing payment confirmation:', error);
+    return ctx.reply('❌ *Terjadi kesalahan saat menampilkan konfirmasi pembayaran.*', { parse_mode: 'Markdown' });
+  }
+}
+
 module.exports = {
   registerTextHandler,
-  handleServiceFlow
+  handleServiceFlow,
+  showPaymentConfirmation
 };
