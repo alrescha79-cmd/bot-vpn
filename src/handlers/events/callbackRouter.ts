@@ -69,9 +69,24 @@ function registerCallbackRouter(bot) {
     }
 
     // === 3️⃣ ADMIN BACKUP/RESTORE ACTIONS ===
-    if (!adminIds.includes(parseInt(userId))) {
-      logger.warn(`Unauthorized callback attempt by user ${userId}: ${data}`);
-      return;
+    // Check if this is an admin-only action
+    const adminOnlyActions = [
+      'admin_backup_db',
+      'admin_restore_db',
+      'admin_restore_all',
+      'restore_file::',
+      'restore_uploaded_file::',
+      'delete_file::',
+      'confirm_delete::',
+      'delete_uploaded_file::'
+    ];
+
+    const isAdminAction = adminOnlyActions.some(action => data.startsWith(action));
+
+    // Only check admin permission for admin-only actions
+    if (isAdminAction && !adminIds.includes(parseInt(userId))) {
+      logger.warn(`Unauthorized admin action attempt by user ${userId}: ${data}`);
+      return await ctx.reply('⛔ Aksi ini hanya untuk admin.');
     }
 
     // Admin backup database

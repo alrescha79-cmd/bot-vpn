@@ -10,6 +10,7 @@ const { Markup } = require('telegraf');
 const { dbGetAsync } = require('../../database/connection');
 const { isAdmin, isReseller } = require('../../middleware/roleCheck');
 const logger = require('../../utils/logger');
+const vars = require('../../../.vars.json');
 
 /**
  * Send main menu to user
@@ -20,8 +21,11 @@ async function sendMainMenu(ctx) {
   const userId = ctx.from.id;
   
   try {
-    const user = await dbGetAsync('SELECT role, saldo FROM users WHERE user_id = ?', [userId]);
-    
+    const user = await dbGetAsync('SELECT role, saldo, first_name FROM users WHERE user_id = ?', [userId]);
+
+    const userData = await dbGetAsync('SELECT COUNT(*) AS total FROM invoice_log WHERE user_id = ?', [userId]);
+    const totalAccountCreated = userData ? userData.total : 0;
+
     if (!user) {
       return ctx.reply('❌ Anda belum terdaftar. Ketik /start untuk memulai.');
     }
@@ -34,13 +38,20 @@ async function sendMainMenu(ctx) {
     }[user.role] || '👤';
 
     const welcomeText = `
-${roleEmoji} *Selamat Datang!*
+      ${roleEmoji} *Selamat Datang ${user.first_name} di BOT VPN VVIP*
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-💰 *Saldo:* Rp${user.saldo.toLocaleString('id-ID')}
-📊 *Role:* ${user.role}
+      📋 *Informasi Akun:*
 
-Silakan pilih menu di bawah:
-    `.trim();
+      🛍 *Store: ${vars.NAMA_STORE}*
+      💰 *Saldo: Rp${user.saldo.toLocaleString('id-ID')}*
+      📊 *Role: ${roleEmoji} ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}*
+      📜 *Akun Dibuat: ${totalAccountCreated}*
+      🔒 *Admin Bot: @${vars.ADMIN_USERNAME}*
+
+      Silakan pilih menu di bawah:
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        `.trim();
 
     const keyboard = [
       [
