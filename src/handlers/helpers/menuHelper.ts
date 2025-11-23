@@ -10,7 +10,8 @@ const { Markup } = require('telegraf');
 const { dbGetAsync } = require('../../database/connection');
 const { isAdmin, isReseller } = require('../../middleware/roleCheck');
 const logger = require('../../utils/logger');
-const vars = require('../../../.vars.json');
+const config = require('../../config');
+const vars = config; // Use config module instead of direct require
 
 /**
  * Send main menu to user

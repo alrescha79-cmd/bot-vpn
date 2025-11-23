@@ -11,7 +11,7 @@ import type { BotContext, DatabaseUser, DatabaseServer } from "../../types";
  * - Server list management
  */
 
-const { dbGetAsync } = require('../../database/connection');
+const { dbGetAsync, dbAllAsync, dbRunAsync } = require('../../database/connection');
 const logger = require('../../utils/logger');
 
 /**
@@ -42,14 +42,9 @@ function registerDetailServerAction(bot) {
       logger.info('📋 Proses detail server dimulai');
       await ctx.answerCbQuery();
 
-      const servers = await new Promise<any>((resolve, reject) => {
-        global.db.all('SELECT * FROM Server', [], (err, servers) => {
-          if (err) {
-            logger.error('⚠️ Kesalahan saat mengambil detail server:', err.message);
-            return reject('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil detail server.*');
-          }
-          resolve(servers);
-        });
+      const servers = await dbAllAsync('SELECT * FROM Server', []).catch(err => {
+        logger.error('⚠️ Kesalahan saat mengambil detail server:', err.message);
+        throw new Error('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil detail server.*');
       });
 
       if (servers.length === 0) {
@@ -93,14 +88,9 @@ function registerListServerAction(bot) {
       logger.info('📜 Proses daftar server dimulai');
       await ctx.answerCbQuery();
 
-      const servers = await new Promise<any>((resolve, reject) => {
-        global.db.all('SELECT * FROM Server', [], (err, servers) => {
-          if (err) {
-            logger.error('⚠️ Kesalahan saat mengambil daftar server:', err.message);
-            return reject('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*');
-          }
-          resolve(servers);
-        });
+      const servers = await dbAllAsync('SELECT * FROM Server', []).catch(err => {
+        logger.error('⚠️ Kesalahan saat mengambil daftar server:', err.message);
+        throw new Error('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*');
       });
 
       if (servers.length === 0) {
@@ -132,28 +122,26 @@ function registerDeleteServerAction(bot) {
       logger.info('🗑️ Proses hapus server dimulai');
       await ctx.answerCbQuery();
 
-      global.db.all('SELECT * FROM Server', [], (err, servers) => {
-        if (err) {
-          logger.error('⚠️ Kesalahan saat mengambil daftar server:', err.message);
-          return ctx.reply('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*', { parse_mode: 'Markdown' });
-        }
+      const servers = await dbAllAsync('SELECT * FROM Server', []).catch(err => {
+        logger.error('⚠️ Kesalahan saat mengambil daftar server:', err.message);
+        return null;
+      });
 
-        if (servers.length === 0) {
-          logger.info('⚠️ Tidak ada server yang tersedia');
-          return ctx.reply('⚠️ *PERHATIAN! Tidak ada server yang tersedia saat ini.*', { parse_mode: 'Markdown' });
-        }
+      if (!servers || servers.length === 0) {
+        logger.info('⚠️ Tidak ada server yang tersedia');
+        return ctx.reply('⚠️ *PERHATIAN! Tidak ada server yang tersedia saat ini.*', { parse_mode: 'Markdown' });
+      }
 
-        const keyboard = servers.map(server => {
-          return [{ text: server.nama_server, callback_data: `confirm_delete_server_${server.id}` }];
-        });
-        keyboard.push([{ text: '🔙 Kembali ke Menu Utama', callback_data: 'kembali_ke_menu' }]);
+      const keyboard = servers.map(server => {
+        return [{ text: server.nama_server, callback_data: `confirm_delete_server_${server.id}` }];
+      });
+      keyboard.push([{ text: '🔙 Kembali ke Menu Utama', callback_data: 'kembali_ke_menu' }]);
 
-        ctx.reply('🗑️ *Pilih server yang ingin dihapus:*', {
-          reply_markup: {
-            inline_keyboard: keyboard
-          },
-          parse_mode: 'Markdown'
-        });
+      await ctx.reply('🗑️ *Pilih server yang ingin dihapus:*', {
+        reply_markup: {
+          inline_keyboard: keyboard
+        },
+        parse_mode: 'Markdown'
       });
     } catch (error) {
       logger.error('❌ Kesalahan saat memulai proses hapus server:', error);
@@ -192,14 +180,9 @@ function registerConfirmResetDBAction(bot) {
   bot.action('confirm_resetdb', async (ctx) => {
     try {
       await ctx.answerCbQuery();
-      await new Promise<void>((resolve, reject) => {
-        global.db.run('DELETE FROM Server', (err) => {
-          if (err) {
-            logger.error('❌ Error saat mereset tabel Server:', err.message);
-            return reject('❗️ *PERHATIAN! Terjadi KESALAHAN SERIUS saat mereset database. Harap segera hubungi administrator!*');
-          }
-          resolve();
-        });
+      await dbRunAsync('DELETE FROM Server').catch(err => {
+        logger.error('❌ Error saat mereset tabel Server:', err.message);
+        throw new Error('❗️ *PERHATIAN! Terjadi KESALAHAN SERIUS saat mereset database. Harap segera hubungi administrator!*');
       });
       await ctx.reply('🚨 *PERHATIAN! Database telah DIRESET SEPENUHNYA. Semua server telah DIHAPUS TOTAL.*', { parse_mode: 'Markdown' });
     } catch (error) {
@@ -234,14 +217,9 @@ function registerEditServerMenuActions(bot) {
       logger.info('Edit server auth process started');
       await ctx.answerCbQuery();
 
-      const servers = await new Promise<any>((resolve, reject) => {
-        global.db.all('SELECT id, nama_server FROM Server', [], (err, servers) => {
-          if (err) {
-            logger.error('❌ Kesalahan saat mengambil daftar server:', err.message);
-            return reject('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*');
-          }
-          resolve(servers);
-        });
+      const servers = await dbAllAsync('SELECT id, nama_server FROM Server', []).catch(err => {
+        logger.error('❌ Kesalahan saat mengambil daftar server:', err.message);
+        throw new Error('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*');
       });
 
       if (servers.length === 0) {
@@ -269,15 +247,14 @@ function registerEditServerMenuActions(bot) {
     await ctx.answerCbQuery();
 
     // Get current server data
-    const server = await new Promise<any>((resolve, reject) => {
-      global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
-        if (err || !server) {
-          logger.error('❌ Server tidak ditemukan:', err?.message);
-          return reject('Server tidak ditemukan.');
-        }
-        resolve(server);
-      });
+    const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]).catch(err => {
+      logger.error('❌ Server tidak ditemukan:', err?.message);
+      return null;
     });
+
+    if (!server) {
+      return ctx.reply('❌ Server tidak ditemukan.', { parse_mode: 'Markdown' });
+    }
 
     if (!global.userState) global.userState = {};
     global.userState[ctx.chat.id] = { step: 'edit_auth', serverId: serverId };
@@ -296,14 +273,9 @@ function registerEditServerMenuActions(bot) {
       logger.info('Edit server domain process started');
       await ctx.answerCbQuery();
 
-      const servers = await new Promise<any>((resolve, reject) => {
-        global.db.all('SELECT id, nama_server FROM Server', [], (err, servers) => {
-          if (err) {
-            logger.error('❌ Kesalahan saat mengambil daftar server:', err.message);
-            return reject('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*');
-          }
-          resolve(servers);
-        });
+      const servers = await dbAllAsync('SELECT id, nama_server FROM Server', []).catch(err => {
+        logger.error('❌ Kesalahan saat mengambil daftar server:', err.message);
+        throw new Error('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*');
       });
 
       if (servers.length === 0) {
@@ -331,15 +303,14 @@ function registerEditServerMenuActions(bot) {
     await ctx.answerCbQuery();
 
     // Get current server data
-    const server = await new Promise<any>((resolve, reject) => {
-      global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
-        if (err || !server) {
-          logger.error('❌ Server tidak ditemukan:', err?.message);
-          return reject('Server tidak ditemukan.');
-        }
-        resolve(server);
-      });
+    const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]).catch(err => {
+      logger.error('❌ Server tidak ditemukan:', err?.message);
+      return null;
     });
+
+    if (!server) {
+      return ctx.reply('❌ Server tidak ditemukan.', { parse_mode: 'Markdown' });
+    }
 
     if (!global.userState) global.userState = {};
     global.userState[ctx.chat.id] = { step: 'edit_domain', serverId: serverId };
@@ -358,14 +329,9 @@ function registerEditServerMenuActions(bot) {
       logger.info('Edit server nama process started');
       await ctx.answerCbQuery();
 
-      const servers = await new Promise<any>((resolve, reject) => {
-        global.db.all('SELECT id, nama_server FROM Server', [], (err, servers) => {
-          if (err) {
-            logger.error('❌ Kesalahan saat mengambil daftar server:', err.message);
-            return reject('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*');
-          }
-          resolve(servers);
-        });
+      const servers = await dbAllAsync('SELECT id, nama_server FROM Server', []).catch(err => {
+        logger.error('❌ Kesalahan saat mengambil daftar server:', err.message);
+        throw new Error('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*');
       });
 
       if (servers.length === 0) {
@@ -393,15 +359,14 @@ function registerEditServerMenuActions(bot) {
     await ctx.answerCbQuery();
 
     // Get current server data
-    const server = await new Promise<any>((resolve, reject) => {
-      global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
-        if (err || !server) {
-          logger.error('❌ Server tidak ditemukan:', err?.message);
-          return reject('Server tidak ditemukan.');
-        }
-        resolve(server);
-      });
+    const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]).catch(err => {
+      logger.error('❌ Server tidak ditemukan:', err?.message);
+      return null;
     });
+
+    if (!server) {
+      return ctx.reply('❌ Server tidak ditemukan.', { parse_mode: 'Markdown' });
+    }
 
     if (!global.userState) global.userState = {};
     global.userState[ctx.chat.id] = { step: 'edit_nama', serverId: serverId };
@@ -420,14 +385,9 @@ function registerEditServerMenuActions(bot) {
       logger.info('Edit server harga process started');
       await ctx.answerCbQuery();
 
-      const servers = await new Promise<any>((resolve, reject) => {
-        global.db.all('SELECT id, nama_server FROM Server', [], (err, servers) => {
-          if (err) {
-            logger.error('❌ Kesalahan saat mengambil daftar server:', err.message);
-            return reject('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*');
-          }
-          resolve(servers);
-        });
+      const servers = await dbAllAsync('SELECT id, nama_server FROM Server', []).catch(err => {
+        logger.error('❌ Kesalahan saat mengambil daftar server:', err.message);
+        throw new Error('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*');
       });
 
       if (servers.length === 0) {
@@ -468,14 +428,9 @@ function registerEditServerMenuActions(bot) {
         logger.info(`${action} process started`);
         await ctx.answerCbQuery();
 
-        const servers = await new Promise<any>((resolve, reject) => {
-          global.db.all('SELECT id, nama_server FROM Server', [], (err, servers) => {
-            if (err) {
-              logger.error('❌ Kesalahan saat mengambil daftar server:', err.message);
-              return reject('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*');
-            }
-            resolve(servers);
-          });
+        const servers = await dbAllAsync('SELECT id, nama_server FROM Server', []).catch(err => {
+          logger.error('❌ Kesalahan saat mengambil daftar server:', err.message);
+          throw new Error('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*');
         });
 
         if (servers.length === 0) {

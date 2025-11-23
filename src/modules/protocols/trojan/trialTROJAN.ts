@@ -2,7 +2,8 @@
 import type { BotContext, DatabaseUser, DatabaseServer } from "../../../types";
 const { Client } = require('ssh2');
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./botvpn.db');
+const { DB_PATH } = require('../../../config/constants');
+const db = new sqlite3.Database(DB_PATH);
 
 async function trialtrojan(serverId) {
   console.log(`⚙️ Creating Trojan Trial for server ${serverId}`);

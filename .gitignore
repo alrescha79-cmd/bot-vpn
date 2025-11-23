@@ -1,14 +1,28 @@
 node_modules/
 dist/
+
+# Configuration (runtime, not in build)
 .vars.json
+
+# Logs
 bot-error.log
 bot-combined.log
+*.log
+
+# Database (runtime, not in build)
 botvpn.db
-.github
+*.db
+*.sqlite
+*.sqlite3
 
+# Runtime data directory
+data/
 
-# Temporary scripts
+# Temporary files
 *.sh
 *.swp
 *.swo
 .DS_Store
+
+# GitHub
+.github

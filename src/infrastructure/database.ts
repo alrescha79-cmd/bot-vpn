@@ -7,8 +7,9 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
 const logger = require('../utils/logger');
+const { DB_PATH: CONSTANTS_DB_PATH } = require('../config/constants');
 
-const DB_PATH = path.resolve(__dirname, '../../botvpn.db');
+const DB_PATH = CONSTANTS_DB_PATH;
 
 export interface DatabaseResult {
   lastID: number;
