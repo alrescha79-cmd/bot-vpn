@@ -2,7 +2,8 @@
 import type { BotContext, DatabaseUser, DatabaseServer } from "../../../types";
 const axios = require('axios');
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./botvpn.db');
+const { DB_PATH } = require('../../../config/constants');
+const db = new sqlite3.Database(DB_PATH);
 
 async function renewssh(username, exp, limitip, serverId, harga = 0, hari = exp) {
   if (/\s/.test(username) || /[^a-zA-Z0-9]/.test(username)) {

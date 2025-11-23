@@ -41,7 +41,66 @@ sudo chown $USER:$USER ./botvpn.db
 
 ---
 
-### 3. ⚠️ Setup Mode - Bot Not Starting
+### 3. ❌ Error Tambah Server: `no such column: isp` atau `no such column: lokasi`
+
+**Symptom:**
+```
+error: ❌ Gagal tambah server
+info: 📥 Proses tambah server dimulai
+error: ❌ Error saat tambah server
+```
+
+**Cause:** Database schema outdated - missing `isp` and `lokasi` columns in Server table.
+
+**Solution:**
+
+**Option 1: Delete database (fresh start - CAUTION: loses all data):**
+```bash
+# Stop bot
+pkill -9 node
+
+# Delete database
+rm -f ./data/botvpn.db ./botvpn.db
+
+# Restart bot (will recreate with new schema)
+npm run dev  # or NODE_ENV=production node index.js
+```
+
+**Option 2: Manual migration (preserves data):**
+```bash
+# Backup first
+cp ./data/botvpn.db ./data/botvpn.db.backup
+
+# Add columns manually
+sqlite3 ./data/botvpn.db <<EOF
+ALTER TABLE Server ADD COLUMN isp TEXT DEFAULT 'Tidak diketahui';
+ALTER TABLE Server ADD COLUMN lokasi TEXT DEFAULT 'Tidak diketahui';
+ALTER TABLE Server ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP;
+.quit
+EOF
+
+# Restart bot
+npm run dev
+```
+
+**Option 3: Let auto-migration handle it (recommended):**
+```bash
+# Just restart the bot - schema.ts will auto-add missing columns
+npm run dev
+```
+
+**Verify fix:**
+```bash
+# Check Server table schema
+sqlite3 ./data/botvpn.db "PRAGMA table_info(Server);"
+
+# Should see columns: id, domain, auth, harga, nama_server, quota, iplimit, 
+# batas_create_akun, total_create_akun, isp, lokasi, created_at
+```
+
+---
+
+### 4. ⚠️ Setup Mode - Bot Not Starting
 
 **Symptom:**
 ```

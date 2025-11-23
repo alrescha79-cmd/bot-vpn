@@ -231,6 +231,22 @@ pm2 status
 
 ## 🔧 Post-Deployment
 
+### Database Migration (If Upgrading)
+
+If you're upgrading from older version with `botvpn.db` in root folder:
+
+```bash
+# Run migration script
+./scripts/migrate-db-to-data.sh
+
+# Or manually:
+mkdir -p ./data
+cp ./botvpn.db ./botvpn.db.backup-$(date +%Y%m%d)
+mv ./botvpn.db ./data/botvpn.db
+```
+
+**New installations automatically use `./data/botvpn.db`** ✅
+
 ### Configuration Management
 
 **View Config:**

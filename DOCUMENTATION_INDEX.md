@@ -1,20 +1,26 @@
 # 📚 Documentation Index
 
-Panduan lengkap untuk Bot VPN v3.0
+Panduan lengkap untuk Bot VPN v3.0 - Production Ready
 
 ---
 
 ## 🚀 Quick Navigation
 
 ### For New Users (First Time Setup)
-1. **[QUICKSTART.md](./QUICKSTART.md)** - Quick setup guide
+1. **[README.md](./README.md)** - Main documentation & overview
+   - Features & capabilities
+   - Quick start guide
+   - Installation steps
+   - Basic usage
+
+2. **[QUICKSTART.md](./QUICKSTART.md)** - Quick setup guide
    - Development setup
    - Build process
    - VPS deployment
    - Common issues
 
 ### For Production Deployment
-2. **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Comprehensive deployment guide
+3. **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Comprehensive deployment guide
    - Build & preparation
    - VPS setup
    - Initial configuration
@@ -23,31 +29,30 @@ Panduan lengkap untuk Bot VPN v3.0
    - Security tips
 
 ### For Existing Users (Upgrading)
-3. **[MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)** - Migration from v2.x to v3.0
+4. **[MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)** - Migration from v2.x to v3.0
    - Breaking changes
    - Migration steps
    - Data integrity check
    - Rollback plan
 
+5. **[DB_PATH_CONSOLIDATION.md](./DB_PATH_CONSOLIDATION.md)** - Database path changes
+   - Path consolidation details
+   - Migration script usage
+   - Verification steps
+
 ### For Developers & Contributors
-4. **[CHANGELOG_V3.md](./CHANGELOG_V3.md)** - Technical details
+6. **[CHANGELOG_V3.md](./CHANGELOG_V3.md)** - Technical details
    - Files created/modified
    - Architecture changes
    - Key features
    - Best practices
 
-5. **[IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md)** - Implementation overview
-   - Goals achieved
-   - File structure
-   - Testing status
-   - Verification
-
-### Project Overview
-6. **[README_NEW.md](./README_NEW.md)** - Main README
-   - Features
-   - Requirements
-   - Quick start
-   - Project structure
+### Troubleshooting & Support
+7. **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - Common issues & solutions
+   - Setup problems
+   - Runtime errors
+   - Database issues
+   - Performance tuning
 
 ---
 
@@ -57,26 +62,27 @@ Panduan lengkap untuk Bot VPN v3.0
 
 | Topic | Document | Section |
 |-------|----------|---------|
+| Project overview | README.md | Overview & Features |
 | First-time setup | QUICKSTART.md | Local Development Setup |
 | Web-based config | DEPLOYMENT.md | Initial Configuration |
-| Edit configuration | QUICKSTART.md | Configuration Management |
+| Edit configuration | README.md | Update Konfigurasi |
 | Environment variables | DEPLOYMENT.md | Configuration Management |
 
 ### Building & Deployment
 
 | Topic | Document | Section |
 |-------|----------|---------|
-| Build process | QUICKSTART.md | Build for Production |
+| Build process | README.md | Development - Build Project |
 | Clean build | CHANGELOG_V3.md | Build Process Bersih |
-| Upload to VPS | DEPLOYMENT.md | VPS Deployment |
-| File structure | DEPLOYMENT.md | Files to Deploy |
+| Upload to VPS | README.md | Production Deployment |
+| File structure | README.md | Struktur Project |
 
 ### Auto-Start Setup
 
 | Topic | Document | Section |
 |-------|----------|---------|
-| PM2 setup | DEPLOYMENT.md | Option A: PM2 |
-| systemd setup | DEPLOYMENT.md | Option B: systemd Service |
+| PM2 setup | README.md | Auto-Start dengan PM2 |
+| systemd setup | README.md | Auto-Start dengan systemd |
 | Ecosystem config | QUICKSTART.md | Auto-Start |
 | Startup verification | MIGRATION_GUIDE.md | Verification After Migration |
 

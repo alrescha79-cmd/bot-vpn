@@ -1,522 +1,581 @@
-# 🤖 Bot Telegram VPN V2
+# 🤖 Bot VPN Telegram - Production Ready
 
-Bot Telegram untuk manajemen akun VPN dengan arsitektur enterprise-grade yang modular, skalabel, dan mudah dipelihara.
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-blue.svg)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## 🚀 Mulai Cepat
+Bot Telegram untuk manajemen akun VPN multi-protocol dengan arsitektur production-ready, web-based configuration, dan deployment yang mudah.
 
-### Prasyarat
+---
 
-- Node.js v20+ (disarankan menggunakan NVM)
-- NPM atau Yarn
-- Akses SSH ke server VPN Anda (hanya password-based untuk saat ini)
-- PM2 (opsional, untuk manajemen proses)
+## ✨ Fitur Utama
 
-### 1. Clone Repositori
+### 🎯 Multi-Protocol Support
+- **SSH** - Secure Shell tunneling
+- **VMess** - V2Ray protocol
+- **VLess** - V2Ray protocol (lightweight)
+- **Trojan** - Trojan protocol
+- **Shadowsocks** - Shadowsocks protocol
+
+### 🔐 Role-Based Access Control
+- **Admin** - Full akses manajemen sistem
+- **Reseller** - Manajemen akun & transaksi
+- **User** - Akses basic & pembelian
+
+### 💰 Payment Integration
+- **QRIS** - Pembayaran via QRIS (otomatis)
+- **Deposit System** - Top-up saldo
+- **Transaction History** - Riwayat lengkap
+
+### 🌐 Web-Based Configuration
+- **Setup Mode** - Konfigurasi pertama via web interface
+- **Edit Mode** - Edit konfigurasi tanpa coding
+- **No Hardcoded Values** - Semua configurable
+
+### 🚀 Production Ready
+- **Clean Build** - Dist tanpa config/database
+- **Auto-Start** - PM2 & systemd support
+- **Database Migration** - Auto-create schema
+- **Error Handling** - Comprehensive logging
+
+---
+
+## 📋 Prasyarat
+
+- **Node.js** v18+ (v20+ recommended)
+- **npm** v8+
+- **SQLite3** (auto-installed)
+- **VPS** dengan SSH access (untuk production)
+- **Telegram Bot Token** (dari [@BotFather](https://t.me/BotFather))
+
+---
+
+## 🚀 Quick Start
+
+### 1. Clone Repository
 
 ```bash
 git clone https://github.com/alrescha79-cmd/bot-vpn.git
 cd bot-vpn
 ```
 
-### 2. Instal Dependensi
+### 2. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Konfigurasi
+### 3. Setup Konfigurasi (via Web Interface)
 
 ```bash
-cp .vars.json.example .vars.json
-nano .vars.json  # Edit dengan kredensial Anda
+# Pastikan tidak ada .vars.json (agar masuk setup mode)
+rm -f .vars.json
+
+# Start development server
+npm run dev
 ```
 
-### 4. Jalankan Bot
+**Buka browser**: `http://localhost:50123/setup`
+
+Isi form dengan:
+- ✅ **Bot Token** - Dari @BotFather
+- ✅ **Admin User ID** - Telegram ID Anda (dapatkan dari @userinfobot)
+- ✅ **Group ID** - Group untuk notifikasi
+- ✅ **Store Name** - Nama toko VPN Anda
+- ✅ **QRIS Data** - Data QRIS untuk pembayaran
+- ✅ **Merchant ID & API Key** - Dari payment provider
+
+**Klik**: `Simpan & Lanjutkan`
+
+### 4. Set Admin Role
+
+Setelah konfigurasi tersimpan, bot akan restart. Jalankan:
 
 ```bash
-# Development mode (RECOMMENDED - Full functionality)
+# Ganti YOUR_TELEGRAM_ID dengan ID Telegram Anda
+sqlite3 data/botvpn.db "UPDATE users SET role = 'admin' WHERE user_id = YOUR_TELEGRAM_ID;"
+```
+
+### 5. Jalankan Bot
+
+```bash
+# Development mode (dengan auto-reload)
+npm run dev
+
+# Production mode
 npm start
+```
 
-# Production mode (dengan PM2)
-pm2 start index.js --name vpn-bot
-pm2 save
+**Buka Telegram**, chat bot Anda: `/start`
+
+---
+
+## 🏗️ Struktur Project
+
+```
+bot-vpn/
+├── src/                        # Source code (TypeScript)
+│   ├── api/                    # API routes (config management)
+│   ├── app/                    # Bot initialization & loader
+│   ├── config/                 # Configuration management
+│   ├── database/               # Database schema & queries
+│   ├── frontend/               # Web interface (setup/edit)
+│   ├── handlers/               # Telegram handlers
+│   │   ├── actions/            # Callback query handlers
+│   │   ├── commands/           # Command handlers
+│   │   └── events/             # Event handlers
+│   ├── middleware/             # Auth & error handling
+│   ├── modules/                # Protocol implementations
+│   │   └── protocols/
+│   │       ├── ssh/
+│   │       ├── vmess/
+│   │       ├── vless/
+│   │       ├── trojan/
+│   │       └── shadowsocks/
+│   ├── repositories/           # Database access layer
+│   ├── services/               # Business logic
+│   ├── types/                  # TypeScript types
+│   └── utils/                  # Helpers & utilities
+├── dist/                       # Build output (generated)
+├── data/                       # Runtime data
+│   └── botvpn.db              # SQLite database
+├── scripts/                    # Build & utility scripts
+│   ├── build-clean.js         # Clean build script
+│   └── migrate-db-to-data.sh  # Database migration
+├── deployment/                 # Deployment configs
+│   └── bot-vpn.service        # systemd service
+├── .vars.json                 # Config file (gitignored)
+├── .vars.json.example         # Config template
+├── index.js                   # Entry point
+├── ecosystem.config.js        # PM2 config
+├── package.json               # Dependencies
+└── tsconfig.json              # TypeScript config
+```
+
+---
+
+## 📖 Dokumentasi Lengkap
+
+| Dokumen | Deskripsi |
+|---------|-----------|
+| **[QUICKSTART.md](QUICKSTART.md)** | Panduan setup cepat & deployment |
+| **[DEPLOYMENT.md](DEPLOYMENT.md)** | Deployment detail untuk VPS |
+| **[CHANGELOG_V3.md](CHANGELOG_V3.md)** | Changelog & implementation summary |
+| **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** | Troubleshooting common issues |
+| **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** | Upgrade dari v2.0 ke v3.0 |
+| **[DB_PATH_CONSOLIDATION.md](DB_PATH_CONSOLIDATION.md)** | Database path changes |
+| **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** | Index semua dokumentasi |
+
+---
+
+## 🔧 Development
+
+### Build Project
+
+```bash
+# Build untuk production
+npm run build
+
+# Build dengan watch mode
+npm run build:watch
+
+# Type checking (tanpa build)
+npm run type-check
+```
+
+### Running Modes
+
+```bash
+# Development (auto-reload dengan nodemon)
+npm run dev
+
+# Production (NODE_ENV=production)
+npm run start:prod
+
+# Normal start
+npm start
+```
+
+---
+
+## 🌐 Production Deployment
+
+### 1. Build Production
+
+```bash
+npm run build
+```
+
+Hasil build di folder `dist/`:
+- ✅ Compiled JavaScript code
+- ✅ Frontend assets (HTML)
+- ❌ **TIDAK** ada `.vars.json`
+- ❌ **TIDAK** ada database files
+
+### 2. Upload ke VPS
+
+```bash
+# Package untuk deployment
+tar -czf bot-vpn-deploy.tar.gz \
+  dist/ \
+  index.js \
+  package.json \
+  package-lock.json \
+  ecosystem.config.js \
+  deployment/
+
+# Upload ke VPS
+scp bot-vpn-deploy.tar.gz user@your-vps:/var/www/
+```
+
+### 3. Setup di VPS
+
+```bash
+# SSH ke VPS
+ssh user@your-vps
+
+# Extract
+cd /var/www
+tar -xzf bot-vpn-deploy.tar.gz
+cd bot-vpn
+mv bot-vpn-deploy bot-vpn
+
+# Install dependencies (production only)
+npm install --production
+
+# Setup konfigurasi (via web)
+# Akses: http://your-vps-ip:50123/setup
+```
+
+### 4. Auto-Start dengan PM2
+
+```bash
+# Install PM2 globally
+sudo npm install -g pm2
+
+# Start bot
+pm2 start index.js --name bot-vpn
+
+# Setup auto-start on boot
 pm2 startup
+pm2 save
+
+# Monitor
+pm2 logs bot-vpn
+pm2 status
 ```
 
-### 5. Menjadikan Telegram Anda sebagai Admin
+### 5. Auto-Start dengan systemd
 
 ```bash
-sqlite3 botvpn.db "UPDATE users SET role = 'admin' WHERE user_id = YOUR_TELEGRAM_ID;"
+# Copy service file
+sudo cp deployment/bot-vpn.service /etc/systemd/system/
+
+# Edit ExecStart path sesuai lokasi Anda
+sudo nano /etc/systemd/system/bot-vpn.service
+
+# Enable & start
+sudo systemctl enable bot-vpn
+sudo systemctl start bot-vpn
+
+# Check status
+sudo systemctl status bot-vpn
+sudo journalctl -u bot-vpn -f
 ```
 
-Ganti `YOUR_TELEGRAM_ID` dengan ID Telegram Anda yang sebenarnya.
+**Detail lengkap**: Lihat [DEPLOYMENT.md](DEPLOYMENT.md)
 
-### 6. Restart Bot Setelah Perubahan Konfigurasi
+---
+
+## 🎮 Penggunaan
+
+### User Commands
+- `/start` - Mulai bot & tampilkan menu utama
+- `/menu` - Tampilkan menu utama
+- `/profile` - Lihat profil & saldo
+- `/riwayat` - Riwayat transaksi
+
+### Admin Commands
+- `/admin` - Menu admin
+- `/broadcast` - Broadcast message ke semua user
+- `/stats` - Statistik sistem
+
+### Reseller Commands
+- `/reseller` - Menu reseller
+- `/harga` - Lihat daftar harga
+- `/stok` - Cek stok server
+
+---
+
+## 🔄 Update Konfigurasi
+
+### Via Web Interface
+
+```
+Buka: http://localhost:50123/config/edit
+Edit nilai yang ingin diubah
+Klik: "Simpan Perubahan"
+Restart bot
+```
+
+### Via File
 
 ```bash
-# Dengan PM2
-pm2 restart vpn-bot
+# Edit .vars.json
+nano .vars.json
 
-# Atau stop/start manual
-pm2 stop vpn-bot
-pm2 start vpn-bot
-
-# Hapus dari PM2
-pm2 delete vpn-bot
+# Restart bot
+pm2 restart bot-vpn
+# atau
+sudo systemctl restart bot-vpn
 ```
 
-Jika menjalankan dalam mode development, cukup hentikan proses dengan `CTRL + C` dan jalankan kembali dengan `npm start`.
+---
 
-## ✨ Arsitektur Enterprise-Grade
+## 🗄️ Database Management
 
-Bot ini telah direfaktor sepenuhnya mengikuti standar enterprise dengan pemisahan layer yang jelas:
+### Lokasi Database
+```bash
+./data/botvpn.db
+```
 
-- ✅ **Arsitektur Modular** - Pemisahan tanggung jawab yang jelas
-- ✅ **Repository Pattern** - Abstraksi akses data yang bersih
-- ✅ **Infrastructure Layer** - Database dan cache terkelola
-- ✅ **100% Async/Await** - Tanpa callback hell
-- ✅ **JSDoc Lengkap** - Dokumentasi komprehensif pada setiap fungsi
-- ✅ **Clean Code** - File rata-rata ~150 baris
-- ✅ **Siap Production** - Error handling & logging terpusat
-
-## 📁 Struktur Proyek
+### Backup Database
 
 ```bash
-src/
-├── config/                       # Konfigurasi aplikasi
-│   ├── index.js                  # Load dari .vars.json
-│   └── constants.js              # Konstanta aplikasi
-│
-├── database/                     # Database & queries
-│   ├── connection.js             # Koneksi SQLite (promisified)
-│   ├── schema.js                 # Skema database
-│   └── queries/                  # Query modules
-│       ├── accounts.js
-│       ├── servers.js
-│       ├── transactions.js
-│       ├── users.js
-│       └── ...
-│
-├── repositories/                 # Layer akses data (Repository Pattern)
-│   ├── userRepository.js         # Operasi user (14 methods)
-│   ├── serverRepository.js       # Operasi server (9 methods)
-│   ├── accountRepository.js      # Operasi akun (6 methods)
-│   ├── transactionRepository.js  # Transaksi & invoice (9 methods)
-│   ├── resellerRepository.js     # Operasi reseller (10 methods)
-│   ├── trialRepository.js        # Trial logs (5 methods)
-│   ├── depositRepository.js      # Deposit QRIS (6 methods)
-│   └── index.js                  # Barrel export
-│
-├── services/                     # Layer logika bisnis
-│   ├── user.service.js           # User business logic
-│   ├── reseller.service.js       # Reseller operations
-│   ├── ssh.service.js            # SSH service operations
-│   ├── depositService.js         # Deposit flow management
-│   └── ...
-│
-├── handlers/                     # Bot command & action handlers
-│   ├── commands/                 # Command handlers
-│   │   ├── userCommands.js       # User commands (/start, /menu, dll)
-│   │   ├── adminCommands.js      # Admin commands
-│   │   ├── resellerCommands.js   # Reseller commands
-│   │   ├── index.js
-│   │   └── ...
-│   ├── actions/                  # Callback query handlers
-│   │   ├── serviceActions.js     # Service-related actions
-│   │   ├── adminActions.js       # Admin actions
-│   │   ├── resellerActions.js    # Reseller actions
-│   │   ├── trialActions.js       # Trial account actions
-│   │   ├── serverEditActions.js  # Server edit actions
-│   │   ├── ...
-│   │   └── index.js
-│   ├── events/                   # Event handlers
-│   │   ├── textHandler.js        # Text message routing
-│   │   └── index.js
-│   └── helpers/                  # Handler utilities
-│       ├── callbackRouter.js     # Centralized callback routing
-│       ├── menuHelper.js         # Menu builders
-│       └── ...
-│
-├── modules/                      # Protocol modules
-│   ├── protocols/                # Protocol handlers
-│   │   ├── ssh/                  # SSH protocol
-│   │   │   ├── createSSH.js
-│   │   │   ├── renewSSH.js
-│   │   │   ├── trialSSH.js
-│   │   │   └── ...
-│   │   ├── vmess/                # VMESS protocol
-│   │   ├── vless/                # VLESS protocol
-│   │   ├── trojan/               # TROJAN protocol
-│   │   └── shadowsocks/          # SHADOWSOCKS protocol
-│   ├── renew.js                  # Renewal logic
-│   ├── stats.js                  # Statistics module
-│   └── index.js
-│
-├── utils/                        # Utilitas & helpers
-│   ├── helpers.js                # Utilities umum (flags, DNS, ISP, dll)
-│   ├── formatter.js              # Format display (invoice, stats, dll)
-│   ├── markdown.js               # Telegram markdown escape
-│   ├── validation.js             # Input validation
-│   ├── keyboard.js               # Inline keyboard builders
-│   ├── logger.js                 # Winston logger
-│   ├── serverEditHelpers.js      # Server editing utilities
-│   └── ...
-│
-├── middleware/                   # Bot middleware
-│   ├── auth.js                   # Authentication middleware
-│   ├── errorHandler.js           # Error handling middleware
-│   └── ...
-│
-├── infrastructure/               # Layer infrastruktur (opsional)
-│   └── ...
-│
-└── app/                          # Application loaders
-    └── ...
+# Manual backup
+cp data/botvpn.db data/botvpn.db.backup-$(date +%Y%m%d)
 
-index.js                          # Entry point utama (239 baris)
-botvpn.db                         # SQLite database
-.vars.json                        # Environment configuration
+# Auto backup (via cron)
+# Add to crontab: crontab -e
+0 2 * * * cd /path/to/bot-vpn && cp data/botvpn.db data/botvpn.db.backup-$(date +\%Y\%m\%d)
 ```
 
-## 🏛️ Penjelasan Arsitektur
-
-### Infrastructure Layer (`src/infrastructure/`)
-
-Layer terendah yang menangani koneksi ke sistem eksternal:
-
-- **database.js** - Wrapper promisified untuk SQLite3 dengan helper methods (`dbGet`, `dbAll`, `dbRun`)
-- **cache.js** - In-memory caching untuk status sistem dan user sessions
-
-### Repository Layer (`src/repositories/`)
-
-Abstraksi akses data dengan Repository Pattern - total 80+ methods:
-
-- **userRepository** - 14 methods: CRUD users, balance, roles, statistics
-- **serverRepository** - 9 methods: Manage servers, count accounts, IP/DNS lookup
-- **accountRepository** - 6 methods: Active accounts management per protocol
-- **transactionRepository** - 9 methods: Invoices, topup logs, transfers
-- **resellerRepository** - 10 methods: Sales tracking, leaderboards, earnings
-- **trialRepository** - 5 methods: Trial logs dan rate limiting
-- **depositRepository** - 6 methods: Pending QRIS deposits management
-
-**Contoh Penggunaan:**
-
-```javascript
-const { userRepository } = require('./src/repositories');
-
-// Get user by Telegram ID
-const user = await userRepository.getUserById(123456789);
-
-// Update user balance
-await userRepository.updateUserBalance(123456789, 50000, 'add');
-
-// Get user statistics
-const stats = await userRepository.getUserStats(123456789);
-```
-
-### Utils Layer (`src/utils/`)
-
-Fungsi-fungsi utilitas yang dapat digunakan kembali:
-
-- **helpers.js** - Flag emoji, DNS resolver, ISP lookup, reseller calculations
-- **formatter.js** - Format invoice, server info, statistics untuk display
-- **markdown.js** - Escape special characters untuk Telegram MarkdownV2
-- **logger.js** - Winston logger dengan level & timestamps
-- **keyboard.js** - Inline keyboard builders untuk Telegram
-- **validation.js** - Input validation helpers
-
-### Protocol Handlers (`src/modules/protocols/`)
-
-Handlers khusus untuk setiap protokol VPN:
-
-- Setiap protokol memiliki: `create`, `renew`, `trial`
-- Komunikasi SSH ke VPN servers
-- Parsing output & error handling
-
-## 🚀 Fitur Utama
-
-### Core Features
-
-- 📊 **Dashboard** - Statistik sistem real-time dengan caching
-- 🎫 **Trial Gratis** - Sistem trial otomatis dengan rate limiting  
-- 💰 **Sistem Pembayaran** - Integrasi QRIS otomatis dengan tracking invoice
-- 👥 **Reseller Program** - Sistem reseller 5-level dengan diskon bertingkat
-- 🛠️ **Manajemen Server** - Multi-server management dengan load balancing
-- 📱 **Multi-Protokol** - SSH, VMESS, VLESS, TROJAN, SHADOWSOCKS
-- 💸 **Transfer Saldo** - P2P balance transfer dengan validasi
-- 📈 **Statistik & Analytics** - Comprehensive sales & usage reports
-
-### Technical Features
-
-- 🔄 **Repository Pattern** - Clean data access abstraction dengan 80+ methods
-- ⚡ **In-Memory Cache** - Fast system status & session management
-- 📝 **Structured Logging** - Winston logger dengan level & timestamps
-- 🛡️ **Error Handling** - Centralized error management
-- 🔐 **Role-Based Access** - Admin, owner, reseller, user roles
-- ⏰ **Scheduled Jobs** - Cron tasks untuk cleanup & notifications
-- 🌐 **Webhook Ready** - Express server untuk payment callbacks
-
-## 🔧 Fitur Lengkap
-
-### Protokol yang Didukung
-
-- ✅ **SSH** - Tunneling Secure Shell
-- ✅ **VMESS** - Protokol V2Ray dengan WebSocket
-- ✅ **VLESS** - Protokol V2Ray ringan
-- ✅ **TROJAN** - Protokol Trojan-GFW
-- ✅ **SHADOWSOCKS** - Proxy berkinerja tinggi
-
-### Manajemen Akun
-
-- ✅ **Buat Akun** - Pembuatan akun berbayar dengan berbagai durasi
-- ✅ **Akun Trial** - Trial gratis 60 menit dengan pembatasan penggunaan
-- ✅ **Perpanjang Akun** - Perpanjangan akun yang sudah ada
-- ✅ **Cek Status** - Status dan masa aktif akun secara real-time
-- ✅ **Hapus Akun** - Pembersihan manual dan otomatis
-
-### Sistem Trial
-
-- ✅ **Rate Limiting** - User: 1x/hari, Reseller: 10x/hari, Admin: tidak terbatas
-- ✅ **Auto-Cleanup** - Penghapusan otomatis setelah 60 menit
-- ✅ **History Tracking** - Pelacakan riwayat trial lengkap
-- ✅ **Role-Based Access** - Kontrol akses berdasarkan peran
-
-### Fitur Admin & Owner
-
-- ✅ Manajemen Server
-- ✅ Manajemen Pengguna
-- ✅ Manajemen Saldo
-- ✅ Statistik
-
-## 💻 Contoh Penggunaan
-
-### Impor Layanan
-
-```javascript
-const { UserService, TrialService, ServerService } = require('./services');
-```
-
-### Fitur untuk Admin & Owner
-
-- ✅ **Manajemen Server** - Tambah/edit/hapus server VPN
-- ✅ **Manajemen User** - Perbarui peran, saldo, suspend akun
-- ✅ **Broadcast** - Kirim pesan ke semua pengguna
-- ✅ **Statistik** - Lihat analitik seluruh sistem
-- ✅ **Persetujuan Manual** - Verifikasi deposit yang tertunda
-
-### Sistem Reseller
-
-- ✅ **Sistem 5 Level** - Bronze, Silver, Gold, Platinum, Diamond
-- ✅ **Diskon Otomatis** - 5% - 25% berdasarkan total penjualan
-- ✅ **Pelacakan Penjualan** - Laporan penjualan & pendapatan real-time
-- ✅ **Papan Peringkat** - Peringkat reseller terbaik mingguan
-- ✅ **Transfer Saldo** - Transfer P2P antar pengguna
-
-### Sistem Pembayaran
-
-- ✅ **Integrasi QRIS** - Pembuatan kode QR pembayaran otomatis
-- ✅ **Sistem Invoice** - Invoice dapat dilacak dengan ID unik
-- ✅ **Topup Manual** - Admin dapat menambah saldo secara manual
-- ✅ **Verifikasi Pembayaran** - Verifikasi otomatis & manual
-- ✅ **Riwayat Transaksi** - Jejak audit lengkap
-
-## 💻 Penggunaan API/Repository
-
-### Contoh Menggunakan Repository Pattern
-
-```javascript
-// Import repositories
-const { 
-  userRepository, 
-  serverRepository, 
-  accountRepository 
-} = require('./src/repositories');
-
-// Get user information
-const user = await userRepository.getUserById(telegramId);
-console.log(`Balance: ${user.saldo}, Role: ${user.role}`);
-
-// Update user balance
-await userRepository.updateUserBalance(telegramId, 50000, 'add');
-
-// Get all active servers
-const servers = await serverRepository.getAllServers();
-
-// Create active account entry
-await accountRepository.upsertActiveAccount(
-  telegramId, 
-  'vmess', 
-  'username123', 
-  serverId, 
-  30 // days
-);
-```
-
-### Contoh Menggunakan Infrastructure Layer
-
-```javascript
-// Database operations
-const { dbGet, dbAll, dbRun } = require('./src/infrastructure/database');
-
-// Single row query
-const user = await dbGet('SELECT * FROM users WHERE user_id = ?', [userId]);
-
-// Multiple rows query  
-const servers = await dbAll('SELECT * FROM servers WHERE status = ?', ['active']);
-
-// Insert/Update/Delete
-await dbRun('UPDATE users SET saldo = saldo + ? WHERE user_id = ?', [amount, userId]);
-```
-
-### Contoh Menggunakan Utilities
-
-```javascript
-const { helpers, formatter } = require('./src/utils');
-
-// Get country flag emoji
-const flag = helpers.getFlagEmoji('ID'); // 🇮🇩
-
-// Resolve domain to IP
-const ip = await helpers.resolveDomainToIP('example.com');
-
-// Get ISP information
-const isp = await helpers.getISPAndLocation(ip);
-
-// Format invoice for display
-const invoiceText = formatter.formatInvoice(invoiceData);
-
-// Calculate reseller discount
-const discount = helpers.getResellerDiscount(5000000); // returns 15% for 5M sales
-```
-
-## 🏗️ Pengembangan & Kontribusi
-
-### Standar Gaya Kode
-
-- **Penamaan**: camelCase untuk fungsi/variabel, PascalCase untuk kelas
-- **File**: kebab-case (`user-service.js`) atau camelCase (`userService.js`)
-- **Penanganan Error**: Selalu gunakan try-catch dengan logging terpusat
-- **Dokumentasi**: Komentar JSDoc untuk semua method publik
-- **Async/Await**: Gunakan async/await, hindari callback
-- **Modular**: Satu file = satu tanggung jawab (Single Responsibility)
-
-### Menambahkan Fitur Baru
-
-1. **Tentukan Layer** - Repository untuk akses data, Service untuk logika bisnis
-2. **Buat Repository Methods** - Jika memerlukan akses database baru
-3. **Implementasi Logika** - Di service layer atau langsung di handler
-4. **Perbarui Command** - Tambahkan command/action baru di `index.js`
-5. **Pengujian** - Uji secara menyeluruh sebelum production
-
-### Pengujian & Debugging
+### Restore Database
 
 ```bash
-# Check syntax errors
-node -c index.js
+# Stop bot
+pm2 stop bot-vpn
 
-# Test specific module
-node -e "require('./src/repositories/userRepository')"
+# Restore backup
+cp data/botvpn.db.backup-YYYYMMDD data/botvpn.db
 
-# View logs
-pm2 logs vpn-bot --lines 100
-
-# Monitor performance
-pm2 monitor vpn-bot
+# Start bot
+pm2 start bot-vpn
 ```
 
-## 🔐 Konfigurasi Environment
+### Migrasi dari v2.0
 
-Edit file `.vars.json`:
+Jika upgrade dari versi lama yang database di root:
 
-```json
-{
-  "BOT_TOKEN": "bot_token_anda",
-  "USER_ID": "telegram_user_id_anda",
-  "GROUP_ID": "telegram_group_id_anda", // Opsional
-  "NAMA_STORE": "nama_store_anda",
-  "DATA_QRIS": "data_qris_anda", // Untuk pembayaran QRIS
-  "MERCHANT_ID": "merchant_qris_anda", // Untuk pembayaran QRIS
-  "API_KEY": "api_key_qris_anda" // Untuk pembayaran QRIS
+```bash
+# Jalankan migration script
+./scripts/migrate-db-to-data.sh
+
+# Atau manual
+mkdir -p ./data
+cp ./botvpn.db ./botvpn.db.backup
+mv ./botvpn.db ./data/botvpn.db
+```
+
+---
+
+## 🐛 Troubleshooting
+
+### Bot tidak start setelah setup
+
+```bash
+# Check logs
+pm2 logs bot-vpn
+# atau
+sudo journalctl -u bot-vpn -f
+
+# Verify config exists
+cat .vars.json
+
+# Check database
+ls -lh data/botvpn.db
+```
+
+### Database permission error
+
+```bash
+# Fix permissions
+sudo chown -R $USER:$USER ./data/
+chmod 755 ./data/
+chmod 644 ./data/botvpn.db
+```
+
+### Port already in use
+
+```bash
+# Check what's using port 50123
+sudo lsof -i :50123
+# atau
+sudo netstat -tlnp | grep 50123
+
+# Kill process atau ubah port di .vars.json
+```
+
+### Module not found errors
+
+```bash
+# Reinstall dependencies
+rm -rf node_modules package-lock.json
+npm install --production
+```
+
+**Troubleshooting lengkap**: Lihat [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+
+---
+
+## 🔒 Security Best Practices
+
+### 1. Protect Config File
+```bash
+chmod 600 .vars.json
+```
+
+### 2. Firewall Setup
+```bash
+# Allow SSH, Bot API, dan Web Config
+sudo ufw allow 22/tcp
+sudo ufw allow 50123/tcp
+sudo ufw enable
+```
+
+### 3. Reverse Proxy (Nginx)
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        proxy_pass http://localhost:50123;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
 }
 ```
 
-### Penjelasan Variabel
+### 4. SSL/TLS (Let's Encrypt)
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d your-domain.com
+```
 
-- `BOT_TOKEN` - Token bot dari [@BotFather](https://t.me/botfather)
-- `USER_ID` - Telegram User ID Anda (owner/admin)
-- `GROUP_ID` - Group ID untuk notifikasi (optional)
-- `NAMA_STORE` - Nama toko Anda
-- `DATA_QRIS` - Data QRIS untuk pembayaran
-- `MERCHANT_ID` - Merchant ID untuk QRIS
-- `API_KEY` - API Key untuk integrasi QRIS
-
-## 📚 Dokumentasi Lanjutan
-
-### Referensi Method Repository
-
-Lihat file-file di `src/repositories/` untuk daftar lengkap method yang tersedia:
-
-- `userRepository.js` - 14 method untuk manajemen pengguna
-- `serverRepository.js` - 9 method untuk operasi server
-- `accountRepository.js` - 6 method untuk pelacakan akun
-- `transactionRepository.js` - 9 method untuk invoice & transaksi
-- `resellerRepository.js` - 10 method untuk operasi reseller
-- `trialRepository.js` - 5 method untuk manajemen trial
-- `depositRepository.js` - 6 method untuk deposit QRIS
-
-Setiap method memiliki dokumentasi JSDoc lengkap dengan contoh penggunaan.
-
-## 🤝 Berkontribusi
-
-Kontribusi sangat diterima! Silakan ikuti langkah berikut:
-
-1. **Fork** repositori ini
-2. **Clone** fork Anda: `git clone https://github.com/YOUR_USERNAME/bot-vpn.git`
-3. **Buat branch**: `git checkout -b feature/nama-fitur-anda`
-4. **Lakukan perubahan** dengan mengikuti panduan gaya kode
-5. **Uji** perubahan Anda secara menyeluruh
-6. **Commit**: `git commit -am 'Add: fitur baru xyz'`
-7. **Push**: `git push origin feature/nama-fitur-anda`
-8. **Pull Request** dengan deskripsi lengkap
-
-### Panduan Kontribusi
-
-- Ikuti gaya kode yang ada
-- Tambahkan JSDoc untuk fungsi baru
-- Gunakan async/await, bukan callback
-- Uji sebelum mengirim PR
-- Perbarui README jika diperlukan
-
-## 🐛 Laporan Bug & Permintaan Fitur
-
-- **Laporan Bug**: Buka issue dengan label `bug` dan berikan detail lengkap
-- **Permintaan Fitur**: Buka issue dengan label `enhancement` dan jelaskan kasus penggunaan
-- **Troubleshooting**: Lihat [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) untuk solusi masalah umum
-
-## 👨‍💻 Penulis & Kredit
-
-**Dikembangkan oleh**: [Alrescha79](https://github.com/alrescha79-cmd)
-
-**Direfaktor ke Arsitektur Enterprise**: 2025
-
-**Tech Stack**:
-
-- Node.js v20+
-- TypeScript
-- Telegraf (Telegram Bot Framework)
-- SQLite3 (Database)
-- Winston (Logging)
-- Express (Webhooks)
-- node-cron (Scheduled Tasks)
-
-## 🙏 Dukungan & Ucapan Terima Kasih
-
-Jika proyek ini membantu Anda:
-
-- ⭐ **Beri bintang** repositori ini
-- 🐛 **Laporkan bug** yang Anda temukan
-- 💡 **Sarankan fitur** yang berguna
-- 📖 **Tingkatkan dokumentasi**
-- 🤝 **Kontribusi kode**
+### 5. Regular Backups
+```bash
+# Backup script: backup-bot.sh
+#!/bin/bash
+DATE=$(date +%Y%m%d-%H%M%S)
+tar -czf /backup/bot-vpn-backup-$DATE.tar.gz \
+  .vars.json \
+  data/ \
+  ecosystem.config.js
+```
 
 ---
+
+## 📊 Monitoring
+
+### PM2 Monitoring
+
+```bash
+# Real-time monitoring
+pm2 monit
+
+# Logs
+pm2 logs bot-vpn --lines 100
+
+# CPU & Memory usage
+pm2 status
+```
+
+### Custom Logs
+
+Logs disimpan di:
+- Console output: via PM2/systemd
+- Error logs: via Winston logger (jika dikonfigurasi)
+
+```bash
+# View logs
+pm2 logs bot-vpn
+
+# Clear logs
+pm2 flush
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+
+1. Fork repository
+2. Create feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open Pull Request
+
+---
+
+## 📝 License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+---
+
+## 👨‍💻 Author
+
+**alrescha79-cmd**
+
+- GitHub: [@alrescha79-cmd](https://github.com/alrescha79-cmd)
+- Repository: [bot-vpn](https://github.com/alrescha79-cmd/bot-vpn)
+
+---
+
+## 🙏 Acknowledgments
+
+- [Telegraf](https://telegraf.js.org/) - Modern Telegram Bot Framework
+- [SQLite](https://www.sqlite.org/) - Lightweight database
+- [SSH2](https://github.com/mscdex/ssh2) - SSH2 client for Node.js
+- [Express](https://expressjs.com/) - Web framework
+- [TypeScript](https://www.typescriptlang.org/) - Typed JavaScript
+
+---
+
+## 📞 Support
+
+Jika ada pertanyaan atau issue:
+
+1. **Check dokumentasi** - [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)
+2. **Troubleshooting** - [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+3. **Open issue** - [GitHub Issues](https://github.com/alrescha79-cmd/bot-vpn/issues)
+
+---
+
+## 🗺️ Roadmap
+
+- [x] Web-based configuration
+- [x] Multi-protocol support (SSH, VMess, VLess, Trojan, Shadowsocks)
+- [x] QRIS payment integration
+- [x] Role-based access control
+- [x] Auto-start support (PM2 & systemd)
+- [ ] Wireguard protocol support
+- [ ] Multi-language support
+- [ ] Admin dashboard (web UI)
+- [ ] API documentation (Swagger)
+- [ ] Docker deployment support
+
+---
+
+<div align="center">
+
+**⭐ Star this repo if you find it useful! ⭐**
+
+Made with ❤️ by alrescha79-cmd
+
+</div>

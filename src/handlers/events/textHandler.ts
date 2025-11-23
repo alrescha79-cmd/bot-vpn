@@ -16,7 +16,7 @@ import type { BotContext, DatabaseUser, DatabaseServer } from "../../types";
  * - Admin operations (broadcast, add saldo)
  */
 
-const { dbGetAsync, dbRunAsync } = require('../../database/connection');
+const { dbGetAsync, dbRunAsync, dbAllAsync } = require('../../database/connection');
 const { escapeMarkdown, escapeMarkdownV2 } = require('../../utils/markdown');
 const logger = require('../../utils/logger');
 
@@ -318,14 +318,9 @@ function registerTextHandler(bot) {
         }
 
         // Get current server data
-        const server = await new Promise<any>((resolve) => {
-          global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
-            if (err || !server) {
-              logger.error('❌ Error getting server:', err);
-              return resolve(null);
-            }
-            resolve(server);
-          });
+        const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]).catch(err => {
+          logger.error('❌ Error getting server:', err);
+          return null;
         });
 
         if (!server) {
@@ -333,14 +328,9 @@ function registerTextHandler(bot) {
         }
 
         // Update server nama
-        await new Promise<void>((resolve, reject) => {
-          global.db.run('UPDATE Server SET nama_server = ? WHERE id = ?', [newNama, serverId], function (err) {
-            if (err) {
-              logger.error('❌ Error updating server nama:', err);
-              return reject(err);
-            }
-            resolve();
-          });
+        await dbRunAsync('UPDATE Server SET nama_server = ? WHERE id = ?', [newNama, serverId]).catch(err => {
+          logger.error('❌ Error updating server nama:', err);
+          throw err;
         });
 
         delete global.userState[ctx.chat.id];
@@ -364,14 +354,9 @@ function registerTextHandler(bot) {
         }
 
         // Get current server data
-        const server = await new Promise<any>((resolve) => {
-          global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
-            if (err || !server) {
-              logger.error('❌ Error getting server:', err);
-              return resolve(null);
-            }
-            resolve(server);
-          });
+        const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]).catch(err => {
+          logger.error('❌ Error getting server:', err);
+          return null;
         });
 
         if (!server) {
@@ -379,14 +364,9 @@ function registerTextHandler(bot) {
         }
 
         // Update server auth
-        await new Promise<void>((resolve, reject) => {
-          global.db.run('UPDATE Server SET auth = ? WHERE id = ?', [newAuth, serverId], function (err) {
-            if (err) {
-              logger.error('❌ Error updating server auth:', err);
-              return reject(err);
-            }
-            resolve();
-          });
+        await dbRunAsync('UPDATE Server SET auth = ? WHERE id = ?', [newAuth, serverId]).catch(err => {
+          logger.error('❌ Error updating server auth:', err);
+          throw err;
         });
 
         delete global.userState[ctx.chat.id];
@@ -411,14 +391,9 @@ function registerTextHandler(bot) {
         }
 
         // Get current server data
-        const server = await new Promise<any>((resolve) => {
-          global.db.get('SELECT * FROM Server WHERE id = ?', [serverId], (err, server) => {
-            if (err || !server) {
-              logger.error('❌ Error getting server:', err);
-              return resolve(null);
-            }
-            resolve(server);
-          });
+        const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]).catch(err => {
+          logger.error('❌ Error getting server:', err);
+          return null;
         });
 
         if (!server) {
@@ -426,14 +401,9 @@ function registerTextHandler(bot) {
         }
 
         // Update server domain
-        await new Promise<void>((resolve, reject) => {
-          global.db.run('UPDATE Server SET domain = ? WHERE id = ?', [newDomain, serverId], function (err) {
-            if (err) {
-              logger.error('❌ Error updating server domain:', err);
-              return reject(err);
-            }
-            resolve();
-          });
+        await dbRunAsync('UPDATE Server SET domain = ? WHERE id = ?', [newDomain, serverId]).catch(err => {
+          logger.error('❌ Error updating server domain:', err);
+          throw err;
         });
 
         delete global.userState[ctx.chat.id];
@@ -459,26 +429,20 @@ function registerTextHandler(bot) {
           });
         }
 
-        await new Promise<void>((resolve, reject) => {
-          global.db.run(
-            `UPDATE users SET reseller_level = ? WHERE user_id = ? AND role = 'reseller'`,
-            [level, targetId],
-            function (err) {
-              if (err) {
-                logger.error('❌ DB error saat ubah level:', err.message);
-                return reject(err);
-              }
+        const result = await dbRunAsync(
+          `UPDATE users SET reseller_level = ? WHERE user_id = ? AND role = 'reseller'`,
+          [level, targetId]
+        ).catch(err => {
+          logger.error('❌ DB error saat ubah level:', err.message);
+          return null;
+        });
 
-              if (this.changes === 0) {
-                return ctx.reply('⚠️ *User tidak ditemukan atau bukan reseller.*', { parse_mode: 'Markdown' });
-              }
+        if (!result || result.changes === 0) {
+          return ctx.reply('⚠️ *User tidak ditemukan atau bukan reseller.*', { parse_mode: 'Markdown' });
+        }
 
-              ctx.reply(`✅ *User ${targetId} diubah menjadi reseller ${level.toUpperCase()}.*`, {
-                parse_mode: 'Markdown'
-              });
-              resolve();
-            }
-          );
+        await ctx.reply(`✅ *User ${targetId} diubah menjadi reseller ${level.toUpperCase()}.*`, {
+          parse_mode: 'Markdown'
         });
 
         delete global.userState[ctx.chat.id];
@@ -494,28 +458,30 @@ function registerTextHandler(bot) {
         const broadcastMessage = text;
         delete global.userState[chatId];
 
-        global.db.all('SELECT user_id FROM users', [], async (err, rows) => {
-          if (err) {
-            logger.error('❌ Gagal ambil daftar user:', err.message);
-            return ctx.reply('❌ Gagal mengambil data user.');
+        const rows = await dbAllAsync('SELECT user_id FROM users', []).catch(err => {
+          logger.error('❌ Gagal ambil daftar user:', err.message);
+          return null;
+        });
+
+        if (!rows) {
+          return ctx.reply('❌ Gagal mengambil data user.');
+        }
+
+        let sukses = 0;
+        let gagal = 0;
+
+        for (const row of rows) {
+          try {
+            await bot.telegram.sendMessage(row.user_id, broadcastMessage);
+            sukses++;
+          } catch (e: any) {
+            gagal++;
+            logger.warn(`❌ Gagal kirim ke ${row.user_id}: ${e.message}`);
           }
+        }
 
-          let sukses = 0;
-          let gagal = 0;
-
-          for (const row of rows) {
-            try {
-              await bot.telegram.sendMessage(row.user_id, broadcastMessage);
-              sukses++;
-            } catch (e) {
-              gagal++;
-              logger.warn(`❌ Gagal kirim ke ${row.user_id}: ${e.message}`);
-            }
-          }
-
-          ctx.reply(`📣 *Broadcast selesai:*\n✅ Berhasil: ${sukses}\n❌ Gagal: ${gagal}`, {
-            parse_mode: 'Markdown'
-          });
+        await ctx.reply(`📣 *Broadcast selesai:*\n✅ Berhasil: ${sukses}\n❌ Gagal: ${gagal}`, {
+          parse_mode: 'Markdown'
         });
 
         return;
@@ -585,18 +551,16 @@ function registerTextHandler(bot) {
           const isp = 'Tidak diketahui';
           const lokasi = 'Tidak diketahui';
 
-          await new Promise<void>((resolve, reject) => {
-            global.db.run(`
-              INSERT INTO Server (domain, auth, nama_server, quota, iplimit, batas_create_akun, harga, total_create_akun, isp, lokasi)
-              VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-            `, [domain, auth, nama_server, quota, iplimit, batas_create_akun, harga, isp, lokasi], function (err) {
-              if (err) {
-                logger.error('❌ Error saat tambah server:', err.message);
-                return reject(err);
-              }
-              resolve();
-            });
-          });
+          logger.info(`📝 Attempting to add server: ${nama_server} (${domain})`);
+          logger.info(`📊 Server details - Quota: ${quota}GB, IP Limit: ${iplimit}, Price: ${harga}`);
+
+          // Use dbRunAsync instead of global.db.run
+          const result = await dbRunAsync(`
+            INSERT INTO Server (domain, auth, nama_server, quota, iplimit, batas_create_akun, harga, total_create_akun, isp, lokasi)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+          `, [domain, auth, nama_server, quota, iplimit, batas_create_akun, harga, isp, lokasi]);
+
+          logger.info(`✅ Server added successfully with ID: ${result.lastID}`);
 
           await ctx.reply(
             `✅ *Server berhasil ditambahkan!*\n\n` +
@@ -609,9 +573,25 @@ function registerTextHandler(bot) {
             `🛒 Batas Create Akun: ${batas_create_akun}\n`,
             { parse_mode: 'Markdown' }
           );
-        } catch (err) {
-          logger.error('❌ Gagal tambah server:', err.message);
-          await ctx.reply('❌ *Terjadi kesalahan saat menambahkan server.*', { parse_mode: 'Markdown' });
+        } catch (err: any) {
+          logger.error('❌ Gagal tambah server:', {
+            message: err.message,
+            code: err.code,
+            errno: err.errno,
+            stack: err.stack
+          });
+          
+          let errorMsg = '❌ *Terjadi kesalahan saat menambahkan server.*\n\n';
+          
+          if (err.message.includes('UNIQUE constraint failed')) {
+            errorMsg += '⚠️ Domain atau nama server sudah ada.';
+          } else if (err.message.includes('no such table')) {
+            errorMsg += '⚠️ Tabel Server belum ada. Silakan restart bot.';
+          } else {
+            errorMsg += `Detail: ${err.message}`;
+          }
+          
+          await ctx.reply(errorMsg, { parse_mode: 'Markdown' });
         }
 
         delete global.userState[ctx.chat.id];

@@ -4,7 +4,8 @@ const { Client } = require('ssh2');
 const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 const path = require('path');
-const db = new sqlite3.Database('./botvpn.db');
+const { DB_PATH } = require('../../../config/constants');
+const db = new sqlite3.Database(DB_PATH);
 
 async function createvmess(username, exp, quota, limitip, serverId, harga = 0, hari = exp) {
   console.log(`⚙️ Creating VMESS for ${username} | Exp: ${exp} | Quota: ${quota} GB | IP Limit: ${limitip}`);

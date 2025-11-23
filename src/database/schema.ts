@@ -121,8 +121,16 @@ async function initializeSchema() {
       quota INTEGER,
       iplimit INTEGER,
       batas_create_akun INTEGER,
-      total_create_akun INTEGER DEFAULT 0
+      total_create_akun INTEGER DEFAULT 0,
+      isp TEXT DEFAULT 'Tidak diketahui',
+      lokasi TEXT DEFAULT 'Tidak diketahui',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`);
+
+    // Add missing columns to Server table (migration)
+    await addColumnSafely('Server', 'isp', "TEXT DEFAULT 'Tidak diketahui'");
+    await addColumnSafely('Server', 'lokasi', "TEXT DEFAULT 'Tidak diketahui'");
+    await addColumnSafely('Server', 'created_at', 'TEXT DEFAULT CURRENT_TIMESTAMP');
 
     // Transactions table
     await dbRunAsync(`CREATE TABLE IF NOT EXISTS transactions (
