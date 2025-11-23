@@ -3,9 +3,10 @@ import type { BotContext, DatabaseUser, DatabaseServer } from "../types";
 /**
  * Database Schema Initialization
  * Creates all necessary tables for the application
+ * Production-ready with proper error handling and logging
  */
 
-const { dbRunAsync } = require('./connection');
+const { dbRunAsync, isNewDatabase } = require('./connection');
 const logger = require('../utils/logger');
 
 /**
@@ -13,6 +14,12 @@ const logger = require('../utils/logger');
  * @returns {Promise<void>}
  */
 async function initializeSchema() {
+  const isNew = isNewDatabase();
+  
+  if (isNew) {
+    logger.info('🆕 Initializing new database schema...');
+  }
+
   try {
     // Users table
     await dbRunAsync(`CREATE TABLE IF NOT EXISTS users (
@@ -28,10 +35,21 @@ async function initializeSchema() {
       last_trial_date TEXT
     )`);
 
-    // Add columns if not exists (for migration)
-    await dbRunAsync(`ALTER TABLE users ADD COLUMN username TEXT`).catch(() => {});
-    await dbRunAsync(`ALTER TABLE users ADD COLUMN trial_count_today INTEGER DEFAULT 0`).catch(() => {});
-    await dbRunAsync(`ALTER TABLE users ADD COLUMN last_trial_date TEXT`).catch(() => {});
+    // Add columns if not exists (for migration from older versions)
+    const addColumnSafely = async (table: string, column: string, definition: string) => {
+      try {
+        await dbRunAsync(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+      } catch (err: any) {
+        // Ignore "duplicate column" errors
+        if (!err.message.includes('duplicate column')) {
+          throw err;
+        }
+      }
+    };
+
+    await addColumnSafely('users', 'username', 'TEXT');
+    await addColumnSafely('users', 'trial_count_today', 'INTEGER DEFAULT 0');
+    await addColumnSafely('users', 'last_trial_date', 'TEXT');
 
     // Reseller Sales table
     await dbRunAsync(`CREATE TABLE IF NOT EXISTS reseller_sales (
@@ -103,8 +121,16 @@ async function initializeSchema() {
       quota INTEGER,
       iplimit INTEGER,
       batas_create_akun INTEGER,
-      total_create_akun INTEGER DEFAULT 0
+      total_create_akun INTEGER DEFAULT 0,
+      isp TEXT DEFAULT 'Tidak diketahui',
+      lokasi TEXT DEFAULT 'Tidak diketahui',
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`);
+
+    // Add missing columns to Server table (migration)
+    await addColumnSafely('Server', 'isp', "TEXT DEFAULT 'Tidak diketahui'");
+    await addColumnSafely('Server', 'lokasi', "TEXT DEFAULT 'Tidak diketahui'");
+    await addColumnSafely('Server', 'created_at', 'TEXT DEFAULT CURRENT_TIMESTAMP');
 
     // Transactions table
     await dbRunAsync(`CREATE TABLE IF NOT EXISTS transactions (
@@ -116,8 +142,13 @@ async function initializeSchema() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`);
 
-    logger.info('✅ Database schema initialized successfully');
-  } catch (error) {
+    if (isNew) {
+      logger.info('✅ New database schema initialized successfully');
+      logger.info('ℹ️  Database is ready with empty tables (no seed data)');
+    } else {
+      logger.info('✅ Database schema verified/updated successfully');
+    }
+  } catch (error: any) {
     logger.error('❌ Failed to initialize database schema:', error.message);
     throw error;
   }

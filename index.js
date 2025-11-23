@@ -11,7 +11,7 @@
  * - Middleware Layer: Auth, validation, error handling
  * 
  * @module index-refactored
- * @version 2.0.0
+ * @version 3.0.0
  */
 
 // Core modules
@@ -22,6 +22,30 @@ const cron = require('node-cron');
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const { Telegraf, session } = require('telegraf');
+const os = require('os');
+
+// Helper function to get local IP address
+function getLocalIPAddress() {
+  const networkInterfaces = os.networkInterfaces();
+  let localIP = 'localhost';
+  
+  try {
+    Object.keys(networkInterfaces).forEach(interfaceName => {
+      const addresses = networkInterfaces[interfaceName];
+      if (addresses) {
+        addresses.forEach(address => {
+          if (address.family === 'IPv4' && !address.internal) {
+            localIP = address.address;
+          }
+        });
+      }
+    });
+  } catch (error) {
+    // Fallback to localhost if error
+  }
+  
+  return localIP;
+}
 
 // Auto-detect development or production mode
 const isDev = process.env.NODE_ENV === 'development';
@@ -51,6 +75,10 @@ const { dbRunAsync, dbGetAsync, dbAllAsync } = require(`${srcPath}/database/conn
 // Load all handlers
 const { loadAllHandlers } = require(`${srcPath}/app/loader`);
 
+// Setup mode support
+const { isSetupMode, setupModeMiddleware, configureSetupRoutes, logSetupStatus } = require(`${srcPath}/config/setup-mode`);
+const configRoutes = require(`${srcPath}/api/config.routes`);
+
 // Constants
 const {
   TELEGRAM_UPLOAD_DIR,
@@ -64,7 +92,8 @@ const {
   USER_ID,
   GROUP_ID,
   PORT,
-  adminIds
+  adminIds,
+  isSetupMode: configIsSetupMode
 } = config;
 
 // Ensure required directories exist
@@ -75,14 +104,43 @@ const {
   }
 });
 
-// Initialize Telegraf bot
-const bot = new Telegraf(BOT_TOKEN);
-bot.use(session());
-
-// Initialize Express server
+// Initialize Express server FIRST (for setup mode)
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Configure setup routes
+configureSetupRoutes(app);
+
+// Mount config API routes
+app.use('/api', configRoutes);
+
+// Check and log setup status
+logSetupStatus(PORT || 50123);
+
+// If in setup mode, only start Express server
+if (configIsSetupMode || isSetupMode()) {
+  logger.warn('⚠️ Application in SETUP MODE - Bot will not start');
+  logger.info(`🌐 Web server starting on port ${PORT || 50123}...`);
+  
+  app.listen(PORT || 50123, () => {
+    const port = PORT || 50123;
+    const localIP = getLocalIPAddress();
+    
+    logger.info('');
+    logger.info('🌐 Web Server URLs:');
+    logger.info(`   📝 Setup Page (Local):  http://localhost:${port}/setup`);
+    logger.info(`   📝 Setup Page (Network): http://${localIP}:${port}/setup`);
+    logger.info(`   ❤️  Health Check:        http://localhost:${port}/health`);
+    logger.info('');
+  });
+  
+  return; // Exit here, don't start bot
+}
+
+// Initialize Telegraf bot (only if NOT in setup mode)
+const bot = new Telegraf(BOT_TOKEN);
+bot.use(session());
 
 // Initialize SQLite database
 const db = new sqlite3.Database(DB_PATH, (err) => {
@@ -104,28 +162,13 @@ global.depositState = {};
  */
 async function initializeTables() {
   try {
-    // Create reseller_upgrade_log table
-    await dbRunAsync(`
-      CREATE TABLE IF NOT EXISTS reseller_upgrade_log (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        username TEXT,
-        amount INTEGER,
-        level TEXT,
-        created_at TEXT
-      )
-    `);
-    logger.info('✅ Table reseller_upgrade_log ready');
-
-    // Add username column if not exists
-    await dbRunAsync(`ALTER TABLE users ADD COLUMN username TEXT`).catch(err => {
-      if (!err.message.includes('duplicate column name')) {
-        throw err;
-      }
-    });
-    logger.info('✅ Database schema updated');
+    // Import and run full schema initialization
+    const { initializeSchema } = require(`${srcPath}/database/schema`);
+    await initializeSchema();
+    logger.info('✅ Database schema initialized successfully');
   } catch (error) {
-    logger.error('❌ Error initializing tables:', error.message);
+    logger.error('❌ Error initializing database schema:', error.message);
+    throw error;
   }
 }
 
@@ -199,7 +242,15 @@ function setupExpressRoutes() {
 
   // Start Express server
   app.listen(PORT, () => {
+    const localIP = getLocalIPAddress();
+    
     logger.info(`🌐 Express server listening on port ${PORT}`);
+    logger.info('');
+    logger.info('🌐 Web Interface URLs:');
+    logger.info(`   ⚙️  Edit Config (Local):   http://localhost:${PORT}/config/edit`);
+    logger.info(`   ⚙️  Edit Config (Network): http://${localIP}:${PORT}/config/edit`);
+    logger.info(`   ❤️  Health Check:          http://localhost:${PORT}/health`);
+    logger.info('');
   });
 }
 
@@ -272,6 +323,8 @@ async function main() {
     // 6. Start the bot
     await bot.launch();
 
+    const localIP = getLocalIPAddress();
+
     logger.info('✅ Bot started successfully!');
     logger.info(`👤 Admin IDs: ${config.adminIds.join(', ')}`);
     logger.info(`📱 Group ID: ${config.GROUP_ID || 'Not configured'}`);
@@ -279,6 +332,13 @@ async function main() {
     logger.info('');
     logger.info('🎉 All systems operational!');
     logger.info('📌 Bot is running with full modular architecture');
+    logger.info('');
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('🌐 Management URLs:');
+    logger.info(`   ⚙️  Edit Config (Local):   http://localhost:${PORT}/config/edit`);
+    logger.info(`   ⚙️  Edit Config (Network): http://${localIP}:${PORT}/config/edit`);
+    logger.info(`   ❤️  Health Check:          http://localhost:${PORT}/health`);
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   } catch (err) {
     logger.error('❌ Fatal error starting bot:', err);
