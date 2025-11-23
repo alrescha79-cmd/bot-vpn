@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-blue.svg)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Bot Telegram untuk manajemen akun VPN multi-protocol dengan arsitektur production-ready, web-based configuration, dan deployment yang mudah.
+**Bot Telegram** untuk manajemen akun VPN multi-protocol dengan arsitektur production-ready. **Semua fitur & manajemen dilakukan via Telegram Bot** - web interface hanya untuk setup/edit konfigurasi awal.
 
 ---
 
@@ -27,10 +27,16 @@ Bot Telegram untuk manajemen akun VPN multi-protocol dengan arsitektur productio
 - **Deposit System** - Top-up saldo
 - **Transaction History** - Riwayat lengkap
 
-### 🌐 Web-Based Configuration
-- **Setup Mode** - Konfigurasi pertama via web interface
-- **Edit Mode** - Edit konfigurasi tanpa coding
-- **No Hardcoded Values** - Semua configurable
+### 🌐 Web Interface (Config Only)
+- **Setup Mode** - Konfigurasi awal via web browser (satu kali setup)
+- **Edit Mode** - Edit konfigurasi sistem tanpa coding
+- **Bukan untuk user** - Web hanya untuk admin setup, bukan interface user
+
+### 📱 Telegram Bot Interface
+- **All Management via Bot** - Semua fitur diakses via Telegram
+- **User-Friendly Menus** - Keyboard interaktif & inline buttons
+- **Real-time Notifications** - Notifikasi langsung ke Telegram
+- **Multi-User Support** - Handle multiple users simultaneously
 
 ### 🚀 Production Ready
 - **Clean Build** - Dist tanpa config/database
@@ -47,6 +53,52 @@ Bot Telegram untuk manajemen akun VPN multi-protocol dengan arsitektur productio
 - **SQLite3** (auto-installed)
 - **VPS** dengan SSH access (untuk production)
 - **Telegram Bot Token** (dari [@BotFather](https://t.me/BotFather))
+
+> ⚠️ **PENTING**: Ini adalah **Telegram Bot**, bukan aplikasi web!
+> - **Web interface** hanya untuk **setup/edit konfigurasi** (admin only)
+> - **Semua fitur VPN management** dilakukan via **Telegram Bot**
+> - Users berinteraksi dengan bot di Telegram, bukan via web browser
+
+---
+
+## 🏗️ Arsitektur Aplikasi
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  TELEGRAM USERS                         │
+│          (Admin, Reseller, Regular Users)               │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     │ Telegram API
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│                 TELEGRAM BOT                            │
+│  (All VPN Management, Commands, Menus, Notifications)   │
+│     • Create/Renew/Trial Accounts                       │
+│     • Payment Processing (QRIS)                         │
+│     • Server Management                                 │
+│     • User Management                                   │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     │ SSH Connection
+                     │
+┌────────────────────▼────────────────────────────────────┐
+│              VPS SERVERS (VPN)                          │
+│   SSH/VMess/VLess/Trojan/Shadowsocks Servers            │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│           WEB INTERFACE (Admin Only)                    │
+│    http://localhost:50123/setup atau /config/edit       │
+│    • Hanya untuk setup/edit konfigurasi sistem         │
+│    • Bukan untuk end-user / user management            │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Key Points:**
+- 💬 **User Interface = Telegram Bot** (semua fitur ada di bot)
+- 🌐 **Web Interface = Config Only** (admin setup saja, bukan untuk user)
+- 🖥️ **VPS Management = Via SSH** (bot connect ke VPS untuk create/manage akun)
 
 ---
 
@@ -65,7 +117,7 @@ cd bot-vpn
 npm install
 ```
 
-### 3. Setup Konfigurasi (via Web Interface)
+### 3. Setup Konfigurasi (via Web Interface - Satu Kali)
 
 ```bash
 # Pastikan tidak ada .vars.json (agar masuk setup mode)
@@ -76,6 +128,9 @@ npm run dev
 ```
 
 **Buka browser**: `http://localhost:50123/setup`
+
+> ⚠️ **Ini hanya dilakukan SATU KALI saat setup awal!**  
+> Setelah ini, semua manajemen via Telegram Bot.
 
 Isi form dengan:
 - ✅ **Bot Token** - Dari @BotFather
@@ -200,6 +255,9 @@ npm start
 
 ## 🌐 Production Deployment
 
+> 📱 **Remember**: Users akan menggunakan **Telegram Bot**, bukan web!  
+> Web hanya perlu diakses **satu kali** untuk setup konfigurasi.
+
 ### 1. Build Production
 
 ```bash
@@ -208,8 +266,8 @@ npm run build
 
 Hasil build di folder `dist/`:
 - ✅ Compiled JavaScript code
-- ✅ Frontend assets (HTML)
-- ❌ **TIDAK** ada `.vars.json`
+- ✅ Frontend assets (HTML untuk setup config)
+- ❌ **TIDAK** ada `.vars.json` (config)
 - ❌ **TIDAK** ada database files
 
 ### 2. Upload ke VPS
@@ -287,33 +345,52 @@ sudo journalctl -u bot-vpn -f
 
 ---
 
-## 🎮 Penggunaan
+## 🎮 Penggunaan Bot Telegram
 
-### User Commands
+> 💬 **Semua fitur diakses via Telegram Bot** - tidak ada web dashboard untuk user!
+
+### 👤 User Commands (via Telegram)
+
+Buka bot di Telegram dan gunakan command:
+
 - `/start` - Mulai bot & tampilkan menu utama
-- `/menu` - Tampilkan menu utama
-- `/profile` - Lihat profil & saldo
-- `/riwayat` - Riwayat transaksi
+- `/menu` - Tampilkan menu utama dengan inline keyboard
+- `/profile` - Lihat profil, saldo, dan informasi akun
+- `/riwayat` - Lihat riwayat transaksi & pembelian
+- **Create Account** - Buat akun SSH/VMess/VLess/Trojan/Shadowsocks (via menu)
+- **Renew Account** - Perpanjang akun yang sudah ada (via menu)
+- **Trial Account** - Request akun trial gratis (via menu)
+- **Top-up Saldo** - Deposit via QRIS (via menu)
 
-### Admin Commands
-- `/admin` - Menu admin
+### 👨‍💼 Admin Commands (via Telegram)
+
+- `/admin` - Menu admin lengkap
 - `/broadcast` - Broadcast message ke semua user
-- `/stats` - Statistik sistem
+- `/stats` - Statistik sistem (user, transaksi, revenue)
+- **Manage Servers** - Tambah/edit/hapus server VPN (via menu)
+- **Manage Users** - Kelola user & reseller (via menu)
+- **Manage Prices** - Set harga per protocol (via menu)
+- **View Reports** - Laporan lengkap (via menu)
 
-### Reseller Commands
+### 💼 Reseller Commands (via Telegram)
+
 - `/reseller` - Menu reseller
 - `/harga` - Lihat daftar harga
-- `/stok` - Cek stok server
+- `/stok` - Cek stok server available
+- **Create for Customer** - Buatkan akun untuk customer (via menu)
+- **Commission Report** - Lihat komisi & earnings (via menu)
 
 ---
 
-## 🔄 Update Konfigurasi
+## 🔄 Update Konfigurasi Sistem
 
-### Via Web Interface
+> ⚙️ **Web interface hanya untuk admin setup** - bukan untuk end-user!
 
-```
+### Via Web Interface (Admin Only)
+
+```plaintext
 Buka: http://localhost:50123/config/edit
-Edit nilai yang ingin diubah
+Edit nilai konfigurasi sistem (bot token, API key, dll)
 Klik: "Simpan Perubahan"
 Restart bot
 ```
@@ -557,16 +634,49 @@ Jika ada pertanyaan atau issue:
 
 ---
 
+## ❓ FAQ (Frequently Asked Questions)
+
+### Q: Apakah ini aplikasi web atau bot Telegram?
+**A:** Ini adalah **Telegram Bot**. Web interface hanya untuk setup/edit konfigurasi sistem (admin only). Semua fitur manajemen VPN, user interaction, dan transaksi dilakukan via Telegram Bot.
+
+### Q: Apakah user perlu akses web untuk membeli VPN?
+**A:** **TIDAK**. User hanya perlu chat dengan bot di Telegram. Semua fitur (beli, renew, trial, top-up) ada di bot.
+
+### Q: Untuk apa web interface?
+**A:** Web interface hanya untuk:
+- Setup konfigurasi pertama kali (bot token, API key, dll)
+- Edit konfigurasi sistem oleh admin
+- **BUKAN** untuk end-user atau dashboard user
+
+### Q: Bagaimana user menggunakan bot?
+**A:** 
+1. User cari bot di Telegram (sesuai username bot Anda)
+2. Ketik `/start`
+3. Pilih menu yang muncul (inline keyboard)
+4. Semua transaksi & management via chat Telegram
+
+### Q: Apakah perlu database server terpisah?
+**A:** TIDAK. Menggunakan SQLite3 yang auto-included. File database disimpan di `./data/botvpn.db`.
+
+### Q: Apakah bisa handle banyak user sekaligus?
+**A:** YA. Bot bisa handle multiple concurrent users. Tested untuk ratusan user.
+
+### Q: Port 50123 untuk apa?
+**A:** Port untuk web interface (setup config). Hanya admin yang perlu akses. Bisa diubah di config.
+
+---
+
 ## 🗺️ Roadmap
 
-- [x] Web-based configuration
+- [x] Web-based configuration (admin setup only)
 - [x] Multi-protocol support (SSH, VMess, VLess, Trojan, Shadowsocks)
 - [x] QRIS payment integration
 - [x] Role-based access control
 - [x] Auto-start support (PM2 & systemd)
+- [x] Telegram bot interface (full featured)
 - [ ] Wireguard protocol support
 - [ ] Multi-language support
-- [ ] Admin dashboard (web UI)
+- [ ] Admin web dashboard (monitoring & analytics)
 - [ ] API documentation (Swagger)
 - [ ] Docker deployment support
 
