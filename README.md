@@ -491,6 +491,7 @@ Kontribusi sangat diterima! Silakan ikuti langkah berikut:
 
 - **Laporan Bug**: Buka issue dengan label `bug` dan berikan detail lengkap
 - **Permintaan Fitur**: Buka issue dengan label `enhancement` dan jelaskan kasus penggunaan
+- **Troubleshooting**: Lihat [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) untuk solusi masalah umum
 
 ## 👨‍💻 Penulis & Kredit
 

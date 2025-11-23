@@ -1,0 +1,21 @@
+[Unit]
+Description=Bot VPN Telegram Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/bot-vpn
+Environment="NODE_ENV=production"
+Environment="PORT=50123"
+Environment="DB_DIR=/var/www/bot-vpn/data"
+Environment="DB_PATH=/var/www/bot-vpn/data/botvpn.db"
+ExecStart=/usr/bin/node /var/www/bot-vpn/index.js
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/bot-vpn/output.log
+StandardError=append:/var/log/bot-vpn/error.log
+
+[Install]
+WantedBy=multi-user.target
