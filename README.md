@@ -226,13 +226,14 @@ bot-vpn/
 
 | Dokumen | Deskripsi |
 |---------|-----------|
-| **[QUICKSTART.md](QUICKSTART.md)** | Panduan setup cepat & deployment |
-| **[DEPLOYMENT.md](DEPLOYMENT.md)** | Deployment detail untuk VPS |
-| **[CHANGELOG_V3.md](CHANGELOG_V3.md)** | Changelog & implementation summary |
-| **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** | Troubleshooting common issues |
-| **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** | Upgrade dari v2.0 ke v3.0 |
-| **[DB_PATH_CONSOLIDATION.md](DB_PATH_CONSOLIDATION.md)** | Database path changes |
-| **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** | Index semua dokumentasi |
+| **[QUICKSTART.md](docs/QUICKSTART.md)** | Panduan setup cepat & deployment |
+| **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Deployment detail untuk VPS |
+| **[CHANGELOG_V3.md](docs/CHANGELOG_V3.md)** | Changelog & implementation summary |
+| **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** | Troubleshooting common issues |
+| **[MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)** | Upgrade dari v2.0 ke v3.0 |
+| **[TESTING.md](docs/TESTING.md)** | Testing guide untuk account persistence |
+| **[DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)** | Index semua dokumentasi |
+| **[UPDATE_V3.1_SUMMARY.md](docs/UPDATE_V3.1_SUMMARY.md)** | Summary update v3.1 |
 
 ---
 
@@ -354,7 +355,7 @@ sudo systemctl status bot-vpn
 sudo journalctl -u bot-vpn -f
 ```
 
-**Detail lengkap**: Lihat [DEPLOYMENT.md](DEPLOYMENT.md)
+**Detail lengkap**: Lihat [DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 ---
 
@@ -641,8 +642,8 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 Jika ada pertanyaan atau issue:
 
-1. **Check dokumentasi** - [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)
-2. **Troubleshooting** - [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+1. **Check dokumentasi** - [DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)
+2. **Troubleshooting** - [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 3. **Open issue** - [GitHub Issues](https://github.com/alrescha79-cmd/bot-vpn/issues)
 
 ---
