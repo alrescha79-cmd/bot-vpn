@@ -5,6 +5,7 @@
 
 import { Router, Request, Response } from 'express';
 const { configService } = require('../services/config.service');
+const { handleMidtransNotification } = require('./midtrans.webhook');
 
 const router = Router();
 
@@ -53,6 +54,16 @@ router.post('/config', (req: Request, res: Response) => {
       message: error.message
     });
   }
+});
+
+/**
+ * POST /api/midtrans/notification
+ * Handle payment notification from Midtrans webhook
+ */
+router.post('/midtrans/notification', (req: Request, res: Response) => {
+  // Get bot instance from app
+  const bot = (req as any).app.get('bot');
+  handleMidtransNotification(req, res, bot);
 });
 
 // Export using CommonJS for compatibility with index.js

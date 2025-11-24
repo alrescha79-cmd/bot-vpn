@@ -9,6 +9,7 @@ module.exports = {
     max_memory_restart: '500M',
     env: {
       NODE_ENV: 'production',
+      MIDTRANS_ENV: 'sandbox',
       PORT: 50123,
       DB_DIR: './data',
       DB_PATH: './data/botvpn.db'

@@ -358,6 +358,105 @@ Masukkan jumlah top up yang diinginkan:
 }
 
 /**
+ * Handle topup amount selection (preset amounts)
+ */
+function registerTopupAmountActions(bot) {
+  const { initializeDepositState } = require('../../services/depositService');
+  const { keyboard_nomor } = require('../../utils/keyboard');
+
+  // Handle preset amounts
+  const amounts = {
+    'topup_10000': 10000,
+    'topup_20000': 20000,
+    'topup_50000': 50000,
+    'topup_100000': 100000,
+    'topup_200000': 200000,
+    'topup_500000': 500000
+  };
+
+  Object.entries(amounts).forEach(([action, amount]) => {
+    bot.action(action, async (ctx) => {
+      try {
+        const userId = String(ctx.from.id);
+        
+        // Initialize deposit state with the selected amount
+        initializeDepositState(userId);
+        global.depositState[userId].amount = String(amount);
+        global.depositState[userId].action = 'confirm_amount';
+
+        const message = `
+💰 *Konfirmasi Top Up*
+
+Jumlah: *Rp ${amount.toLocaleString('id-ID')}*
+
+Silakan konfirmasi jumlah top up Anda.
+        `.trim();
+
+        await ctx.editMessageText(message, {
+          parse_mode: 'Markdown',
+          ...Markup.inlineKeyboard([
+            [
+              Markup.button.callback('✅ Konfirmasi', 'topup_confirm'),
+              Markup.button.callback('❌ Batal', 'topup_saldo')
+            ]
+          ])
+        });
+
+        logger.info(`User ${userId} selected topup amount: ${amount}`);
+      } catch (error) {
+        logger.error('Error handling topup amount selection:', error);
+        await ctx.answerCbQuery('❌ Terjadi kesalahan. Silakan coba lagi.', { show_alert: true });
+      }
+    });
+  });
+
+  // Handle manual input
+  bot.action('topup_manual', async (ctx) => {
+    try {
+      const userId = String(ctx.from.id);
+      
+      // Initialize deposit state for manual input
+      initializeDepositState(userId);
+
+      const message = `💰 *Silakan masukkan jumlah nominal saldo yang Anda ingin tambahkan ke akun Anda:*\n\nJumlah saat ini: *Rp 0*`;
+
+      await ctx.editMessageText(message, {
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: keyboard_nomor() }
+      });
+
+      logger.info(`User ${userId} chose manual topup input`);
+    } catch (error) {
+      logger.error('Error handling manual topup:', error);
+      await ctx.answerCbQuery('❌ Terjadi kesalahan. Silakan coba lagi.', { show_alert: true });
+    }
+  });
+
+  // Handle topup confirmation
+  bot.action('topup_confirm', async (ctx) => {
+    try {
+      const userId = String(ctx.from.id);
+      const depositState = global.depositState?.[userId];
+
+      if (!depositState || !depositState.amount) {
+        await ctx.answerCbQuery('❌ Data tidak valid. Silakan ulangi.', { show_alert: true });
+        return;
+      }
+
+      const amount = depositState.amount;
+      const { processDeposit } = require('../../services/depositService');
+
+      await processDeposit(ctx, amount);
+      
+      logger.info(`User ${userId} confirmed topup: ${amount}`);
+    } catch (error) {
+      logger.error('Error confirming topup:', error);
+      await ctx.answerCbQuery('❌ Terjadi kesalahan. Silakan coba lagi.', { show_alert: true });
+    }
+  });
+}
+
+/**
  * Handle pagination navigation
  * Format: navigate_{direction}_{context}_{offset}
  */
@@ -401,19 +500,45 @@ function registerBackActions(bot) {
  * Handle cancel actions
  */
 function registerCancelActions(bot) {
-  bot.action(/cancel_(.+)/, async (ctx) => {
+  // Exclude cancel_payment_* because it's handled in callbackRouter
+  bot.action(/cancel_(?!payment_)(.+)/, async (ctx) => {
     const [, operation] = ctx.match;
     
     await ctx.answerCbQuery('❌ Dibatalkan');
-    await ctx.editMessageText(
-      '❌ Operasi dibatalkan.',
-      {
-        parse_mode: 'Markdown',
-        ...Markup.inlineKeyboard([
-          [Markup.button.callback('🔙 Menu Utama', 'send_main_menu')]
-        ])
+    
+    try {
+      // Try editMessageText first (for text messages)
+      await ctx.editMessageText(
+        '❌ Operasi dibatalkan.',
+        {
+          parse_mode: 'Markdown',
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback('🔙 Menu Utama', 'send_main_menu')]
+          ])
+        }
+      );
+    } catch (error: any) {
+      // Fallback to editMessageCaption (for photo messages)
+      if (error.description?.includes('no text in the message')) {
+        try {
+          await ctx.editMessageCaption(
+            '❌ Operasi dibatalkan.',
+            {
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: '🔙 Menu Utama', callback_data: 'send_main_menu' }]
+                ]
+              }
+            }
+          );
+        } catch (captionError) {
+          logger.error('Error editing message caption:', captionError);
+        }
+      } else {
+        logger.error('Error editing message:', error);
       }
-    );
+    }
 
     logger.info(`Operation cancelled: ${operation} by user ${ctx.from.id}`);
   });
@@ -451,6 +576,7 @@ function registerNavigationActions(bot) {
   registerAkunkuConfirmDeleteAction(bot);
   registerCekSaldoAction(bot);
   registerTopupSaldoAction(bot);
+  registerTopupAmountActions(bot);
   registerPaginationActions(bot);
   registerBackActions(bot);
   registerCancelActions(bot);
@@ -469,6 +595,7 @@ module.exports = {
   registerAkunkuConfirmDeleteAction,
   registerCekSaldoAction,
   registerTopupSaldoAction,
+  registerTopupAmountActions,
   registerPaginationActions,
   registerBackActions,
   registerCancelActions,

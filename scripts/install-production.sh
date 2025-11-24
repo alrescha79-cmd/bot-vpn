@@ -167,7 +167,7 @@ else
 fi
 
 # Check/install required tools
-for tool in curl wget unzip tar; do
+for tool in curl wget unzip tar sqlite3; do
     if ! command_exists $tool; then
         log_info "Installing $tool..."
         if command_exists sudo; then
@@ -618,26 +618,90 @@ echo ""
 if [ ! -f "${INSTALL_PATH}/.vars.json" ]; then
     echo -e "${YELLOW}⚠️  Configuration Required${NC}"
     echo ""
-    echo "This is a fresh installation. You have two options:"
-    echo ""
-    echo "Option 1: Web Interface Setup"
-    echo "  1. Open your browser and navigate to:"
     
-    if [ "$SETUP_PUBLIC_ACCESS" = true ]; then
-        SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
-        echo -e "     ${BLUE}http://${SERVER_IP}/setup${NC}"
+    # Interactive configuration prompt
+    read -p "Apakah anda ingin konfigurasi sekarang? (y/n): " -n 1 -r CONFIGURE_NOW
+    echo ""
+    
+    if [[ $CONFIGURE_NOW =~ ^[Yy]$ ]]; then
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo -e "${GREEN}📝 Manual Configuration Setup${NC}"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        
+        # Prompt for each configuration value
+        read -p "Bot Token (dari @BotFather): " BOT_TOKEN
+        read -p "User ID Admin (Telegram user ID Anda): " USER_ID
+        read -p "Group ID (untuk notifikasi, kosongkan jika tidak ada): " GROUP_ID
+        read -p "Nama Store: " NAMA_STORE
+        read -p "Port (default: 50123): " PORT
+        PORT=${PORT:-50123}
+        read -p "Data QRIS: " DATA_QRIS
+        read -p "Merchant ID: " MERCHANT_ID
+        read -p "API Key: " API_KEY
+        read -p "Admin Username: " ADMIN_USERNAME
+        
+        # Create .vars.json file
+        log_info "Creating configuration file..."
+        cat > "${INSTALL_PATH}/.vars.json" <<EOF
+{
+  "BOT_TOKEN": "${BOT_TOKEN}",
+  "USER_ID": "${USER_ID}",
+  "GROUP_ID": "${GROUP_ID}",
+  "NAMA_STORE": "${NAMA_STORE}",
+  "PORT": "${PORT}",
+  "DATA_QRIS": "${DATA_QRIS}",
+  "MERCHANT_ID": "${MERCHANT_ID}",
+  "API_KEY": "${API_KEY}",
+  "ADMIN_USERNAME": "${ADMIN_USERNAME}"
+}
+EOF
+        
+        chmod 600 "${INSTALL_PATH}/.vars.json"
+        log_success "Configuration file created successfully!"
+        echo ""
+        
+        # Set admin in database
+        log_info "Setting user as admin in database..."
+        if [ -f "${INSTALL_PATH}/data/botvpn.db" ]; then
+            sqlite3 "${INSTALL_PATH}/data/botvpn.db" "UPDATE users SET role = 'admin' WHERE user_id = ${USER_ID};" 2>/dev/null || log_warning "Database update will be applied on first bot run"
+            log_success "Admin role set for user ID: ${USER_ID}"
+        else
+            log_info "Database will be initialized on first bot run"
+        fi
+        echo ""
+        
+        # Restart PM2 to apply configuration
+        log_info "Restarting application to apply configuration..."
+        pm2 restart bot-vpn
+        log_success "Application restarted successfully!"
+        echo ""
+        
+        echo -e "${GREEN}✅ Configuration completed!${NC}"
     else
-        echo -e "     ${BLUE}http://YOUR_SERVER_IP:50123/setup${NC}"
+        echo ""
+        echo "This is a fresh installation. You have two options:"
+        echo ""
+        echo "Option 1: Web Interface Setup"
+        echo "  1. Open your browser and navigate to:"
+        
+        if [ "$SETUP_PUBLIC_ACCESS" = true ]; then
+            SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+            echo -e "     ${BLUE}http://${SERVER_IP}/setup${NC}"
+        else
+            echo -e "     ${BLUE}http://YOUR_SERVER_IP:50123/setup${NC}"
+        fi
+        
+        echo "  2. Fill in the configuration form"
+        echo "  3. After saving, restart the application:"
+        echo -e "     ${GREEN}pm2 restart bot-vpn${NC}"
+        echo ""
+        echo "Option 2: Manual Configuration"
+        echo "  Re-run this script with --manual-config flag:"
+        echo -e "  ${GREEN}$0 --manual-config${NC}"
+        echo ""
     fi
-    
-    echo "  2. Fill in the configuration form"
-    echo "  3. After saving, restart the application:"
-    echo -e "     ${GREEN}pm2 restart bot-vpn${NC}"
-    echo ""
-    echo "Option 2: Manual Configuration"
-    echo "  Re-run this script with --manual-config flag:"
-    echo -e "  ${GREEN}$0 --manual-config${NC}"
-    echo ""
 else
     echo -e "${GREEN}✅ Configuration found${NC}"
     echo ""

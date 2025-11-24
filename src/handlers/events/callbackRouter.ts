@@ -49,6 +49,17 @@ function registerCallbackRouter(bot) {
       return await handleDepositState(ctx, userId, data);
     }
 
+    // === 1.5️⃣ PAYMENT CHECKING & CANCELLATION ===
+    if (data.startsWith('check_payment_')) {
+      const invoiceId = data.replace('check_payment_', '');
+      return await handleCheckPaymentStatus(ctx, invoiceId, userId);
+    }
+
+    if (data.startsWith('cancel_payment_')) {
+      const invoiceId = data.replace('cancel_payment_', '');
+      return await handleCancelPayment(ctx, invoiceId, userId);
+    }
+
     // === 2️⃣ USER STATE HANDLING (EDIT OPERATIONS) ===
     if (userStateData) {
       switch (userStateData.step) {
@@ -320,10 +331,96 @@ async function handleDeleteUploadedFile(ctx, fileName, userId) {
   try {
     fs.unlinkSync(filePath);
     await ctx.editMessageText(`🗑 *File upload dihapus:* \`${fileName}\``, { parse_mode: 'Markdown' });
-    logger.info(`[DELETE_UPLOAD] User ${userId} deleted uploaded file ${fileName}`);
+    logger.info(`[DELETE_UPLOAD] User ${userId} deleted ${fileName}`);
   } catch (err) {
-    logger.error('❌ Failed to delete uploaded file:', err);
-    ctx.reply('❌ *Gagal menghapus file restore upload.*', { parse_mode: 'Markdown' });
+    logger.error('❌ Delete uploaded file failed:', err);
+    ctx.reply('❌ *Gagal hapus file upload.*', { parse_mode: 'Markdown' });
+  }
+}
+
+/**
+ * Handle check payment status
+ */
+async function handleCheckPaymentStatus(ctx, invoiceId, userId) {
+  const { getPendingDeposit } = require('../../repositories/depositRepository');
+  const { checkPaymentStatus } = require('../../services/qris.service');
+  
+  try {
+    await ctx.answerCbQuery('🔄 Mengecek status pembayaran...');
+    
+    const deposit = await getPendingDeposit(invoiceId);
+    
+    if (!deposit) {
+      return await ctx.answerCbQuery('❌ Deposit tidak ditemukan', { show_alert: true });
+    }
+    
+    if (deposit.status !== 'pending') {
+      return await ctx.answerCbQuery(`ℹ️ Status: ${deposit.status}`, { show_alert: true });
+    }
+    
+    // Check payment status from API
+    const statusResult = await checkPaymentStatus(invoiceId);
+    
+    if (statusResult.success && statusResult.status === 'paid') {
+      const { handleSuccessfulPayment } = require('../../services/depositService');
+      await handleSuccessfulPayment(ctx, invoiceId, userId, deposit.amount, deposit.qr_message_id);
+      await ctx.answerCbQuery('✅ Pembayaran berhasil!', { show_alert: true });
+    } else {
+      await ctx.answerCbQuery(`⏳ Status: ${statusResult.status || 'pending'}`, { show_alert: true });
+    }
+  } catch (error) {
+    logger.error('Error checking payment status:', error);
+    await ctx.answerCbQuery('❌ Gagal mengecek status', { show_alert: true });
+  }
+}
+
+/**
+ * Handle cancel payment
+ */
+async function handleCancelPayment(ctx, invoiceId, userId) {
+  const { updateDepositStatus, getPendingDeposit } = require('../../repositories/depositRepository');
+  
+  try {
+    const deposit = await getPendingDeposit(invoiceId);
+    
+    if (!deposit) {
+      return await ctx.answerCbQuery('❌ Deposit tidak ditemukan', { show_alert: true });
+    }
+    
+    if (deposit.status !== 'pending') {
+      return await ctx.answerCbQuery(`ℹ️ Deposit sudah ${deposit.status}`, { show_alert: true });
+    }
+    
+    // Update status to cancelled
+    await updateDepositStatus(invoiceId, 'cancelled');
+    
+    // Update message
+    await ctx.editMessageCaption(
+      `
+❌ *PEMBAYARAN DIBATALKAN*
+
+🆔 *Invoice:* \`${invoiceId}\`
+💰 *Amount:* Rp ${deposit.amount.toLocaleString('id-ID')}
+❌ *Status:* Cancelled
+
+Deposit telah dibatalkan oleh user.
+      `.trim(),
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🔄 Deposit Lagi', callback_data: 'topup_saldo' }],
+            [{ text: '🔙 Menu Utama', callback_data: 'send_main_menu' }]
+          ]
+        }
+      }
+    );
+    
+    await ctx.answerCbQuery('✅ Deposit dibatalkan');
+    logger.info(`Payment cancelled: ${invoiceId} by user ${userId}`);
+  } catch (error) {
+    logger.error('Error cancelling payment:', error);
+    await ctx.answerCbQuery('❌ Gagal membatalkan deposit', { show_alert: true });
   }
 }
 
