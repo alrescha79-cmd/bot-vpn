@@ -277,6 +277,21 @@ ${isReseller ? `📊 𝗞𝗼𝗺𝗶𝘀𝗶: Rp${komisi?.toLocaleString('id-ID
         }
       }
 
+      // Persist account to database (non-trial only, create action only)
+      if (action === 'create') {
+        try {
+          const { persistAccountIfPremium } = require('../../utils/accountPersistence');
+          await persistAccountIfPremium({
+            message: msg,
+            protocol: type,
+            userId: userId
+          });
+        } catch (persistError) {
+          logger.error('⚠️ Failed to persist account (non-critical):', persistError);
+          // Continue execution - this is not critical
+        }
+      }
+
       delete global.userState[chatId];
     }
   } catch (err) {
@@ -451,7 +466,10 @@ function registerTextHandler(bot) {
 
       // Broadcast flow
       if (state.step === 'await_broadcast_message') {
-        if (!adminIds.includes(String(userId))) {
+        // Check if user is admin from database only
+        const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+        
+        if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
           return ctx.reply('❌ Kamu tidak punya izin untuk melakukan broadcast.');
         }
 

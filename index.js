@@ -71,6 +71,7 @@ const config = require(`${srcPath}/config`);
 const constants = require(`${srcPath}/config/constants`);
 const logger = require(`${srcPath}/utils/logger`);
 const { dbRunAsync, dbGetAsync, dbAllAsync } = require(`${srcPath}/database/connection`);
+const { initializeDatabase } = require(`${srcPath}/infrastructure/database`);
 
 // Load all handlers
 const { loadAllHandlers } = require(`${srcPath}/app/loader`);
@@ -302,25 +303,29 @@ async function main() {
     logger.info(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info(`📅 Date: ${new Date().toLocaleString('id-ID')}`);
 
-    // 1. Initialize database tables
+    // 1. Initialize infrastructure database (for new modules)
+    await initializeDatabase();
+    logger.info('✅ Infrastructure database initialized');
+
+    // 2. Initialize database tables
     await initializeTables();
 
-    // 2. Load all handlers (commands, actions, events)
+    // 3. Load all handlers (commands, actions, events)
     loadAllHandlers(bot, {
       adminIds: config.adminIds,
       ownerId: config.USER_ID
     });
 
-    // 3. Setup cron jobs
+    // 4. Setup cron jobs
     setupCronJobs();
 
-    // 4. Setup Express server
+    // 5. Setup Express server
     setupExpressRoutes();
 
-    // 5. Setup error handlers
+    // 6. Setup error handlers
     setupErrorHandlers();
 
-    // 6. Start the bot
+    // 7. Start the bot
     await bot.launch();
 
     const localIP = getLocalIPAddress();

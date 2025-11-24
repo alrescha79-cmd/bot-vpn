@@ -249,6 +249,19 @@ async function handlePaymentConfirmation(ctx, action) {
     // Send success message
     await ctx.reply(msg, { parse_mode: 'Markdown' });
 
+    // Persist account to database (non-trial only)
+    try {
+      const { persistAccountIfPremium } = require('../../utils/accountPersistence');
+      await persistAccountIfPremium({
+        message: msg,
+        protocol: protocol,
+        userId: userId
+      });
+    } catch (persistError) {
+      logger.error('⚠️ Failed to persist account (non-critical):', persistError);
+      // Continue execution - this is not critical
+    }
+
     // Clean up state
     delete global.userState[chatId];
 

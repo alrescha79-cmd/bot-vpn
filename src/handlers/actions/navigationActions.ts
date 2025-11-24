@@ -26,10 +26,10 @@ function registerSendMainMenuAction(bot) {
 }
 
 /**
- * Handle cek_saldo action
+ * Handle akunku action (replaces cek_saldo)
  */
-function registerCekSaldoAction(bot) {
-  bot.action('cek_saldo', async (ctx) => {
+function registerAkunkuAction(bot) {
+  bot.action(['akunku', 'cek_saldo'], async (ctx) => {
     const userId = ctx.from.id;
 
     try {
@@ -39,26 +39,282 @@ function registerCekSaldoAction(bot) {
         return ctx.reply('❌ Anda belum terdaftar. Ketik /start untuk memulai.');
       }
 
+      // Get user's accounts
+      const { getAccountsByOwner, getAllAccounts } = require('../../repositories/accountRepository');
+      let accounts = [];
+      
+      try {
+        if (user.role === 'admin' || user.role === 'owner') {
+          accounts = await getAllAccounts('active');
+        } else {
+          accounts = await getAccountsByOwner(userId, 'active');
+        }
+      } catch (accountErr) {
+        // Tabel accounts mungkin belum ada - tampilkan pesan fallback
+        logger.warn('⚠️ Could not fetch accounts (table may not exist yet):', accountErr);
+        accounts = [];
+      }
+
       const saldoFormatted = `Rp${user.saldo.toLocaleString('id-ID')}`;
       const roleEmoji = user.role === 'admin' ? '👑' : user.role === 'reseller' ? '💼' : '👤';
 
+      let accountList = '';
+      if (accounts.length > 0) {
+        accountList = '\n\n📋 *Akun Aktif:*\n';
+        accounts.slice(0, 10).forEach((acc, idx) => {
+          const expDate = acc.expired_at ? new Date(acc.expired_at).toLocaleDateString('id-ID') : 'N/A';
+          accountList += `${idx + 1}. \`${acc.username}\` - ${acc.protocol} - Exp: ${expDate}\n`;
+        });
+        
+        if (accounts.length > 10) {
+          accountList += `\n_...dan ${accounts.length - 10} akun lainnya_`;
+        }
+      } else {
+        accountList = '\n\n📭 Belum ada akun aktif.';
+      }
+
       await ctx.editMessageText(
-        `${roleEmoji} *Informasi Saldo*\n\n` +
-        `💰 Saldo Anda: *${saldoFormatted}*\n` +
-        `📊 Role: *${user.role}*`,
+        `👤 *Akun Saya*\n\n` +
+        `💰 Sisa saldo: *${saldoFormatted}*` +
+        accountList,
         {
           parse_mode: 'Markdown',
           ...Markup.inlineKeyboard([
+            [Markup.button.callback('📋 Detail Akun', 'akunku_detail')],
+            [Markup.button.callback('🗑 Hapus Akun', 'akunku_delete')],
             [Markup.button.callback('💳 Top Up', 'topup_saldo')],
             [Markup.button.callback('🔙 Menu Utama', 'send_main_menu')]
           ])
         }
       );
     } catch (err) {
-      logger.error('❌ Error fetching balance:', err.message);
-      await ctx.reply('❌ Gagal mengambil data saldo.');
+      logger.error('❌ Error fetching akunku data:', err);
+      await ctx.reply('❌ Gagal mengambil data akun. ' + (err?.message || 'Unknown error'));
     }
   });
+}
+
+/**
+ * Handle detail account action
+ */
+function registerAkunkuDetailAction(bot) {
+  bot.action('akunku_detail', async (ctx) => {
+    const userId = ctx.from.id;
+
+    try {
+      const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+      if (!user) {
+        return ctx.reply('❌ Anda belum terdaftar.');
+      }
+
+      // Get user's accounts
+      const { getAccountsByOwner, getAllAccounts } = require('../../repositories/accountRepository');
+      let accounts = [];
+      
+      try {
+        if (user.role === 'admin' || user.role === 'owner') {
+          accounts = await getAllAccounts('active');
+        } else {
+          accounts = await getAccountsByOwner(userId, 'active');
+        }
+      } catch (accountErr) {
+        logger.warn('⚠️ Failed to fetch accounts (table might not exist yet):', accountErr);
+        accounts = [];
+      }
+
+      if (accounts.length === 0) {
+        return ctx.editMessageText(
+          '📭 Tidak ada akun untuk ditampilkan.',
+          {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard([
+              [Markup.button.callback('🔙 Kembali', 'akunku')]
+            ])
+          }
+        );
+      }
+
+      // Create buttons for each account
+      const buttons = accounts.slice(0, 20).map(acc => {
+        return [Markup.button.callback(`${acc.username} (${acc.protocol})`, `akunku_view_${acc.id}`)];
+      });
+      
+      buttons.push([Markup.button.callback('🔙 Kembali', 'akunku')]);
+
+      await ctx.editMessageText(
+        '📋 *Pilih akun untuk melihat detail:*',
+        {
+          parse_mode: 'Markdown',
+          ...Markup.inlineKeyboard(buttons)
+        }
+      );
+    } catch (err) {
+      logger.error('❌ Error in akunku detail:', err);
+      await ctx.reply('❌ Gagal menampilkan detail akun. ' + (err?.message || 'Unknown error'));
+    }
+  });
+}
+
+/**
+ * Handle view specific account
+ */
+function registerAkunkuViewAccountAction(bot) {
+  bot.action(/^akunku_view_(.+)$/, async (ctx) => {
+    const accountId = ctx.match[1];
+    const userId = ctx.from.id;
+
+    try {
+      const { getAccountById } = require('../../repositories/accountRepository');
+      const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+      const account = await getAccountById(accountId);
+
+      if (!account) {
+        return ctx.reply('❌ Akun tidak ditemukan.');
+      }
+
+      // Check permission
+      if (user.role !== 'admin' && user.role !== 'owner' && account.owner_user_id !== userId) {
+        return ctx.reply('⛔ Anda tidak memiliki akses ke akun ini.');
+      }
+
+      const expDate = account.expired_at ? new Date(account.expired_at).toLocaleString('id-ID') : 'N/A';
+      const createdDate = account.created_at ? new Date(account.created_at).toLocaleString('id-ID') : 'N/A';
+      
+      const detailText = `
+✅ *Detail Akun*
+
+📌 *Username:* \`${account.username}\`
+🔐 *Protokol:* ${account.protocol}
+🌐 *Server:* ${account.server}
+⏳ *Dibuat:* ${createdDate}
+📅 *Expired:* ${expDate}
+📊 *Status:* ${account.status === 'active' ? '✅ Aktif' : '❌ Expired'}
+
+━━━━━━━━━━━━━━━━━
+*Raw Response:*
+\`\`\`
+${account.raw_response ? account.raw_response.substring(0, 2000) : 'N/A'}
+\`\`\`
+      `.trim();
+
+      await ctx.editMessageText(detailText, {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('🔙 Kembali', 'akunku_detail')]
+        ])
+      });
+    } catch (err) {
+      logger.error('❌ Error viewing account:', err);
+      await ctx.reply('❌ Gagal menampilkan detail akun. ' + (err?.message || 'Unknown error'));
+    }
+  });
+}
+
+/**
+ * Handle delete account action
+ */
+function registerAkunkuDeleteAction(bot) {
+  bot.action('akunku_delete', async (ctx) => {
+    const userId = ctx.from.id;
+
+    try {
+      const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+      if (!user) {
+        return ctx.reply('❌ Anda belum terdaftar.');
+      }
+
+      // Get user's accounts
+      const { getAccountsByOwner, getAllAccounts } = require('../../repositories/accountRepository');
+      let accounts = [];
+      
+      try {
+        if (user.role === 'admin' || user.role === 'owner') {
+          accounts = await getAllAccounts();
+        } else {
+          accounts = await getAccountsByOwner(userId);
+        }
+      } catch (accountErr) {
+        logger.warn('⚠️ Failed to fetch accounts (table might not exist yet):', accountErr);
+        accounts = [];
+      }
+
+      if (accounts.length === 0) {
+        return ctx.editMessageText(
+          '📭 Tidak ada akun untuk dihapus.',
+          {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard([
+              [Markup.button.callback('🔙 Kembali', 'akunku')]
+            ])
+          }
+        );
+      }
+
+      // Create buttons for each account
+      const buttons = accounts.slice(0, 20).map(acc => {
+        return [Markup.button.callback(`❌ ${acc.username} (${acc.protocol})`, `akunku_confirm_delete_${acc.id}`)];
+      });
+      
+      buttons.push([Markup.button.callback('🔙 Kembali', 'akunku')]);
+
+      await ctx.editMessageText(
+        '🗑 *Pilih akun yang ingin dihapus:*\n\n⚠️ _Hanya akan menghapus dari database, tidak dari server._',
+        {
+          parse_mode: 'Markdown',
+          ...Markup.inlineKeyboard(buttons)
+        }
+      );
+    } catch (err) {
+      logger.error('❌ Error in akunku delete:', err);
+      await ctx.reply('❌ Gagal menampilkan daftar akun. ' + (err?.message || 'Unknown error'));
+    }
+  });
+}
+
+/**
+ * Handle confirm delete account
+ */
+function registerAkunkuConfirmDeleteAction(bot) {
+  bot.action(/^akunku_confirm_delete_(.+)$/, async (ctx) => {
+    const accountId = ctx.match[1];
+    const userId = ctx.from.id;
+
+    try {
+      const { getAccountById, deleteAccountById } = require('../../repositories/accountRepository');
+      const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+      const account = await getAccountById(accountId);
+
+      if (!account) {
+        return ctx.reply('❌ Akun tidak ditemukan.');
+      }
+
+      // Delete account
+      await deleteAccountById(accountId, userId, user.role);
+
+      await ctx.editMessageText(
+        `✅ *Akun berhasil dihapus dari database*\n\n` +
+        `Username: \`${account.username}\`\n` +
+        `Protokol: ${account.protocol}`,
+        {
+          parse_mode: 'Markdown',
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback('🔙 Menu Akunku', 'akunku')]
+          ])
+        }
+      );
+    } catch (err) {
+      logger.error('❌ Error deleting account:', err);
+      await ctx.reply('❌ Gagal menghapus akun: ' + (err?.message || 'Unknown error'));
+    }
+  });
+}
+
+/**
+ * Handle cek_saldo action (legacy - redirects to akunku)
+ */
+function registerCekSaldoAction(bot) {
+  // Legacy handler - maintained for backward compatibility
+  // Now handled by registerAkunkuAction above
 }
 
 /**
@@ -188,6 +444,11 @@ function registerConfirmActions(bot) {
  */
 function registerNavigationActions(bot) {
   registerSendMainMenuAction(bot);
+  registerAkunkuAction(bot);
+  registerAkunkuDetailAction(bot);
+  registerAkunkuViewAccountAction(bot);
+  registerAkunkuDeleteAction(bot);
+  registerAkunkuConfirmDeleteAction(bot);
   registerCekSaldoAction(bot);
   registerTopupSaldoAction(bot);
   registerPaginationActions(bot);
@@ -201,6 +462,11 @@ function registerNavigationActions(bot) {
 module.exports = {
   registerNavigationActions,
   registerSendMainMenuAction,
+  registerAkunkuAction,
+  registerAkunkuDetailAction,
+  registerAkunkuViewAccountAction,
+  registerAkunkuDeleteAction,
+  registerAkunkuConfirmDeleteAction,
   registerCekSaldoAction,
   registerTopupSaldoAction,
   registerPaginationActions,

@@ -1,10 +1,16 @@
-# 🤖 Bot VPN Telegram - Production Ready
+# 🤖 Bot VPN Telegram - Production Ready v3.1
 
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-blue.svg)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **Bot Telegram** untuk manajemen akun VPN multi-protocol dengan arsitektur production-ready. **Semua fitur & manajemen dilakukan via Telegram Bot** - web interface hanya untuk setup/edit konfigurasi awal.
+
+> **🆕 What's New in v3.1:**
+> - ✅ **Account Persistence** - Semua akun premium disimpan ke database SQLite
+> - ✅ **Akunku Menu** - Lihat, detail, dan kelola akun yang telah dibuat
+> - ✅ **Enhanced Admin Access** - Fixed broadcast dan semua admin tools
+> - ✅ **Improved Data Extraction** - Better regex untuk parsing account data
 
 ---
 
@@ -43,6 +49,13 @@
 - **Auto-Start** - PM2 & systemd support
 - **Database Migration** - Auto-create schema
 - **Error Handling** - Comprehensive logging
+
+### 💾 Account Persistence (v3.1+)
+- **Auto-Save Accounts** - Semua akun premium tersimpan otomatis ke SQLite
+- **Akunku Menu** - Lihat semua akun yang telah dibuat
+- **Account Details** - Lihat detail lengkap termasuk raw response
+- **Delete Accounts** - Hapus akun dari database
+- **Filter by Owner** - User/Reseller hanya lihat akun mereka, Admin lihat semua
 
 ---
 
@@ -674,11 +687,78 @@ Jika ada pertanyaan atau issue:
 - [x] Role-based access control
 - [x] Auto-start support (PM2 & systemd)
 - [x] Telegram bot interface (full featured)
+- [x] Account persistence to database (v3.1)
+- [x] Akunku menu for account management (v3.1)
 - [ ] Wireguard protocol support
 - [ ] Multi-language support
 - [ ] Admin web dashboard (monitoring & analytics)
 - [ ] API documentation (Swagger)
 - [ ] Docker deployment support
+
+---
+
+## 🛠️ Helper Scripts
+
+Bot dilengkapi dengan berbagai helper scripts untuk memudahkan testing dan management:
+
+### Account Management
+```bash
+# Check all saved accounts
+./scripts/check-accounts.sh
+
+# Check accounts by specific user
+./scripts/check-accounts.sh <user_id>
+
+# Monitor account persistence in real-time
+./scripts/test-account-persist.sh
+
+# Test data extraction patterns
+node scripts/test-extraction.js
+```
+
+### Admin Tools
+```bash
+# Set user as admin/owner
+./scripts/set-admin.sh <user_id>
+```
+
+### Database
+```bash
+# Direct database access
+sqlite3 data/botvpn.db
+
+# List all tables
+sqlite3 data/botvpn.db ".tables"
+
+# Query accounts
+sqlite3 data/botvpn.db "SELECT * FROM accounts LIMIT 10;"
+```
+
+---
+
+## 📱 Menu Akunku (v3.1+)
+
+Fitur baru untuk melihat dan mengelola akun yang telah dibuat:
+
+### Akses Menu
+1. Buka bot di Telegram
+2. Klik menu **Akunku** (menggantikan "Cek Saldo")
+3. Lihat saldo dan list akun aktif
+
+### Fitur Akunku
+- **Detail Akun** - Lihat list semua akun, klik username untuk detail lengkap
+- **Hapus Akun** - Hapus akun dari database
+- **Filter Otomatis** - User/Reseller hanya lihat akun miliknya, Admin lihat semua
+
+### Data yang Tersimpan
+Setiap akun premium yang dibuat akan disimpan dengan informasi:
+- Username
+- Protocol (SSH/VMess/VLess/Trojan/Shadowsocks)
+- Server domain
+- Tanggal dibuat
+- Tanggal expired
+- Status (active/expired)
+- Raw response (detail lengkap akun)
 
 ---
 

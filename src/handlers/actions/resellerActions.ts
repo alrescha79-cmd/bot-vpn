@@ -282,6 +282,89 @@ Upgrade sekarang?
 }
 
 /**
+ * Handle confirm upgrade to reseller
+ */
+function registerConfirmUpgradeResellerAction(bot) {
+  bot.action('confirm_upgrade_reseller', async (ctx) => {
+    const userId = ctx.from.id;
+    const { dbRunAsync } = require('../../database/connection');
+
+    try {
+      const user = await dbGetAsync('SELECT role, saldo, username FROM users WHERE user_id = ?', [userId]);
+
+      if (!user) {
+        return ctx.reply('❌ Akun tidak ditemukan.');
+      }
+
+      if (user.role === 'reseller' || user.role === 'admin' || user.role === 'owner') {
+        return ctx.editMessageText('✅ Anda sudah menjadi reseller.', {
+          parse_mode: 'Markdown',
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback('🔙 Menu Utama', 'send_main_menu')]
+          ])
+        });
+      }
+
+      const upgradePrice = 50000;
+
+      if (user.saldo < upgradePrice) {
+        return ctx.editMessageText(
+          `❌ *Saldo Tidak Mencukupi*\n\n` +
+          `Saldo Anda: Rp${user.saldo.toLocaleString('id-ID')}\n` +
+          `Biaya Upgrade: Rp${upgradePrice.toLocaleString('id-ID')}\n\n` +
+          `Silakan top up terlebih dahulu.`,
+          {
+            parse_mode: 'Markdown',
+            ...Markup.inlineKeyboard([
+              [Markup.button.callback('💳 Top Up', 'topup_saldo')],
+              [Markup.button.callback('🔙 Menu Utama', 'send_main_menu')]
+            ])
+          }
+        );
+      }
+
+      // Deduct balance and upgrade role
+      await dbRunAsync('UPDATE users SET saldo = saldo - ?, role = ?, reseller_level = ? WHERE user_id = ?', 
+        [upgradePrice, 'reseller', 'silver', userId]);
+
+      // Log upgrade
+      await dbRunAsync(`
+        INSERT INTO reseller_upgrade_log (user_id, username, amount, level, created_at)
+        VALUES (?, ?, ?, 'silver', datetime('now'))
+      `, [userId, user.username || ctx.from.first_name, upgradePrice]);
+
+      // Log transaction
+      await dbRunAsync(`
+        INSERT INTO transactions (user_id, type, amount, description, created_at)
+        VALUES (?, 'upgrade', ?, 'Upgrade ke Reseller', datetime('now'))
+      `, [userId, -upgradePrice]);
+
+      await ctx.editMessageText(
+        `✅ *Selamat! Akun Anda berhasil di-upgrade menjadi Reseller.*\n\n` +
+        `🎉 Anda sekarang dapat:\n` +
+        `• Dapatkan komisi dari setiap penjualan\n` +
+        `• Trial limit lebih banyak (10x/hari)\n` +
+        `• Transfer saldo ke user lain\n` +
+        `• Export laporan komisi\n\n` +
+        `Silakan mulai membuat akun premium!`,
+        {
+          parse_mode: 'Markdown',
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback('💼 Menu Reseller', 'menu_reseller')],
+            [Markup.button.callback('🔙 Menu Utama', 'send_main_menu')]
+          ])
+        }
+      );
+
+      logger.info(`✅ User ${userId} upgraded to reseller`);
+    } catch (err) {
+      logger.error('❌ Error confirming upgrade:', err.message);
+      ctx.reply('❌ Gagal melakukan upgrade. Silakan coba lagi.');
+    }
+  });
+}
+
+/**
  * Register all reseller actions
  * @param {Object} bot - Telegraf bot instance
  */
@@ -292,6 +375,7 @@ function registerResellerActions(bot) {
   registerResellerTopAllAction(bot);
   registerResellerTopWeeklyAction(bot);
   registerUpgradeToResellerAction(bot);
+  registerConfirmUpgradeResellerAction(bot);
 
   logger.info('✅ Reseller actions registered');
 }
@@ -303,5 +387,6 @@ module.exports = {
   registerResellerRiwayatAction,
   registerResellerTopAllAction,
   registerResellerTopWeeklyAction,
-  registerUpgradeToResellerAction
+  registerUpgradeToResellerAction,
+  registerConfirmUpgradeResellerAction
 };

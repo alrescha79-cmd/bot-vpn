@@ -1,6 +1,172 @@
 # 📝 Changelog & Implementation Summary
 
-## Version 3.0.0 - Production Ready Deployment
+## Version 3.1.0 - Account Persistence Update (November 2025)
+
+### 🎯 Major Features
+
+#### ✅ Account Persistence to Database
+- **Auto-save premium accounts** - Semua akun non-trial tersimpan otomatis ke SQLite
+- **New database table** `accounts` dengan schema lengkap:
+  - id, username, protocol, server, created_at, expired_at
+  - owner_user_id, status (active/expired), raw_response
+- **Indexes** pada username, owner_user_id, dan status untuk performa optimal
+
+#### ✅ Akunku Menu (Replaces "Cek Saldo")
+- **View all accounts** - Lihat list akun yang telah dibuat
+- **Detail view** - Klik username untuk detail lengkap termasuk raw response
+- **Delete accounts** - Hapus akun dari database
+- **Role-based filtering** - User/Reseller lihat akun mereka, Admin lihat semua
+
+#### ✅ Enhanced Admin Access
+- **Fixed broadcast** - Admin dapat mengirim broadcast tanpa error
+- **Fixed all admin tools** - 12 admin action handlers diperbaiki
+- **Database-only authorization** - Simplified auth check dari database role
+- **Top-up history access** - Admin dapat melihat riwayat top-up
+
+#### ✅ Improved Data Extraction
+- **Flexible regex patterns** - Handle berbagai format message dengan space berbeda
+- **Emoji support** - Ekstraksi data dari message dengan emoji
+- **Better error handling** - Graceful fallback jika ekstraksi gagal
+- **Debug logging** - Detailed logs untuk troubleshooting
+
+### 📦 New Files
+
+#### Utilities
+- `src/utils/accountPersistence.ts` - Account persistence helper
+  - extractUsername(), extractServer(), extractExpiryDate()
+  - persistAccountIfPremium() - Main persistence function
+  - Trial detection
+
+#### Repositories
+- `src/repositories/accountRepository.ts` - Account data access layer
+  - saveCreatedAccount()
+  - getAccountsByOwner()
+  - getAllAccounts()
+  - getAccountById()
+  - deleteAccountById()
+
+#### Helper Scripts
+- `scripts/check-accounts.sh` - View saved accounts in database
+- `scripts/set-admin.sh` - Set user as admin/owner
+- `scripts/test-account-persist.sh` - Monitor persistence logs
+- `scripts/test-extraction.js` - Test regex extraction patterns
+
+#### Documentation
+- `docs/TESTING.md` - Testing guide for account persistence
+- Updated `README.md` with v3.1 features
+- Updated `DOCUMENTATION_INDEX.md`
+
+### 🔧 Files Modified
+
+#### Database Schema
+- `src/database/schema.ts`
+  - Added `accounts` table with full schema
+  - Added `topup_log` table for admin features
+  - Proper indexes for performance
+
+#### Handlers
+- `src/handlers/actions/createActions.ts`
+  - Integrated `persistAccountIfPremium()` after account creation
+  - Non-blocking with try-catch
+
+- `src/handlers/events/textHandler.ts`
+  - Added persistence for text-based account creation
+  - Only for 'create' action (not 'renew')
+
+- `src/handlers/actions/navigationActions.ts`
+  - New `registerAkunkuAction()` - Main Akunku menu
+  - New `registerAkunkuDetailAction()` - List accounts with buttons
+  - New `registerAkunkuViewAccountAction()` - View single account detail
+  - New `registerAkunkuDeleteAction()` - Delete account selection
+  - New `registerAkunkuConfirmDeleteAction()` - Confirm deletion
+  - Graceful error handling for missing tables
+
+- `src/handlers/actions/adminToolsActions.ts`
+  - Fixed all 12 admin handlers authorization
+  - Changed from config check to database role check
+  - Simplified: `user.role === 'admin' || user.role === 'owner'`
+
+- `src/handlers/actions/adminActions.ts`
+  - Fixed main admin menu authorization
+
+#### Infrastructure
+- `index.js`
+  - Added `initializeDatabase()` from infrastructure/database
+  - Ensures both database systems are initialized
+
+- `src/utils/keyboard.ts`
+  - Changed "Cek Saldo" to "Akunku"
+
+- `src/handlers/helpers/menuHelper.ts`
+  - Updated menu text for Akunku
+
+### 🐛 Bug Fixes
+
+1. **Database not initialized error**
+   - Root cause: Two database systems (legacy + new infrastructure)
+   - Fix: Call `initializeDatabase()` in main startup
+
+2. **Regex extraction failures**
+   - Root cause: Patterns too strict for varied message formats
+   - Fix: Flexible regex with `\*?` and emoji support
+
+3. **Admin broadcast permission denied**
+   - Root cause: Auth check used config file instead of database
+   - Fix: Both action handler AND text handler now check database role
+
+4. **Akunku menu errors**
+   - Root cause: Table might not exist yet + no error handling
+   - Fix: Try-catch with fallback to empty array
+
+### 📊 Testing Checklist
+
+- [x] Account creation saves to database (all protocols)
+- [x] Akunku menu displays saved accounts
+- [x] Detail view shows full account info
+- [x] Delete account works correctly
+- [x] Admin can view all accounts
+- [x] User/Reseller sees only their accounts
+- [x] Broadcast works for admin
+- [x] All admin tools accessible
+- [x] Trial accounts NOT saved (as expected)
+- [x] Graceful error handling
+
+### 🚀 Upgrade Notes
+
+**From v3.0 to v3.1:**
+
+1. **Pull latest code**
+   ```bash
+   git pull origin main
+   ```
+
+2. **Install dependencies** (if any new)
+   ```bash
+   npm install
+   ```
+
+3. **Build**
+   ```bash
+   npm run build
+   ```
+
+4. **Restart bot**
+   ```bash
+   pm2 restart bot-vpn
+   # or
+   systemctl restart bot-vpn
+   ```
+
+5. **Verify**
+   ```bash
+   ./scripts/check-accounts.sh
+   ```
+
+Database schema will auto-migrate on restart.
+
+---
+
+## Version 3.0.0 - Production Ready Deployment (Previous)
 
 ### 🎯 Tujuan Utama
 Membuat aplikasi **production-ready** dengan:

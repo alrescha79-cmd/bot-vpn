@@ -113,11 +113,146 @@ async function getAccountsByUser(userId) {
   }
 }
 
+/**
+ * Save created account to database
+ * @param {Object} accountData
+ * @returns {Promise<Object>}
+ */
+async function saveCreatedAccount(accountData) {
+  const { 
+    username, 
+    protocol, 
+    server, 
+    expired_at, 
+    owner_user_id, 
+    raw_response 
+  } = accountData;
+  
+  const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  
+  try {
+    // Check if account already exists
+    const existing = await dbGet(
+      'SELECT id FROM accounts WHERE username = ? AND server = ? AND protocol = ?',
+      [username, server, protocol]
+    );
+    
+    if (existing) {
+      logger.info(`⚠️ Account ${username} already exists, skipping save`);
+      return existing;
+    }
+    
+    return await dbRun(`
+      INSERT INTO accounts (id, username, protocol, server, expired_at, owner_user_id, status, raw_response, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'active', ?, datetime('now'))
+    `, [id, username, protocol, server, expired_at, owner_user_id, raw_response]);
+  } catch (err) {
+    logger.error('❌ Error saving created account:', err);
+    throw err;
+  }
+}
+
+/**
+ * Get accounts by owner with optional status filter
+ * @param {number} userId
+ * @param {string} status - optional: 'active' or 'expired'
+ * @returns {Promise<Array>}
+ */
+async function getAccountsByOwner(userId, status = null) {
+  try {
+    let query = 'SELECT * FROM accounts WHERE owner_user_id = ?';
+    const params = [userId];
+    
+    if (status) {
+      query += ' AND status = ?';
+      params.push(status);
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    
+    return await dbAll(query, params);
+  } catch (err) {
+    logger.error('❌ Error getting owner accounts:', err);
+    throw err;
+  }
+}
+
+/**
+ * Get all accounts (admin only)
+ * @param {string} status - optional: 'active' or 'expired'
+ * @returns {Promise<Array>}
+ */
+async function getAllAccounts(status = null) {
+  try {
+    let query = 'SELECT * FROM accounts';
+    const params = [];
+    
+    if (status) {
+      query += ' WHERE status = ?';
+      params.push(status);
+    }
+    
+    query += ' ORDER BY created_at DESC';
+    
+    return await dbAll(query, params);
+  } catch (err) {
+    logger.error('❌ Error getting all accounts:', err);
+    throw err;
+  }
+}
+
+/**
+ * Delete account by id
+ * @param {string} accountId
+ * @param {number} userId - for permission check
+ * @param {string} userRole
+ * @returns {Promise<Object>}
+ */
+async function deleteAccountById(accountId, userId, userRole) {
+  try {
+    // Check ownership unless admin
+    if (userRole !== 'admin' && userRole !== 'owner') {
+      const account = await dbGet(
+        'SELECT owner_user_id FROM accounts WHERE id = ?',
+        [accountId]
+      );
+      
+      if (!account || account.owner_user_id !== userId) {
+        throw new Error('Unauthorized to delete this account');
+      }
+    }
+    
+    return await dbRun('DELETE FROM accounts WHERE id = ?', [accountId]);
+  } catch (err) {
+    logger.error('❌ Error deleting account:', err);
+    throw err;
+  }
+}
+
+/**
+ * Get account detail by id
+ * @param {string} accountId
+ * @returns {Promise<Object|null>}
+ */
+async function getAccountById(accountId) {
+  try {
+    return await dbGet('SELECT * FROM accounts WHERE id = ?', [accountId]);
+  } catch (err) {
+    logger.error('❌ Error getting account by id:', err);
+    throw err;
+  }
+}
+
 module.exports = {
   upsertActiveAccount,
   getActiveAccount,
   createAccount,
   getAccountCount,
   getUserAccountCount,
-  getAccountsByUser
+  getAccountsByUser,
+  saveCreatedAccount,
+  getAccountsByOwner,
+  getAllAccounts,
+  deleteAccountById,
+  getAccountById
 };
