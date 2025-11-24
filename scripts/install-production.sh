@@ -365,31 +365,103 @@ if [ -d "/tmp/data.preserve" ]; then
 fi
 
 ###############################################################################
-# Manual Configuration Setup
+# Manual Configuration Setup Function
 ###############################################################################
 
-if [ "$MANUAL_CONFIG" = true ] && [ ! -f "${INSTALL_PATH}/.vars.json" ]; then
-    log_info "Starting manual configuration setup..."
+setup_configuration() {
+    log_info "Starting configuration setup..."
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo -e "${GREEN}📝 Manual Configuration Setup${NC}"
+    echo -e "${GREEN}📝 Konfigurasi Awal Aplikasi${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Silakan masukkan informasi berikut untuk konfigurasi aplikasi."
+    echo "Tekan Enter untuk menggunakan nilai default (jika ada)."
+    echo ""
+    
+    # Prompt for each configuration value with better formatting
+    echo -e "${BLUE}1. Bot Configuration${NC}"
+    read -p "   Masukkan Bot Token Anda (dari @BotFather): " BOT_TOKEN
+    while [ -z "$BOT_TOKEN" ]; do
+        echo -e "   ${RED}Bot Token tidak boleh kosong!${NC}"
+        read -p "   Masukkan Bot Token Anda: " BOT_TOKEN
+    done
+    
+    echo ""
+    echo -e "${BLUE}2. Admin Configuration${NC}"
+    read -p "   Masukkan User ID Admin Anda (dapatkan dari @userinfobot): " USER_ID
+    while [ -z "$USER_ID" ]; do
+        echo -e "   ${RED}User ID tidak boleh kosong!${NC}"
+        read -p "   Masukkan User ID Admin Anda: " USER_ID
+    done
+    
+    read -p "   Masukkan Admin Username Anda (tanpa @): " ADMIN_USERNAME
+    while [ -z "$ADMIN_USERNAME" ]; do
+        echo -e "   ${RED}Admin Username tidak boleh kosong!${NC}"
+        read -p "   Masukkan Admin Username Anda: " ADMIN_USERNAME
+    done
+    
+    echo ""
+    echo -e "${BLUE}3. Group & Store Configuration${NC}"
+    read -p "   Masukkan Group ID (untuk notifikasi, kosongkan jika tidak ada): " GROUP_ID
+    
+    read -p "   Masukkan Nama Store Anda: " NAMA_STORE
+    while [ -z "$NAMA_STORE" ]; do
+        echo -e "   ${RED}Nama Store tidak boleh kosong!${NC}"
+        read -p "   Masukkan Nama Store Anda: " NAMA_STORE
+    done
+    
+    echo ""
+    echo -e "${BLUE}4. Server Configuration${NC}"
+    read -p "   Masukkan Port aplikasi (default: 50123): " PORT
+    PORT=${PORT:-50123}
+    
+    echo ""
+    echo -e "${BLUE}5. Payment Configuration (QRIS)${NC}"
+    read -p "   Masukkan Data QRIS: " DATA_QRIS
+    while [ -z "$DATA_QRIS" ]; do
+        echo -e "   ${RED}Data QRIS tidak boleh kosong!${NC}"
+        read -p "   Masukkan Data QRIS: " DATA_QRIS
+    done
+    
+    read -p "   Masukkan Merchant ID: " MERCHANT_ID
+    while [ -z "$MERCHANT_ID" ]; do
+        echo -e "   ${RED}Merchant ID tidak boleh kosong!${NC}"
+        read -p "   Masukkan Merchant ID: " MERCHANT_ID
+    done
+    
+    read -p "   Masukkan API Key: " API_KEY
+    while [ -z "$API_KEY" ]; do
+        echo -e "   ${RED}API Key tidak boleh kosong!${NC}"
+        read -p "   Masukkan API Key: " API_KEY
+    done
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "${YELLOW}Verifikasi Konfigurasi:${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Bot Token       : ${BOT_TOKEN:0:10}..."
+    echo "User ID Admin   : ${USER_ID}"
+    echo "Admin Username  : ${ADMIN_USERNAME}"
+    echo "Group ID        : ${GROUP_ID:-<tidak diisi>}"
+    echo "Nama Store      : ${NAMA_STORE}"
+    echo "Port            : ${PORT}"
+    echo "Data QRIS       : ${DATA_QRIS:0:20}..."
+    echo "Merchant ID     : ${MERCHANT_ID}"
+    echo "API Key         : ${API_KEY:0:10}..."
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
     
-    # Prompt for each configuration value
-    read -p "Bot Token (dari @BotFather): " BOT_TOKEN
-    read -p "User ID Admin (Telegram user ID Anda): " USER_ID
-    read -p "Group ID (untuk notifikasi, kosongkan jika tidak ada): " GROUP_ID
-    read -p "Nama Store: " NAMA_STORE
-    read -p "Port (default: 50123): " PORT
-    PORT=${PORT:-50123}
-    read -p "Data QRIS: " DATA_QRIS
-    read -p "Merchant ID: " MERCHANT_ID
-    read -p "API Key: " API_KEY
-    read -p "Admin Username: " ADMIN_USERNAME
+    read -p "Apakah konfigurasi sudah benar? (y/n): " CONFIRM
+    if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+        echo ""
+        log_warning "Konfigurasi dibatalkan. Silakan jalankan script lagi dengan --manual-config"
+        return 1
+    fi
     
     # Create .vars.json file
-    log_info "Creating configuration file..."
+    echo ""
+    log_info "Membuat file konfigurasi..."
     cat > "${INSTALL_PATH}/.vars.json" <<EOF
 {
   "BOT_TOKEN": "${BOT_TOKEN}",
@@ -405,8 +477,15 @@ if [ "$MANUAL_CONFIG" = true ] && [ ! -f "${INSTALL_PATH}/.vars.json" ]; then
 EOF
     
     chmod 600 "${INSTALL_PATH}/.vars.json"
-    log_success "Configuration file created successfully!"
+    log_success "File konfigurasi berhasil dibuat!"
     echo ""
+    
+    return 0
+}
+
+# Run manual config if flag is set
+if [ "$MANUAL_CONFIG" = true ] && [ ! -f "${INSTALL_PATH}/.vars.json" ]; then
+    setup_configuration
 fi
 
 ###############################################################################
@@ -616,28 +695,117 @@ echo ""
 
 # Check if configuration exists
 if [ ! -f "${INSTALL_PATH}/.vars.json" ]; then
-    echo -e "${YELLOW}⚠️  Configuration Required${NC}"
+    echo -e "${YELLOW}⚠️  Konfigurasi Diperlukan${NC}"
     echo ""
-    echo "This is a fresh installation. You have two options:"
+    echo "Aplikasi telah terinstal, namun belum dikonfigurasi."
     echo ""
-    echo "Option 1: Web Interface Setup"
-    echo "  1. Open your browser and navigate to:"
     
-    if [ "$SETUP_PUBLIC_ACCESS" = true ]; then
-        SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
-        echo -e "     ${BLUE}http://${SERVER_IP}/setup${NC}"
+    # Ask if user wants to setup now
+    read -p "Apakah Anda ingin melakukan konfigurasi awal aplikasi sekarang? (y/n): " SETUP_NOW
+    echo ""
+    
+    if [[ "$SETUP_NOW" =~ ^[Yy]$ ]]; then
+        # Run configuration setup
+        if setup_configuration; then
+            log_success "Konfigurasi berhasil disimpan!"
+            echo ""
+            
+            # Ask about database setup
+            echo -e "${BLUE}📊 Setup Database${NC}"
+            echo ""
+            read -p "Apakah Anda ingin mengatur admin user di database sekarang? (y/n): " SETUP_DB
+            echo ""
+            
+            if [[ "$SETUP_DB" =~ ^[Yy]$ ]]; then
+                log_info "Menunggu database siap..."
+                sleep 3
+                
+                # Check if database exists
+                if [ -f "${INSTALL_PATH}/data/botvpn.db" ]; then
+                    log_info "Setting up admin user in database..."
+                    
+                    # Use sqlite3 if available
+                    if command_exists sqlite3; then
+                        sqlite3 "${INSTALL_PATH}/data/botvpn.db" "UPDATE users SET role = 'admin' WHERE user_id = '${USER_ID}';" 2>/dev/null || {
+                            log_warning "Database belum siap atau user belum terdaftar."
+                            log_info "Jalankan bot terlebih dahulu dengan /start, lalu jalankan:"
+                            echo -e "  ${GREEN}sqlite3 ${INSTALL_PATH}/data/botvpn.db \"UPDATE users SET role = 'admin' WHERE user_id = '${USER_ID}';\"${NC}"
+                        }
+                    else
+                        log_warning "sqlite3 tidak terinstall."
+                        log_info "Install dengan: sudo apt-get install sqlite3"
+                        log_info "Lalu jalankan:"
+                        echo -e "  ${GREEN}sqlite3 ${INSTALL_PATH}/data/botvpn.db \"UPDATE users SET role = 'admin' WHERE user_id = '${USER_ID}';\"${NC}"
+                    fi
+                else
+                    log_info "Database akan dibuat otomatis saat aplikasi pertama kali dijalankan."
+                    log_info "Setelah bot berjalan dan Anda mengirim /start, jalankan:"
+                    echo -e "  ${GREEN}sqlite3 ${INSTALL_PATH}/data/botvpn.db \"UPDATE users SET role = 'admin' WHERE user_id = '${USER_ID}';\"${NC}"
+                fi
+                echo ""
+            fi
+            
+            # Restart PM2 with new config
+            log_info "Restarting application dengan konfigurasi baru..."
+            pm2 restart bot-vpn
+            sleep 2
+            
+            echo ""
+            log_success "✅ Aplikasi berhasil dikonfigurasi dan direstart!"
+            echo ""
+            echo -e "${GREEN}Langkah selanjutnya:${NC}"
+            echo "1. Buka Telegram dan chat bot Anda"
+            echo "2. Kirim perintah /start"
+            echo "3. Bot siap digunakan!"
+            
+            if [ "$SETUP_PUBLIC_ACCESS" = true ]; then
+                SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+                echo ""
+                echo "🌐 Web Interface:"
+                echo -e "   ${BLUE}http://${SERVER_IP}${NC}"
+                echo -e "   ${BLUE}http://${SERVER_IP}/config/edit${NC} (edit config)"
+            fi
+            echo ""
+            
+        else
+            log_warning "Setup konfigurasi dibatalkan."
+            echo ""
+            echo "Anda dapat menjalankan setup nanti dengan:"
+            echo -e "  ${GREEN}$0 --manual-config${NC}"
+            echo ""
+            echo "Atau via web interface:"
+            if [ "$SETUP_PUBLIC_ACCESS" = true ]; then
+                SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+                echo -e "  ${BLUE}http://${SERVER_IP}/setup${NC}"
+            else
+                echo -e "  ${BLUE}http://YOUR_SERVER_IP:50123/setup${NC}"
+            fi
+            echo ""
+        fi
     else
-        echo -e "     ${BLUE}http://YOUR_SERVER_IP:50123/setup${NC}"
+        echo "Setup konfigurasi dilewati."
+        echo ""
+        echo "Anda memiliki dua opsi untuk konfigurasi:"
+        echo ""
+        echo "Option 1: Web Interface Setup"
+        echo "  1. Open your browser and navigate to:"
+        
+        if [ "$SETUP_PUBLIC_ACCESS" = true ]; then
+            SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+            echo -e "     ${BLUE}http://${SERVER_IP}/setup${NC}"
+        else
+            echo -e "     ${BLUE}http://YOUR_SERVER_IP:50123/setup${NC}"
+        fi
+        
+        echo "  2. Fill in the configuration form"
+        echo "  3. After saving, restart the application:"
+        echo -e "     ${GREEN}pm2 restart bot-vpn${NC}"
+        echo ""
+        echo "Option 2: Manual Configuration"
+        echo "  Re-run this script with --manual-config flag:"
+        echo -e "  ${GREEN}$0 --manual-config${NC}"
+        echo ""
     fi
-    
-    echo "  2. Fill in the configuration form"
-    echo "  3. After saving, restart the application:"
-    echo -e "     ${GREEN}pm2 restart bot-vpn${NC}"
-    echo ""
-    echo "Option 2: Manual Configuration"
-    echo "  Re-run this script with --manual-config flag:"
-    echo -e "  ${GREEN}$0 --manual-config${NC}"
-    echo ""
 else
     echo -e "${GREEN}✅ Configuration found${NC}"
     echo ""
