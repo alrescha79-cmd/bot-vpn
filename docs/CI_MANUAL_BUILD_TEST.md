@@ -36,13 +36,20 @@ Workflow ini memungkinkan Anda untuk:
    - Default: `main`
    - Contoh lain: `development`, `feature/new-feature`, `hotfix/bug-fix`
 
-6. **Jalankan**
+6. **Pilih Auto Release** (Opsional)
+   - Pada field **"Automatically create release after successful build"**
+   - Default: `true` (enabled)
+   - ✅ **Jika enabled**: Setelah build berhasil di branch `main`, otomatis trigger release ke GitHub Releases
+   - ❌ **Jika disabled**: Hanya build saja, tidak create release
+
+7. **Jalankan**
    - Klik tombol hijau **"Run workflow"**
 
-7. **Monitor Progress**
+8. **Monitor Progress**
    - Workflow akan mulai berjalan
    - Klik pada workflow run untuk melihat detail progress
    - Anda dapat melihat logs real-time untuk setiap step
+   - **Jika auto_release enabled dan branch = main**: Setelah build selesai, akan otomatis trigger workflow "Auto Release to GitHub"
 
 ### Metode 2: Via GitHub CLI
 
@@ -102,12 +109,23 @@ Workflow ini menjalankan langkah-langkah berikut:
    - Artifact tersimpan selama 7 hari
    - Dapat di-download untuk testing atau deployment
 
+### 9. **Trigger Auto Release** (Conditional)
+   - **Hanya berjalan jika**:
+     - Branch yang di-build adalah `main`
+     - Option `auto_release` diset `true`
+   - Memanggil workflow **"Auto Release to GitHub"**
+   - Membuat GitHub Release dengan:
+     - Production bundle (tar.gz & zip)
+     - Changelog dari dokumentasi
+     - Tag sesuai version di `package.json`
+
 ---
 
 ## ✅ Expected Output
 
 Jika workflow berhasil, Anda akan melihat:
 
+**Build Job:**
 ```
 ✓ Checkout repository
 ✓ Setup Node.js
@@ -117,6 +135,17 @@ Jika workflow berhasil, Anda akan melihat:
 ✓ Build application
 ✓ Verify build output
 ✓ Upload build artifacts
+```
+
+**Release Job (jika auto_release enabled & branch = main):**
+```
+✓ Check version
+✓ Build application
+✓ Prepare production bundle
+✓ Create release archive
+✓ Get latest changelog
+✓ Create GitHub Release
+✓ Upload artifacts to release
 ```
 
 **Artifact yang tersimpan:**
@@ -226,19 +255,34 @@ Error: Cannot find branch 'xyz'
 
 ## 📋 Use Cases
 
-### 1. **Testing Before Merge**
+### 1. **Build and Release to Production**
+```
+Skenario: Siap untuk production release
+Action: 
+- Run workflow dengan branch: main
+- Enable auto_release: true
+Result: Build selesai → Otomatis create GitHub Release
+```
+
+### 2. **Testing Before Merge**
 ```
 Skenario: Anda ingin test build pada feature branch sebelum merge
-Action: Run workflow dengan branch: feature/new-feature
+Action: 
+- Run workflow dengan branch: feature/new-feature
+- Disable auto_release (tidak perlu release untuk testing)
+Result: Build terverifikasi tanpa create release
 ```
 
-### 2. **Verifikasi Hotfix**
+### 3. **Verifikasi Hotfix**
 ```
 Skenario: Anda perlu verify hotfix branch dapat di-build dengan sukses
-Action: Run workflow dengan branch: hotfix/critical-bug
+Action: 
+- Run workflow dengan branch: hotfix/critical-bug
+- Disable auto_release
+Result: Build terverifikasi sebelum merge ke main
 ```
 
-### 3. **Build untuk Testing Manual**
+### 4. **Build untuk Testing Manual**
 ```
 Skenario: QA perlu build terbaru untuk testing manual
 Action: 
@@ -247,10 +291,13 @@ Action:
 - Deploy ke testing environment
 ```
 
-### 4. **Verifikasi Deployment**
+### 5. **Build Only (No Release)**
 ```
-Skenario: Sebelum deploy production, verify build berjalan dengan baik
-Action: Run workflow dengan branch: main
+Skenario: Ingin build di main branch tapi belum siap release
+Action: 
+- Run workflow dengan branch: main
+- Disable auto_release: false
+Result: Build saja tanpa create release
 ```
 
 ---

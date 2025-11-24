@@ -8,6 +8,11 @@ on:
         required: true
         default: 'main'
         type: string
+      auto_release:
+        description: 'Automatically create release after successful build (main branch only)'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   build-and-test:
@@ -52,3 +57,11 @@ jobs:
           name: build-${{ github.event.inputs.branch }}-${{ github.run_number }}
           path: dist/
           retention-days: 7
+
+  trigger-release:
+    needs: build-and-test
+    if: github.event.inputs.branch == 'main' && github.event.inputs.auto_release == 'true'
+    uses: ./.github/workflows/auto-release.yml
+    with:
+      force_release: true
+    secrets: inherit
