@@ -19,7 +19,6 @@ botvpn.db
 data/
 
 # Temporary files
-*.sh
 *.swp
 *.swo
 .DS_Store
