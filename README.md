@@ -30,8 +30,12 @@
 
 ### 💰 Payment Integration
 - **QRIS** - Pembayaran via QRIS (otomatis)
-- **Deposit System** - Top-up saldo
-- **Transaction History** - Riwayat lengkap
+- **Midtrans** - Payment Gateway terintegrasi (Sandbox & Production)
+- **Auto-Verification** - Verifikasi pembayaran otomatis setiap 10 detik
+- **Instant Webhook** - Webhook untuk verifikasi instant (optional)
+- **Deposit System** - Top-up saldo otomatis
+- **Transaction History** - Riwayat lengkap transaksi
+- ⏳ **Payment Gateway Lainnya** - Xendit, Duitku, dll (Coming Soon)
 
 ### 🌐 Web Interface (Config Only)
 - **Setup Mode** - Konfigurasi awal via web browser (satu kali setup)
@@ -151,7 +155,9 @@ Isi form dengan:
 - ✅ **Group ID** - Group untuk notifikasi
 - ✅ **Store Name** - Nama toko VPN Anda
 - ✅ **QRIS Data** - Data QRIS untuk pembayaran
-- ✅ **Merchant ID & API Key** - Dari payment provider
+- ✅ **Midtrans Keys** - Merchant ID, Client Key, Server Key (lihat [Midtrans Setup](docs/MIDTRANS_SETUP.md))
+
+> 📖 **Setup Payment Gateway**: Lihat [Quick Start Midtrans](docs/MIDTRANS_QUICKSTART.md) untuk setup 5 menit
 
 **Klik**: `Simpan & Lanjutkan`
 

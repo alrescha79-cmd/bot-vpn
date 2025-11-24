@@ -130,4 +130,7 @@ function loadConfig(): Config {
 
 const config = loadConfig();
 
+// Export for both CommonJS and ES modules
+export default config;
 module.exports = config;
+module.exports.default = config;

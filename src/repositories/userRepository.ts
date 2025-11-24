@@ -238,12 +238,24 @@ async function getTotalSaldo() {
   }
 }
 
+/**
+ * Update user saldo (set to specific amount)
+ * Alias for setUserBalance for compatibility
+ * @param {number} userId
+ * @param {number} newSaldo - New balance amount
+ * @returns {Promise<Object>}
+ */
+async function updateUserSaldo(userId, newSaldo) {
+  return setUserBalance(userId, newSaldo);
+}
+
 module.exports = {
   upsertUser,
   getUserById,
   getUserBalance,
   updateUserBalance,
   setUserBalance,
+  updateUserSaldo,
   updateUserRole,
   updateResellerLevel,
   getAllUsers,

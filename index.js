@@ -232,6 +232,9 @@ function setupCronJobs() {
  * Setup Express routes
  */
 function setupExpressRoutes() {
+  // Make bot instance available to routes
+  app.set('bot', bot);
+  
   // Health check endpoint
   app.get('/health', (req, res) => {
     res.json({
@@ -251,6 +254,7 @@ function setupExpressRoutes() {
     logger.info(`   ⚙️  Edit Config (Local):   http://localhost:${PORT}/config/edit`);
     logger.info(`   ⚙️  Edit Config (Network): http://${localIP}:${PORT}/config/edit`);
     logger.info(`   ❤️  Health Check:          http://localhost:${PORT}/health`);
+    logger.info(`   💳 Midtrans Webhook:       http://${localIP}:${PORT}/api/midtrans/notification`);
     logger.info('');
   });
 }
