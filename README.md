@@ -272,7 +272,42 @@ npm start
 > 📱 **Remember**: Users akan menggunakan **Telegram Bot**, bukan web!  
 > Web hanya perlu diakses **satu kali** untuk setup konfigurasi.
 
-### 1. Build Production
+### Quick Install (Automated)
+
+**One-line installation** untuk production server:
+
+```bash
+curl -s https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | bash
+```
+
+Script ini akan otomatis:
+- ✅ Install Node.js, PM2, dan dependencies
+- ✅ Download release terbaru dari GitHub
+- ✅ Extract dan deploy aplikasi
+- ✅ Setup auto-start dengan PM2
+- ✅ Preserve config & database (jika update)
+
+**Install versi spesifik:**
+
+```bash
+curl -s https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | bash -s -- --version v1.0.0
+```
+
+**Custom installation path:**
+
+```bash
+curl -s https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | bash -s -- --path /opt/bot-vpn
+```
+
+📖 **Dokumentasi lengkap**: [PRODUCTION_INSTALL.md](docs/PRODUCTION_INSTALL.md)
+
+---
+
+### Manual Installation
+
+Jika ingin install secara manual:
+
+#### 1. Build Production
 
 ```bash
 npm run build
@@ -300,7 +335,7 @@ tar -czf bot-vpn-deploy.tar.gz \
 scp bot-vpn-deploy.tar.gz user@your-vps:/var/www/
 ```
 
-### 3. Setup di VPS
+#### 3. Setup di VPS
 
 ```bash
 # SSH ke VPS
@@ -319,7 +354,7 @@ npm install --production
 # Akses: http://your-vps-ip:50123/setup
 ```
 
-### 4. Auto-Start dengan PM2
+#### 4. Auto-Start dengan PM2
 
 ```bash
 # Install PM2 globally
@@ -337,7 +372,7 @@ pm2 logs bot-vpn
 pm2 status
 ```
 
-### 5. Auto-Start dengan systemd
+#### 5. Auto-Start dengan systemd
 
 ```bash
 # Copy service file

@@ -1,0 +1,221 @@
+name: Auto Release to GitHub
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json'
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      version-changed: ${{ steps.check-tag.outputs.exists == 'false' }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      
+      - name: Get version from package.json
+        id: get-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "Current version: v${VERSION}"
+      
+      - name: Check if tag exists
+        id: check-tag
+        run: |
+          if git rev-parse "refs/tags/${{ steps.get-version.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Tag ${{ steps.get-version.outputs.version }} already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Tag ${{ steps.get-version.outputs.version }} does not exist"
+          fi
+
+  release:
+    needs: check-version
+    if: needs.check-version.outputs.version-changed == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run type check
+        run: npm run type-check
+      
+      - name: Build application
+        run: npm run build
+      
+      - name: Verify build output
+        run: |
+          echo "Verifying build output..."
+          ls -la dist/
+          if [ ! -d "dist" ]; then
+            echo "Error: dist/ directory not found!"
+            exit 1
+          fi
+          echo "Build verification successful!"
+      
+      - name: Prepare production bundle
+        run: |
+          echo "Creating production bundle..."
+          mkdir -p release-bundle
+          
+          # Copy required files based on DEPLOYMENT.md
+          cp -r dist release-bundle/
+          cp index.js release-bundle/
+          cp package.json release-bundle/
+          cp package-lock.json release-bundle/
+          cp .vars.json.example release-bundle/ 2>/dev/null || echo ".vars.json.example not found, skipping"
+          cp LICENSE release-bundle/ 2>/dev/null || echo "LICENSE not found, skipping"
+          cp README.md release-bundle/ 2>/dev/null || echo "README.md not found, skipping"
+          
+          # Copy documentation
+          if [ -d "docs" ]; then
+            cp -r docs release-bundle/
+          fi
+          
+          # Copy deployment scripts and configs
+          if [ -d "deployment" ]; then
+            cp -r deployment release-bundle/
+          fi
+          
+          # Create directory structure info
+          echo "Production bundle contents:" > release-bundle/BUNDLE_INFO.txt
+          ls -laR release-bundle/ >> release-bundle/BUNDLE_INFO.txt
+          
+          echo "Bundle preparation complete!"
+          ls -la release-bundle/
+      
+      - name: Create release archive
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          ARCHIVE_NAME="bot-vpn-production-${VERSION}.tar.gz"
+          
+          cd release-bundle
+          tar -czf ../${ARCHIVE_NAME} .
+          cd ..
+          
+          echo "Created archive: ${ARCHIVE_NAME}"
+          ls -lh ${ARCHIVE_NAME}
+          
+          # Also create zip for Windows users
+          cd release-bundle
+          zip -r ../bot-vpn-production-${VERSION}.zip .
+          cd ..
+          
+          echo "ARCHIVE_NAME=${ARCHIVE_NAME}" >> $GITHUB_ENV
+          echo "ZIP_NAME=bot-vpn-production-${VERSION}.zip" >> $GITHUB_ENV
+      
+      - name: Get latest changelog
+        id: changelog
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          
+          # Try to find the latest changelog file
+          CHANGELOG_FILE=""
+          if [ -f "docs/CHANGELOG_V3.md" ]; then
+            CHANGELOG_FILE="docs/CHANGELOG_V3.md"
+          elif [ -f "docs/CHANGELOG.md" ]; then
+            CHANGELOG_FILE="docs/CHANGELOG.md"
+          elif ls docs/CHANGELOG_*.md 1> /dev/null 2>&1; then
+            CHANGELOG_FILE=$(ls -t docs/CHANGELOG_*.md | head -n 1)
+          fi
+          
+          if [ -n "$CHANGELOG_FILE" ]; then
+            echo "Found changelog: $CHANGELOG_FILE"
+            # Extract first section or full content (limit to reasonable size)
+            CHANGELOG_CONTENT=$(head -n 200 "$CHANGELOG_FILE")
+            
+            # Escape special characters for GitHub output
+            CHANGELOG_CONTENT="${CHANGELOG_CONTENT//'%'/'%25'}"
+            CHANGELOG_CONTENT="${CHANGELOG_CONTENT//$'\n'/'%0A'}"
+            CHANGELOG_CONTENT="${CHANGELOG_CONTENT//$'\r'/'%0D'}"
+            
+            echo "changelog<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGELOG_CONTENT" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "No changelog file found"
+            echo "changelog=No changelog available for this release." >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.check-version.outputs.version }}
+          name: Release ${{ needs.check-version.outputs.version }}
+          body: |
+            ## 🚀 Bot VPN Release ${{ needs.check-version.outputs.version }}
+            
+            ### 📦 Production Bundle
+            
+            This release contains a production-ready bundle with:
+            - ✅ Compiled application (`dist/`)
+            - ✅ Entry point (`index.js`)
+            - ✅ Dependencies info (`package.json`, `package-lock.json`)
+            - ✅ Configuration template (`.vars.json.example`)
+            - ✅ Documentation (`docs/`)
+            - ✅ Deployment scripts (`deployment/`)
+            
+            ### 🔧 Installation
+            
+            **Quick Install (Recommended):**
+            ```bash
+            curl -s https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/install-production.sh | bash -s -- --version ${{ needs.check-version.outputs.version }}
+            ```
+            
+            **Manual Installation:**
+            1. Download `bot-vpn-production-${{ needs.check-version.outputs.version }}.tar.gz`
+            2. Extract to your server: `tar -xzf bot-vpn-production-${{ needs.check-version.outputs.version }}.tar.gz`
+            3. Install dependencies: `npm install --production`
+            4. Configure via web: `node index.js` then open `http://your-server:50123/setup`
+            5. Start with PM2: `pm2 start index.js --name bot-vpn`
+            
+            ### 📖 Documentation
+            
+            - [Deployment Guide](https://github.com/${{ github.repository }}/blob/main/docs/DEPLOYMENT.md)
+            - [Production Installation](https://github.com/${{ github.repository }}/blob/main/docs/PRODUCTION_INSTALL.md)
+            - [Quick Start](https://github.com/${{ github.repository }}/blob/main/docs/QUICKSTART.md)
+            
+            ---
+            
+            ### 📝 Changelog
+            
+            ${{ steps.changelog.outputs.changelog }}
+            
+          draft: false
+          prerelease: false
+          files: |
+            ${{ env.ARCHIVE_NAME }}
+            ${{ env.ZIP_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Release Summary
+        run: |
+          echo "✅ Release ${{ needs.check-version.outputs.version }} published successfully!"
+          echo ""
+          echo "📦 Artifacts uploaded:"
+          echo "  - ${{ env.ARCHIVE_NAME }}"
+          echo "  - ${{ env.ZIP_NAME }}"
+          echo ""
+          echo "📝 Changelog: Applied from latest changelog file"
+          echo ""
+          echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ needs.check-version.outputs.version }}"
