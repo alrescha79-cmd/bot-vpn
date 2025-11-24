@@ -46,20 +46,32 @@ Script akan menginstall otomatis jika belum ada:
 
 ### Method 1: One-Line Install (Recommended)
 
-Install versi latest:
-
+**Basic Installation:**
 ```bash
 curl -s https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | bash
 ```
 
-Install versi spesifik:
+**Install with Manual Configuration (via terminal prompts):**
+```bash
+curl -s https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | bash -s -- --manual-config
+```
 
+**Install with Public Access Setup (Nginx + Firewall):**
+```bash
+curl -s https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | bash -s -- --public-access
+```
+
+**Full Setup (Manual Config + Public Access):**
+```bash
+curl -s https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | bash -s -- --manual-config --public-access
+```
+
+**Install Specific Version:**
 ```bash
 curl -s https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | bash -s -- --version v1.0.0
 ```
 
-Custom installation path:
-
+**Custom Installation Path:**
 ```bash
 curl -s https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | bash -s -- --path /opt/bot-vpn
 ```
@@ -76,11 +88,14 @@ chmod +x install-production.sh
 # Run with default settings (latest version)
 ./install-production.sh
 
-# Or specify version
-./install-production.sh --version v1.0.0
+# Run with manual configuration
+./install-production.sh --manual-config
 
-# Or custom path
-./install-production.sh --path /opt/bot-vpn
+# Run with public access setup
+./install-production.sh --public-access
+
+# Combine all options
+./install-production.sh --version v1.0.0 --manual-config --public-access --path /opt/bot-vpn
 ```
 
 ### Method 3: From Release Package
@@ -116,6 +131,8 @@ pm2 save
 |--------|-------------|---------|
 | `--version VERSION` | Specify release version to install | `latest` |
 | `--path PATH` | Installation directory path | `/var/www/bot-vpn` |
+| `--manual-config` | Setup configuration via terminal prompts | `false` |
+| `--public-access` | Setup firewall (UFW) and Nginx for public access | `false` |
 | `--help` | Show help message | - |
 
 ### Examples
@@ -135,10 +152,70 @@ pm2 save
 ./install-production.sh --path /home/user/apps/bot-vpn
 ```
 
-**Combine options:**
+**Install with manual configuration (no web interface needed):**
 ```bash
-./install-production.sh --version v1.2.3 --path /opt/bot-vpn
+./install-production.sh --manual-config
 ```
+
+**Install with public access (auto-setup Nginx + Firewall):**
+```bash
+./install-production.sh --public-access
+```
+
+**Full production setup:**
+```bash
+./install-production.sh --manual-config --public-access
+```
+
+**Combine all options:**
+```bash
+./install-production.sh --version v1.2.3 --path /opt/bot-vpn --manual-config --public-access
+```
+
+---
+
+## 🆕 New Features
+
+### 🔧 Manual Configuration Setup
+
+Dengan flag `--manual-config`, script akan:
+- ✅ Meminta input konfigurasi via terminal (interaktif)
+- ✅ Membuat file `.vars.json` otomatis
+- ✅ Tidak perlu akses web interface untuk setup awal
+- ✅ Cocok untuk setup via SSH tanpa browser
+
+**Konfigurasi yang diminta:**
+- Bot Token (dari @BotFather)
+- User ID Admin
+- Group ID
+- Nama Store
+- Port (default: 50123)
+- Data QRIS
+- Merchant ID
+- API Key
+- Admin Username
+
+### 🌐 Public Access Setup
+
+Dengan flag `--public-access`, script akan:
+- ✅ Configure UFW firewall otomatis (allow SSH, HTTP, HTTPS, app port)
+- ✅ Install dan configure Nginx sebagai reverse proxy
+- ✅ Setup akses web tanpa perlu port `:50123`
+- ✅ Akses langsung via `http://YOUR_SERVER_IP/`
+
+**Setelah setup:**
+- Web interface: `http://YOUR_SERVER_IP/`
+- Setup page: `http://YOUR_SERVER_IP/setup`
+- Edit config: `http://YOUR_SERVER_IP/config/edit`
+
+### 🗑️ Clean Reinstall
+
+Script sekarang akan:
+- ✅ Stop dan hapus PM2 process yang sudah ada
+- ✅ Backup installation lama dengan timestamp
+- ✅ Clean remove old installation
+- ✅ Fresh install dengan file baru
+- ✅ Restore config dan database (kecuali jika `--manual-config` digunakan)
 
 ---
 

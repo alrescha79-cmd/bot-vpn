@@ -30,6 +30,8 @@ NODE_VERSION="20"
 # Parse command line arguments
 INSTALL_PATH="${DEFAULT_INSTALL_PATH}"
 VERSION="${DEFAULT_VERSION}"
+MANUAL_CONFIG=false
+SETUP_PUBLIC_ACCESS=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -41,18 +43,29 @@ while [[ $# -gt 0 ]]; do
             INSTALL_PATH="$2"
             shift 2
             ;;
+        --manual-config)
+            MANUAL_CONFIG=true
+            shift
+            ;;
+        --public-access)
+            SETUP_PUBLIC_ACCESS=true
+            shift
+            ;;
         --help)
             echo "Bot VPN Production Installer"
             echo ""
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --version VERSION   Specify version to install (default: latest)"
-            echo "  --path PATH        Installation path (default: /var/www/bot-vpn)"
-            echo "  --help             Show this help message"
+            echo "  --version VERSION    Specify version to install (default: latest)"
+            echo "  --path PATH         Installation path (default: /var/www/bot-vpn)"
+            echo "  --manual-config     Setup configuration manually via terminal prompts"
+            echo "  --public-access     Setup firewall and nginx for public web access"
+            echo "  --help              Show this help message"
             echo ""
             echo "Example:"
             echo "  $0 --version v1.0.0 --path /opt/bot-vpn"
+            echo "  $0 --manual-config --public-access"
             exit 0
             ;;
         *)
@@ -216,12 +229,22 @@ log_info "Download URL: ${DOWNLOAD_URL}"
 
 log_info "Creating installation directory: ${INSTALL_PATH}"
 
+# Stop and remove existing PM2 process first
+if command_exists pm2; then
+    if pm2 list | grep -q "bot-vpn"; then
+        log_info "Stopping and removing existing bot-vpn process..."
+        pm2 stop bot-vpn 2>/dev/null || true
+        pm2 delete bot-vpn 2>/dev/null || true
+        log_success "Existing process removed"
+    fi
+fi
+
 if [ -d "$INSTALL_PATH" ]; then
     log_warning "Directory ${INSTALL_PATH} already exists"
     
     # Check if it's an existing installation
     if [ -f "${INSTALL_PATH}/index.js" ]; then
-        log_info "Existing installation detected"
+        log_info "Existing installation detected - will perform clean reinstall"
         
         # Backup existing installation
         BACKUP_PATH="${INSTALL_PATH}.backup.$(date +%Y%m%d_%H%M%S)"
@@ -235,23 +258,37 @@ if [ -d "$INSTALL_PATH" ]; then
         
         log_success "Backup created successfully"
         
-        # Preserve config and data
-        if [ -f "${INSTALL_PATH}/.vars.json" ]; then
-            log_info "Preserving existing configuration..."
-            cp "${INSTALL_PATH}/.vars.json" "/tmp/.vars.json.preserve"
+        # Preserve config and data unless manual config is requested
+        if [ "$MANUAL_CONFIG" = false ]; then
+            if [ -f "${INSTALL_PATH}/.vars.json" ]; then
+                log_info "Preserving existing configuration..."
+                cp "${INSTALL_PATH}/.vars.json" "/tmp/.vars.json.preserve"
+            fi
+        else
+            log_info "Manual config requested - will not preserve old configuration"
         fi
         
         if [ -d "${INSTALL_PATH}/data" ]; then
             log_info "Preserving existing database..."
             cp -r "${INSTALL_PATH}/data" "/tmp/data.preserve"
         fi
+        
+        # Remove old installation
+        log_info "Removing old installation..."
+        if command_exists sudo && [ ! -w "$INSTALL_PATH" ]; then
+            sudo rm -rf "$INSTALL_PATH"
+        else
+            rm -rf "$INSTALL_PATH"
+        fi
+        log_success "Old installation removed"
     fi
+fi
+
+# Create fresh directory
+if command_exists sudo; then
+    sudo mkdir -p "$INSTALL_PATH"
 else
-    if command_exists sudo; then
-        sudo mkdir -p "$INSTALL_PATH"
-    else
-        mkdir -p "$INSTALL_PATH"
-    fi
+    mkdir -p "$INSTALL_PATH"
 fi
 
 # Ensure we have write permissions
@@ -325,6 +362,51 @@ if [ -d "/tmp/data.preserve" ]; then
     cp -r "/tmp/data.preserve" "${INSTALL_PATH}/data"
     rm -rf "/tmp/data.preserve"
     log_success "Database restored"
+fi
+
+###############################################################################
+# Manual Configuration Setup
+###############################################################################
+
+if [ "$MANUAL_CONFIG" = true ] && [ ! -f "${INSTALL_PATH}/.vars.json" ]; then
+    log_info "Starting manual configuration setup..."
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "${GREEN}📝 Manual Configuration Setup${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    
+    # Prompt for each configuration value
+    read -p "Bot Token (dari @BotFather): " BOT_TOKEN
+    read -p "User ID Admin (Telegram user ID Anda): " USER_ID
+    read -p "Group ID (untuk notifikasi, kosongkan jika tidak ada): " GROUP_ID
+    read -p "Nama Store: " NAMA_STORE
+    read -p "Port (default: 50123): " PORT
+    PORT=${PORT:-50123}
+    read -p "Data QRIS: " DATA_QRIS
+    read -p "Merchant ID: " MERCHANT_ID
+    read -p "API Key: " API_KEY
+    read -p "Admin Username: " ADMIN_USERNAME
+    
+    # Create .vars.json file
+    log_info "Creating configuration file..."
+    cat > "${INSTALL_PATH}/.vars.json" <<EOF
+{
+  "BOT_TOKEN": "${BOT_TOKEN}",
+  "USER_ID": "${USER_ID}",
+  "GROUP_ID": "${GROUP_ID}",
+  "NAMA_STORE": "${NAMA_STORE}",
+  "PORT": "${PORT}",
+  "DATA_QRIS": "${DATA_QRIS}",
+  "MERCHANT_ID": "${MERCHANT_ID}",
+  "API_KEY": "${API_KEY}",
+  "ADMIN_USERNAME": "${ADMIN_USERNAME}"
+}
+EOF
+    
+    chmod 600 "${INSTALL_PATH}/.vars.json"
+    log_success "Configuration file created successfully!"
+    echo ""
 fi
 
 ###############################################################################
@@ -403,6 +485,122 @@ fi
 log_success "PM2 setup completed"
 
 ###############################################################################
+# Setup Public Access (Firewall & Nginx)
+###############################################################################
+
+if [ "$SETUP_PUBLIC_ACCESS" = true ]; then
+    log_info "Setting up public access..."
+    echo ""
+    
+    # Get port from .vars.json if exists
+    if [ -f "${INSTALL_PATH}/.vars.json" ]; then
+        APP_PORT=$(grep -oP '"PORT":\s*"\K[^"]+' "${INSTALL_PATH}/.vars.json" 2>/dev/null || echo "50123")
+    else
+        APP_PORT="50123"
+    fi
+    
+    # Setup UFW Firewall
+    if command_exists ufw; then
+        log_info "Configuring UFW firewall..."
+        
+        # Allow SSH (important!)
+        if command_exists sudo; then
+            sudo ufw allow 22/tcp >/dev/null 2>&1
+            log_success "Allowed SSH (port 22)"
+            
+            # Allow application port
+            sudo ufw allow ${APP_PORT}/tcp >/dev/null 2>&1
+            log_success "Allowed application port ${APP_PORT}"
+            
+            # Allow HTTP and HTTPS for nginx
+            sudo ufw allow 80/tcp >/dev/null 2>&1
+            sudo ufw allow 443/tcp >/dev/null 2>&1
+            log_success "Allowed HTTP (80) and HTTPS (443)"
+            
+            # Enable firewall if not already enabled
+            echo "y" | sudo ufw enable >/dev/null 2>&1
+            log_success "UFW firewall enabled"
+        else
+            log_warning "sudo not available, skipping firewall configuration"
+        fi
+    else
+        log_warning "UFW not installed, skipping firewall setup"
+    fi
+    
+    # Setup Nginx
+    if ! command_exists nginx; then
+        log_info "Installing Nginx..."
+        if command_exists sudo; then
+            sudo apt-get update -qq
+            sudo apt-get install -y nginx >/dev/null 2>&1
+            log_success "Nginx installed"
+        else
+            log_warning "Cannot install nginx without sudo"
+        fi
+    fi
+    
+    if command_exists nginx; then
+        log_info "Configuring Nginx reverse proxy..."
+        
+        # Get server IP
+        SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+        
+        # Create nginx config
+        NGINX_CONFIG="/etc/nginx/sites-available/bot-vpn"
+        
+        if command_exists sudo; then
+            sudo tee "$NGINX_CONFIG" > /dev/null <<EOF
+server {
+    listen 80;
+    server_name ${SERVER_IP} _;
+    
+    location / {
+        proxy_pass http://localhost:${APP_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        
+        # Timeout settings
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+EOF
+            
+            # Enable site
+            sudo ln -sf "$NGINX_CONFIG" /etc/nginx/sites-enabled/bot-vpn 2>/dev/null
+            
+            # Remove default site if exists
+            sudo rm -f /etc/nginx/sites-enabled/default 2>/dev/null
+            
+            # Test nginx config
+            if sudo nginx -t >/dev/null 2>&1; then
+                # Restart nginx
+                sudo systemctl restart nginx
+                log_success "Nginx configured and restarted"
+                echo ""
+                log_info "✅ Web interface now accessible at:"
+                echo -e "   ${GREEN}http://${SERVER_IP}${NC}"
+                echo -e "   ${GREEN}http://${SERVER_IP}/setup${NC} (for initial setup)"
+                echo ""
+            else
+                log_error "Nginx configuration test failed"
+            fi
+        else
+            log_warning "Cannot configure nginx without sudo"
+        fi
+    fi
+    
+    echo ""
+fi
+
+###############################################################################
 # Post-Installation Steps
 ###############################################################################
 
@@ -420,26 +618,38 @@ echo ""
 if [ ! -f "${INSTALL_PATH}/.vars.json" ]; then
     echo -e "${YELLOW}⚠️  Configuration Required${NC}"
     echo ""
-    echo "This is a fresh installation. Please complete the setup:"
+    echo "This is a fresh installation. You have two options:"
     echo ""
-    echo "1. The application is now running in setup mode"
-    echo "2. Open your browser and navigate to:"
+    echo "Option 1: Web Interface Setup"
+    echo "  1. Open your browser and navigate to:"
+    
+    if [ "$SETUP_PUBLIC_ACCESS" = true ]; then
+        SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+        echo -e "     ${BLUE}http://${SERVER_IP}/setup${NC}"
+    else
+        echo -e "     ${BLUE}http://YOUR_SERVER_IP:50123/setup${NC}"
+    fi
+    
+    echo "  2. Fill in the configuration form"
+    echo "  3. After saving, restart the application:"
+    echo -e "     ${GREEN}pm2 restart bot-vpn${NC}"
     echo ""
-    echo -e "   ${BLUE}http://YOUR_SERVER_IP:50123/setup${NC}"
-    echo ""
-    echo "3. Fill in the configuration form with:"
-    echo "   - Telegram Bot Token (from @BotFather)"
-    echo "   - Admin User ID"
-    echo "   - Group ID"
-    echo "   - Store name and payment details"
-    echo ""
-    echo "4. After saving, restart the application:"
-    echo -e "   ${GREEN}pm2 restart bot-vpn${NC}"
+    echo "Option 2: Manual Configuration"
+    echo "  Re-run this script with --manual-config flag:"
+    echo -e "  ${GREEN}$0 --manual-config${NC}"
     echo ""
 else
     echo -e "${GREEN}✅ Configuration found${NC}"
     echo ""
     echo "The application is running with existing configuration."
+    
+    if [ "$SETUP_PUBLIC_ACCESS" = true ]; then
+        SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+        echo ""
+        echo "🌐 Web Interface:"
+        echo -e "   ${BLUE}http://${SERVER_IP}${NC}"
+        echo -e "   ${BLUE}http://${SERVER_IP}/config/edit${NC} (edit config)"
+    fi
     echo ""
 fi
 
