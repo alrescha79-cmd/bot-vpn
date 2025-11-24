@@ -64,7 +64,175 @@ jobs:
   trigger-release:
     needs: build-and-test
     if: github.event.inputs.branch == 'main' && github.event.inputs.auto_release == 'true'
-    uses: ./.github/workflows/auto-release.yml
-    with:
-      force_release: true
-    secrets: inherit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Get version from package.json
+        id: get-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "Current version: v${VERSION}"
+      
+      - name: Check if tag exists
+        id: check-tag
+        run: |
+          if git rev-parse "refs/tags/${{ steps.get-version.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Tag ${{ steps.get-version.outputs.version }} already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Tag ${{ steps.get-version.outputs.version }} does not exist - will create release"
+          fi
+      
+      - name: Install dependencies
+        if: steps.check-tag.outputs.exists == 'false'
+        run: npm ci
+      
+      - name: Run type check
+        if: steps.check-tag.outputs.exists == 'false'
+        run: npm run type-check
+      
+      - name: Build application
+        if: steps.check-tag.outputs.exists == 'false'
+        run: npm run build
+      
+      - name: Verify build output
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          echo "Verifying build output..."
+          ls -la dist/
+          if [ ! -d "dist" ]; then
+            echo "Error: dist/ directory not found!"
+            exit 1
+          fi
+          echo "Build verification successful!"
+      
+      - name: Prepare production bundle
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          echo "Creating production bundle..."
+          mkdir -p release-bundle
+          
+          # Copy required files based on DEPLOYMENT.md
+          cp -r dist release-bundle/
+          cp index.js release-bundle/
+          cp package.json release-bundle/
+          cp package-lock.json release-bundle/
+          cp .vars.json.example release-bundle/ 2>/dev/null || echo ".vars.json.example not found, skipping"
+          cp LICENSE release-bundle/ 2>/dev/null || echo "LICENSE not found, skipping"
+          cp README.md release-bundle/ 2>/dev/null || echo "README.md not found, skipping"
+          
+          # Copy documentation
+          if [ -d "docs" ]; then
+            cp -r docs release-bundle/
+          fi
+          
+          # Copy deployment scripts and configs
+          if [ -d "deployment" ]; then
+            cp -r deployment release-bundle/
+          fi
+          
+          # Copy scripts directory
+          if [ -d "scripts" ]; then
+            cp -r scripts release-bundle/
+          fi
+          
+          # Create directory structure info
+          echo "Production bundle contents:" > release-bundle/BUNDLE_INFO.txt
+          ls -laR release-bundle/ >> release-bundle/BUNDLE_INFO.txt
+          
+          echo "Bundle preparation complete!"
+          ls -la release-bundle/
+      
+      - name: Create release archive
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          ARCHIVE_NAME="bot-vpn-production-${VERSION}.tar.gz"
+          
+          cd release-bundle
+          tar -czf ../${ARCHIVE_NAME} .
+          cd ..
+          
+          echo "Created archive: ${ARCHIVE_NAME}"
+          ls -lh ${ARCHIVE_NAME}
+          
+          # Also create zip for Windows users
+          cd release-bundle
+          zip -r ../bot-vpn-production-${VERSION}.zip .
+          cd ..
+          
+          echo "ARCHIVE_NAME=${ARCHIVE_NAME}" >> $GITHUB_ENV
+          echo "ZIP_NAME=bot-vpn-production-${VERSION}.zip" >> $GITHUB_ENV
+      
+      - name: Get latest changelog
+        if: steps.check-tag.outputs.exists == 'false'
+        id: changelog
+        run: |
+          VERSION="${{ steps.get-version.outputs.version }}"
+          
+          # Try to find the latest changelog file
+          CHANGELOG_FILE=""
+          if [ -f "docs/CHANGELOG_V3.md" ]; then
+            CHANGELOG_FILE="docs/CHANGELOG_V3.md"
+          elif [ -f "docs/CHANGELOG.md" ]; then
+            CHANGELOG_FILE="docs/CHANGELOG.md"
+          elif ls docs/CHANGELOG_*.md 1> /dev/null 2>&1; then
+            CHANGELOG_FILE=$(ls -t docs/CHANGELOG_*.md | head -n 1)
+          fi
+          
+          if [ -n "$CHANGELOG_FILE" ]; then
+            echo "Found changelog: $CHANGELOG_FILE"
+            # Extract first 100 lines
+            CHANGELOG_CONTENT=$(head -n 100 "$CHANGELOG_FILE")
+            
+            # Save to file for GitHub Release
+            echo "$CHANGELOG_CONTENT" > changelog.txt
+          else
+            echo "No changelog file found"
+            echo "No changelog available for this release." > changelog.txt
+          fi
+      
+      - name: Create GitHub Release
+        if: steps.check-tag.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get-version.outputs.version }}
+          name: Release ${{ steps.get-version.outputs.version }}
+          body_path: changelog.txt
+          draft: false
+          prerelease: false
+          files: |
+            ${{ env.ARCHIVE_NAME }}
+            ${{ env.ZIP_NAME }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Release Summary
+        if: steps.check-tag.outputs.exists == 'false'
+        run: |
+          echo "✅ Release ${{ steps.get-version.outputs.version }} published successfully!"
+          echo ""
+          echo "📦 Artifacts uploaded:"
+          echo "  - ${{ env.ARCHIVE_NAME }}"
+          echo "  - ${{ env.ZIP_NAME }}"
+          echo ""
+          echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ steps.get-version.outputs.version }}"
+      
+      - name: Skip Release (Tag exists)
+        if: steps.check-tag.outputs.exists == 'true'
+        run: |
+          echo "ℹ️ Skipping release creation - tag ${{ steps.get-version.outputs.version }} already exists"
+          echo "If you want to create a new release, update the version in package.json"
