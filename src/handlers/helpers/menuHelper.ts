@@ -61,7 +61,7 @@ Silakan pilih menu di bawah:
       ],
       [
         Markup.button.callback('🎁 Trial Gratis', 'service_trial'),
-        Markup.button.callback('💰 Cek Saldo', 'cek_saldo')
+        Markup.button.callback('👤 Akunku', 'akunku')
       ],
       [
         Markup.button.callback('💳 Top Up Saldo', 'topup_saldo')

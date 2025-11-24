@@ -25,8 +25,12 @@ const GROUP_ID = process.env.GROUP_ID;
  */
 function registerAdminStatsAction(bot) {
   bot.action('admin_stats', async (ctx) => {
-    const userId = String(ctx.from.id);
-    if (!adminIds.includes(userId)) {
+    const userId = ctx.from.id;
+    
+    // Check if user is admin from database only
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+    
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.answerCbQuery('❌ Tidak diizinkan.');
     }
 
@@ -98,8 +102,12 @@ function registerAdminStatsAction(bot) {
  */
 function registerAdminBroadcastAction(bot) {
   bot.action('admin_broadcast', async (ctx) => {
-    const userId = String(ctx.from.id);
-    if (!adminIds.includes(userId)) {
+    const userId = ctx.from.id;
+    
+    // Check if user is admin from database only
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+    
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('🚫 Kamu tidak punya izin untuk broadcast.');
     }
 
@@ -114,8 +122,12 @@ function registerAdminBroadcastAction(bot) {
  */
 function registerAdminResetTrialAction(bot) {
   bot.action('admin_reset_trial', async (ctx) => {
-    const userId = String(ctx.from.id);
-    if (!adminIds.includes(userId)) {
+    const userId = ctx.from.id;
+    
+    // Check if user is admin from database only
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+    
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.answerCbQuery('❌ Akses ditolak bro.');
     }
 
@@ -135,8 +147,12 @@ function registerAdminResetTrialAction(bot) {
  */
 function registerAdminViewTopupAction(bot) {
   bot.action('admin_view_topup', async (ctx) => {
-    const userId = String(ctx.from.id);
-    if (!adminIds.includes(userId)) {
+    const userId = ctx.from.id;
+    
+    // Check if user is admin from database only
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+    
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.answerCbQuery('❌ Tidak diizinkan.');
     }
 
@@ -192,8 +208,12 @@ function registerAdminViewTopupAction(bot) {
  */
 function registerAdminListResellersAction(bot) {
   bot.action('admin_listreseller', async (ctx) => {
-    const userId = String(ctx.from.id);
-    if (!adminIds.includes(userId)) {
+    const userId = ctx.from.id;
+    
+    // Check if user is admin from database only
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+    
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('🚫 Kamu tidak memiliki izin.');
     }
 
@@ -243,8 +263,12 @@ function registerAdminListResellersAction(bot) {
  */
 function registerAdminListUsersAction(bot) {
   bot.action('admin_listuser', async (ctx) => {
-    const userId = String(ctx.from.id);
-    if (!adminIds.includes(userId)) {
+    const userId = ctx.from.id;
+    
+    // Check if user is admin from database only
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+    
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('🚫 Kamu tidak memiliki izin.');
     }
 
@@ -286,16 +310,17 @@ function registerAdminListUsersAction(bot) {
  */
 function registerAdminListServersAction(bot) {
   bot.action('admin_listserver', async (ctx) => {
-    const userId = String(ctx.from.id);
-    if (!adminIds.includes(userId)) {
+    const userId = ctx.from.id;
+    
+    // Check if user is admin from database only
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+    
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('🚫 Kamu tidak memiliki izin.');
     }
 
-    global.db.all('SELECT * FROM Server ORDER BY id DESC', [], (err, rows) => {
-      if (err) {
-        logger.error('❌ Error ambil list server:', err.message);
-        return ctx.reply('⚠️ Gagal mengambil data server.');
-      }
+    try {
+      const rows = await dbAllAsync('SELECT * FROM Server ORDER BY id DESC');
 
       if (!rows || rows.length === 0) {
         return ctx.reply('📭 Belum ada server yang ditambahkan.');
@@ -312,8 +337,11 @@ function registerAdminListServersAction(bot) {
       }).join('\n──────────────\n');
 
       const msg = `📄 List Server Tersimpan:\n\n${list}`;
-      ctx.reply(msg);
-    });
+      await ctx.reply(msg);
+    } catch (err) {
+      logger.error('❌ Error ambil list server:', err.message);
+      return ctx.reply('⚠️ Gagal mengambil data server.');
+    }
   });
 }
 
@@ -322,13 +350,12 @@ function registerAdminListServersAction(bot) {
  */
 function registerAdminPromoteResellerAction(bot) {
   bot.action('admin_promote_reseller', async (ctx) => {
-    const adminId = String(ctx.from.id);
-    const rawAdmin = USER_ID;
-    const adminIds = Array.isArray(rawAdmin)
-      ? rawAdmin.map(String)
-      : [String(rawAdmin)];
-
-    if (!adminIds.includes(adminId)) {
+    const adminId = ctx.from.id;
+    
+    // Check if user is admin from database only
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [adminId]);
+    
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('⛔ Hanya admin yang bisa akses fitur ini.');
     }
 
@@ -352,11 +379,12 @@ function registerAdminPromoteResellerAction(bot) {
  */
 function registerAdminDowngradeResellerAction(bot) {
   bot.action('admin_downgrade_reseller', async (ctx) => {
-    const adminId = String(ctx.from.id);
-    const rawAdmin = USER_ID;
-    const adminIds = Array.isArray(rawAdmin) ? rawAdmin.map(String) : [String(rawAdmin)];
-
-    if (!adminIds.includes(adminId)) {
+    const adminId = ctx.from.id;
+    
+    // Check if user is admin from database only
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [adminId]);
+    
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('⛔ *Khusus admin.*', { parse_mode: 'Markdown' });
     }
 
@@ -373,11 +401,12 @@ function registerAdminDowngradeResellerAction(bot) {
  */
 function registerAdminChangeResellerLevelAction(bot) {
   bot.action('admin_ubah_level', async (ctx) => {
-    const adminId = String(ctx.from.id);
-    const rawAdmin = USER_ID;
-    const adminIds = Array.isArray(rawAdmin) ? rawAdmin.map(String) : [String(rawAdmin)];
-
-    if (!adminIds.includes(adminId)) {
+    const adminId = ctx.from.id;
+    
+    // Check if user is admin from database only
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [adminId]);
+    
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('⛔ *Khusus admin.*', { parse_mode: 'Markdown' });
     }
 
@@ -405,10 +434,11 @@ function registerAdminChangeResellerLevelAction(bot) {
 function registerAdminResetKomisiAction(bot) {
   bot.action('admin_resetkomisi', async (ctx) => {
     const adminId = ctx.from.id;
-    const rawAdmin = USER_ID;
-    const adminIds = Array.isArray(rawAdmin) ? rawAdmin.map(String) : [String(rawAdmin)];
-
-    if (!adminIds.includes(String(adminId))) {
+    
+    // Check if user is admin from database only
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [adminId]);
+    
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply(escapeMarkdown('⛔ Akses ditolak. Hanya admin.'), {
         parse_mode: 'MarkdownV2'
       });
@@ -431,7 +461,13 @@ function registerAdminResetKomisiAction(bot) {
 function registerAdminRestoreDBAction(bot) {
   bot.action('admin_restore2_db', async (ctx) => {
     const userId = ctx.from.id;
-    if (!adminIds.includes(String(userId))) return ctx.reply('🚫 Kamu tidak memiliki izin.');
+    
+    // Check if user is admin from database only
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+    
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
+      return ctx.reply('🚫 Kamu tidak memiliki izin.');
+    }
 
     if (!global.userState) global.userState = {};
     global.userState[ctx.chat.id] = { step: 'await_restore_upload' };

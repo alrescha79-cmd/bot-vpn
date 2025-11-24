@@ -142,6 +142,35 @@ async function initializeSchema() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    // Topup Log table
+    await dbRunAsync(`CREATE TABLE IF NOT EXISTS topup_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      username TEXT,
+      amount INTEGER,
+      reference TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    // Accounts table - stores created premium accounts
+    await dbRunAsync(`CREATE TABLE IF NOT EXISTS accounts (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL,
+      protocol TEXT NOT NULL,
+      server TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      expired_at TEXT,
+      owner_user_id INTEGER NOT NULL,
+      status TEXT DEFAULT 'active',
+      raw_response TEXT,
+      UNIQUE(username, server, protocol)
+    )`);
+
+    // Add indexes for accounts table
+    await dbRunAsync(`CREATE INDEX IF NOT EXISTS idx_accounts_username ON accounts(username)`);
+    await dbRunAsync(`CREATE INDEX IF NOT EXISTS idx_accounts_owner ON accounts(owner_user_id)`);
+    await dbRunAsync(`CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts(status)`);
+
     if (isNew) {
       logger.info('✅ New database schema initialized successfully');
       logger.info('ℹ️  Database is ready with empty tables (no seed data)');

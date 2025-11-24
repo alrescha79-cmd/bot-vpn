@@ -17,12 +17,13 @@ const config = require('../../config');
  */
 function registerAdminMenuAction(bot) {
   bot.action(['admin', 'menu_adminreseller'], async (ctx) => {
-    const userId = String(ctx.from.id);
+    const userId = ctx.from.id;
 
     try {
+      // Check if user is admin from database only
       const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
 
-      if ((!user || user.role !== 'admin') && !config.adminIds.includes(userId)) {
+      if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
         return ctx.reply('🚫 Kamu tidak memiliki izin.');
       }
 
@@ -177,39 +178,9 @@ Manajemen sistem dan pengguna:
  * Handle list users action
  */
 function registerListUsersAction(bot) {
-  bot.action('admin_listuser', async (ctx) => {
-    const userId = String(ctx.from.id);
-    
-    if (!config.adminIds.includes(userId)) {
-      return ctx.reply('🚫 Kamu tidak memiliki izin.');
-    }
-
-    try {
-      const rows = await dbAllAsync('SELECT user_id, username, role, saldo FROM users LIMIT 20');
-
-      if (!rows || rows.length === 0) {
-        return ctx.reply('📭 Tidak ada pengguna terdaftar.');
-      }
-
-      const list = rows.map((row, i) => {
-        const mention = row.username
-          ? `@${escapeMarkdownV2(row.username)}`
-          : `ID: \`${escapeMarkdownV2(String(row.user_id))}\``;
-
-        return `🔹 ${mention}\n*Role*: ${escapeMarkdownV2(row.role)}\n*Saldo*: Rp${escapeMarkdownV2(row.saldo.toLocaleString('id-ID'))}`;
-      }).join('\n\n');
-
-      const text = `👥 *List Pengguna _max 20_:*\n\n${list}`;
-
-      await ctx.reply(text, {
-        parse_mode: 'MarkdownV2'
-      });
-
-    } catch (err) {
-      logger.error('❌ Failed to fetch user list:', err.message);
-      ctx.reply('❌ Gagal mengambil daftar pengguna.');
-    }
-  });
+  // This handler is now handled by adminToolsActions.ts
+  // Kept for backward compatibility but does nothing
+  // The actual handler is in registerAdminListUsersAction
 }
 
 /**
@@ -247,38 +218,9 @@ function registerListServersAction(bot) {
  * Handle admin stats action
  */
 function registerAdminStatsAction(bot) {
-  bot.action('admin_stats', async (ctx) => {
-    const userId = String(ctx.from.id);
-    
-    if (!config.adminIds.includes(userId)) {
-      return ctx.reply('🚫 Kamu tidak memiliki izin.');
-    }
-
-    try {
-      const [jumlahUser, jumlahAkun, jumlahReseller, jumlahServer, totalSaldo] = await Promise.all([
-        dbGetAsync('SELECT COUNT(*) AS count FROM users'),
-        dbGetAsync('SELECT COUNT(*) AS count FROM akun_aktif'),
-        dbGetAsync("SELECT COUNT(*) AS count FROM users WHERE role = 'reseller'"),
-        dbGetAsync('SELECT COUNT(*) AS count FROM Server'),
-        dbGetAsync('SELECT SUM(saldo) AS total FROM users')
-      ]);
-
-      const replyText = `
-📊 *Statistik Sistem*
-
-👥 Total Pengguna     : *${jumlahUser.count}*
-🆔 Total Akun Aktif     : *${jumlahAkun.count}*
-👑 Total Reseller         : *${jumlahReseller.count}*
-🖥 Total Server            : *${jumlahServer.count}*
-💰 Total Saldo              : *Rp${(totalSaldo.total || 0).toLocaleString('id-ID')}*
-      `.trim();
-
-      await ctx.reply(replyText, { parse_mode: 'Markdown' });
-    } catch (err) {
-      logger.error('❌ Failed to fetch admin stats:', err.message);
-      await ctx.reply('❌ Gagal mengambil statistik.');
-    }
-  });
+  // This handler is now handled by adminToolsActions.ts
+  // Kept for backward compatibility but does nothing
+  // The actual handler is in adminToolsActions.ts
 }
 
 /**

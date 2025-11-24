@@ -68,7 +68,7 @@ export function buildMainMenuKeyboard(userRole: string): any {
     [Markup.button.callback('🔐 Create Akun', 'create')],
     [Markup.button.callback('♻️ Renew Akun', 'renew')],
     [Markup.button.callback('🎯 Trial Akun', 'trial')],
-    [Markup.button.callback('💰 Cek Saldo', 'ceksaldo')],
+    [Markup.button.callback('👤 Akunku', 'akunku')],
     [Markup.button.callback('➕ Deposit Saldo', 'deposit')]
   ];
 
