@@ -1,4 +1,4 @@
-# 🤖 Bot VPN Telegram - Production Ready v3.1
+# 🤖 Bot VPN Telegram - Production Ready v3.1.2
 
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-blue.svg)](https://www.typescriptlang.org/)
@@ -6,11 +6,25 @@
 
 **Bot Telegram** untuk manajemen akun VPN multi-protocol dengan arsitektur production-ready. **Semua fitur & manajemen dilakukan via Telegram Bot** - web interface hanya untuk setup/edit konfigurasi awal.
 
-> **🆕 What's New in v3.1:**
+---
+
+## 🚀 One-Line Installation (Production)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | bash
+```
+
+> 📖 **Informasi lengkap**: Lihat [Production Installation Guide](docs/PRODUCTION_INSTALL.md) untuk detail setup dan konfigurasi.
+
+---
+
+> **🆕 What's New in v3.1.2:**
+> - ✅ **Midtrans Payment Gateway** - Integrasi lengkap dengan Midtrans untuk pembayaran otomatis
+> - ✅ **3-in-1 Protocol** - VMESS + VLESS + TROJAN dalam satu paket (harga 1.5x)
+> - ✅ **Trial System Fixed** - Perbaikan bug SSH trial timeout & loading messages
+> - ✅ **CLI Setup** - Setup konfigurasi manual via terminal untuk production
 > - ✅ **Account Persistence** - Semua akun premium disimpan ke database SQLite
 > - ✅ **Akunku Menu** - Lihat, detail, dan kelola akun yang telah dibuat
-> - ✅ **Enhanced Admin Access** - Fixed broadcast dan semua admin tools
-> - ✅ **Improved Data Extraction** - Better regex untuk parsing account data
 
 ---
 
@@ -69,6 +83,8 @@
 - **npm** v8+
 - **SQLite3** (auto-installed)
 - **VPS** dengan SSH access (untuk production)
+- **Midtrans Merchant ID dan Server Key** (untuk payment gateway)
+- **API Key lainnya** (jika menggunakan payment gateway lain)
 - **Telegram Bot Token** (dari [@BotFather](https://t.me/BotFather))
 
 > ⚠️ **PENTING**: Ini adalah **Telegram Bot**, bukan aplikasi web!
