@@ -23,76 +23,54 @@ async function trialssh(serverId) {
       const globalTimeout = setTimeout(() => {
         if (!resolved) {
           resolved = true;
-          console.error('❌ Global timeout after 35 seconds');
+          console.error('❌ Global timeout after 45 seconds');
           conn.end();
-          resolve({ status: 'error', message: 'Timeout koneksi ke server.' });
+          resolve({ status: 'error', message: 'Timeout - Server terlalu lama merespon.' });
         }
-      }, 35000);
+      }, 45000);
 
       conn.on('ready', () => {
         console.log('✅ SSH Connection established');
         
-        // Generate random username
-        const randomHex = Math.random().toString(16).substring(2, 6);
-        const username = `trial${randomHex}`;
-        const password = username;
-        const duration = 60; // minutes
-        
-        // Command untuk create trial SSH
         const cmd = `
-user="${username}"
-password="${password}"
-duration=${duration}
-expiration=$(date -d "+$duration minutes" +"%Y-%m-%d %H:%M:%S")
-domain=$(cat /etc/xray/domain 2>/dev/null || hostname -f)
-ip=$(wget -qO- ipv4.icanhazip.com 2>/dev/null || curl -s ipv4.icanhazip.com)
-ns_domain=$(cat /etc/xray/dns 2>/dev/null || echo "")
-public_key=$(cat /etc/slowdns/server.pub 2>/dev/null || echo "")
-city=$(cat /etc/xray/city 2>/dev/null || echo "Unknown")
+set -e
+user="trial\$(date +%s | tail -c 5)"
+password="\$user"
+duration=60
+domain=\$(cat /etc/xray/domain 2>/dev/null || hostname -f)
+ip=\$(hostname -I | awk '{print \$1}')
+ns_domain=\$(cat /etc/xray/dns 2>/dev/null || echo "")
+city=\$(cat /etc/xray/city 2>/dev/null || echo "Unknown")
+pubkey=\$(cat /etc/slowdns/server.pub 2>/dev/null || echo "")
+exp=\$(date -d "+\$duration minutes" +"%Y-%m-%d %H:%M:%S")
 
-# Buat akun
-useradd -e $(date -d "+$duration minutes" +"%Y-%m-%d") -s /bin/false -M "$user" 2>/dev/null
-echo "$user:$password" | chpasswd
+# Create trial user
+useradd -M -N -s /bin/false "\$user" 2>/dev/null || exit 1
+echo "\$user:\$password" | chpasswd || exit 1
 
-# Auto delete after duration
-echo "sleep $((duration * 60)); userdel $user 2>/dev/null" | at now 2>/dev/null || (nohup bash -c "sleep $((duration * 60)); userdel $user 2>/dev/null" &)
+# Auto delete after 1 hour
+(nohup bash -c "sleep 3600; userdel -f \$user 2>/dev/null" >/dev/null 2>&1 &)
 
-# Output JSON
-cat <<EOF
+cat <<EOFDATA
 {
   "status": "success",
-  "username": "$user",
-  "password": "$password",
-  "ip": "$ip",
-  "domain": "$domain",
-  "city": "$city",
-  "ns_domain": "$ns_domain",
-  "public_key": "$public_key",
-  "expiration": "$expiration",
-  "ports": {
-    "openssh": "22, 80, 443",
-    "udp_ssh": "1-65535",
-    "dns": "443, 53, 22",
-    "dropbear": "443, 109",
-    "ssh_ws": "80, 8080",
-    "ssh_ssl_ws": "443",
-    "ssl_tls": "443",
-    "ovpn_ssl": "443",
-    "ovpn_tcp": "1194",
-    "ovpn_udp": "2200"
-  },
-  "openvpn_link": "https://$domain:81/allovpn.zip",
-  "save_link": "https://$domain:81/ssh-$user.txt",
-  "wss_payload": "GET wss://bugmu.com/ HTTP/1.1[crlf]Host: $domain[crlf]Upgrade: websocket[crlf][crlf]"
+  "username": "\$user",
+  "password": "\$password",
+  "ip": "\$ip",
+  "domain": "\$domain",
+  "ns_domain": "\$ns_domain",
+  "city": "\$city",
+  "public_key": "\$pubkey",
+  "expiration": "\$exp"
 }
-EOF
+EOFDATA
 `;
         
         console.log('🔨 Executing trial SSH command...');
         
         let output = '';
         
-        conn.exec(cmd, (err, stream) => {
+        conn.exec(cmd, { timeout: 40000 }, (err, stream) => {
           if (err) {
             clearTimeout(globalTimeout);
             if (!resolved) {
@@ -128,6 +106,23 @@ EOF
               }
               const jsonStr = output.substring(jsonStart, jsonEnd + 1);
               const result = JSON.parse(jsonStr);
+              
+              // Add ports info
+              result.ports = {
+                openssh: "22, 80, 443",
+                udp_ssh: "1-65535",
+                dns: "443, 53, 22",
+                dropbear: "443, 109",
+                ssh_ws: "80, 8080",
+                ssh_ssl_ws: "443",
+                ssl_tls: "443",
+                ovpn_ssl: "443",
+                ovpn_tcp: "1194",
+                ovpn_udp: "2200"
+              };
+              result.openvpn_link = `https://${result.domain}:81/allovpn.zip`;
+              result.save_link = `https://${result.domain}:81/ssh-${result.username}.txt`;
+              result.wss_payload = `GET wss://bugmu.com/ HTTP/1.1[crlf]Host: ${result.domain}[crlf]Upgrade: websocket[crlf][crlf]`;
               
               console.log('✅ SSH Trial created:', result.username);
               resolve(result);

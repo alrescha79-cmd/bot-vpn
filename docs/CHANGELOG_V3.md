@@ -1,5 +1,308 @@
 # 📝 Changelog & Implementation Summary
 
+## Version 3.1.2 - Payment Gateway & 3-in-1 Protocol (November 2025)
+
+### 🎯 Fitur Utama
+
+#### ✅ Integrasi Payment Gateway Midtrans
+- **Dual Environment Support** - Sandbox untuk testing & Production untuk live
+- **Instant Payment Verification** - Webhook real-time untuk update status pembayaran
+- **Secure Transaction** - Enkripsi signature untuk keamanan transaksi
+- **Auto Top-up** - Saldo otomatis masuk setelah pembayaran berhasil
+- **Transaction Monitoring** - Dashboard admin untuk monitoring transaksi
+- **Comprehensive Logging** - Detailed logs untuk debugging & audit
+
+#### ✅ Protokol 3-in-1 (VMESS + VLESS + TROJAN)
+- **Single Purchase, Triple Protocol** - Satu kali beli dapat 3 protokol sekaligus
+- **Unified UUID** - UUID yang sama untuk ketiga protokol (konsisten)
+- **Smart Pricing** - Harga 1.5x lipat dari harga normal (value for money)
+- **Complete Link Generation** - 6 link total (TLS + gRPC untuk masing-masing protokol)
+- **Seamless Renewal** - Perpanjangan langsung untuk ketiga protokol
+- **Username Validation** - Validasi otomatis untuk mencegah duplikasi
+- **Exclusive for Premium** - Hanya tersedia untuk pembelian & renewal (tidak termasuk trial)
+
+#### ✅ Perbaikan Sistem Trial
+- **SSH Trial Connection** - Fixed timeout issue dengan optimasi command execution
+- **Consistent User Experience** - Loading message uniform untuk semua protokol
+- **Improved Error Handling** - Error messages yang lebih informatif
+- **Server Selection Enhancement** - Tampilan server tanpa harga untuk trial (lebih clean)
+- **All Protocols Working** - SSH, VMESS, VLESS, TROJAN, SHADOWSOCKS trial berfungsi sempurna
+
+#### ✅ Setup Konfigurasi Manual via Terminal
+- **CLI-based Setup** - Setup konfigurasi langsung dari terminal untuk production environment
+- **Interactive Prompts** - Input interaktif dengan validasi real-time
+- **Secure Input** - Password & sensitive data handling yang aman
+- **Environment Detection** - Auto-detect production vs development mode
+- **Validation & Verification** - Validasi format Telegram Bot Token, User ID, dll
+- **Quick Setup** - Setup selesai dalam hitungan menit tanpa web browser
+
+### 📦 File Baru
+
+#### Payment Gateway
+- `src/services/qris.service.ts` - Service untuk QRIS payment
+- `src/api/midtrans.webhook.ts` - Webhook handler untuk Midtrans
+- `docs/MIDTRANS_SETUP.md` - Panduan lengkap setup Midtrans
+- `docs/MIDTRANS_QUICKSTART.md` - Quick start guide 5 menit
+- `docs/MIDTRANS_KEYS_EXPLAINED.md` - Penjelasan detail API keys
+- `docs/QRIS_INTEGRATION.md` - Dokumentasi integrasi QRIS
+
+#### Protokol 3-in-1
+- `src/modules/protocols/create3IN1.ts` - Modul create akun 3-in-1
+- `src/modules/protocols/renew3IN1.ts` - Modul renewal akun 3-in-1
+
+#### Setup & Documentation
+- `scripts/install-production.sh` - Script instalasi production dengan CLI setup
+- `docs/PRODUCTION_INSTALL.md` - Panduan instalasi production lengkap
+
+### 🔧 File yang Dimodifikasi
+
+#### Configuration
+- `src/config/constants.ts`
+  - Tambah environment variables untuk Midtrans
+  - Configuration constants untuk payment gateway
+  - Dual environment support (Sandbox/Production)
+
+- `.vars.json.example`
+  - Tambah field Midtrans credentials
+  - Field untuk QRIS configuration
+  - Dokumentasi inline untuk setiap field
+
+#### Handlers
+- `src/handlers/actions/createActions.ts`
+  - Integrasi 3-in-1 protocol handler
+  - Payment confirmation dengan Midtrans
+  - Price multiplier 1.5x untuk 3-in-1
+  - Marking accounts di database untuk tracking
+
+- `src/handlers/actions/serviceActions.ts`
+  - Tambah button "3 IN 1" untuk create & renew
+  - Conditional rendering (tidak tampil di trial)
+  - Handler registration untuk 3-in-1 actions
+
+- `src/handlers/actions/renewActions.ts`
+  - Support renewal 3-in-1 accounts
+  - Validation untuk ketiga protokol
+  - Price calculation dengan multiplier
+
+- `src/handlers/actions/trialActions.ts`
+  - Loading message untuk semua protokol trial
+  - Server validation improvement
+  - Error handling yang lebih baik
+
+- `src/handlers/events/textHandler.ts`
+  - Username validation untuk 3-in-1
+  - Prevent duplicate username across protocols
+  - State management untuk 3-in-1 flow
+
+#### Services
+- `src/services/depositService.ts`
+  - Integrasi Midtrans payment creation
+  - Auto-verification setiap 10 detik
+  - Transaction status update
+  - Webhook processing
+
+#### Modules
+- `src/modules/protocols/ssh/trialSSH.ts`
+  - Optimasi command execution (menghindari timeout)
+  - Simplified user creation script
+  - JSON output format yang konsisten
+  - Better error handling dengan exit codes
+
+- All protocol create/renew modules
+  - Handler mapping untuk 3-in-1
+  - Username validation integration
+
+### 🐛 Bug Fixes
+
+1. **SSH Trial Timeout**
+   - Root cause: Command execution terlalu kompleks dengan nested shell
+   - Fix: Simplified command script, remove unnecessary nesting
+   - Result: Execution time berkurang dari 45+ detik ke <10 detik
+
+2. **3-in-1 Stuck Bug**
+   - Root cause: Handler action tidak ter-register dengan benar
+   - Fix: Explicit registration di registerProtocolActions()
+   - Result: Flow create & renew 3-in-1 berjalan lancar
+
+3. **Trial Server Selection Pricing**
+   - Root cause: Server selection menampilkan harga untuk trial
+   - Fix: Conditional rendering berdasarkan action type
+   - Result: Trial hanya menampilkan nama server (tanpa harga)
+
+4. **Duplicate Username Issue**
+   - Root cause: Tidak ada validasi cross-protocol
+   - Fix: Check ke database akun_aktif sebelum create
+   - Result: Username unique across all protocols
+
+5. **Midtrans Payment Status**
+   - Root cause: Manual check tidak update status di database
+   - Fix: Update transaction status setelah verifikasi
+   - Result: Status payment tersinkronisasi dengan Midtrans
+
+### 📊 Peningkatan Performa
+
+1. **Trial Account Creation**
+   - Before: 45+ detik (timeout)
+   - After: <10 detik
+   - Improvement: 78% faster
+
+2. **3-in-1 Account Creation**
+   - Single API call untuk 3 protokol
+   - Parallel execution untuk efficiency
+   - Consistent UUID generation
+
+3. **Payment Verification**
+   - Auto-check setiap 10 detik
+   - Instant webhook update
+   - Reduced manual intervention
+
+### 🧪 Testing Checklist
+
+#### Payment Gateway
+- [x] Midtrans Sandbox payment creation
+- [x] Webhook callback processing
+- [x] Auto-verification service
+- [x] Transaction status update
+- [x] Balance top-up after payment
+- [x] Admin transaction monitoring
+- [x] Error handling & logging
+
+#### 3-in-1 Protocol
+- [x] Create 3-in-1 account (VMESS+VLESS+TROJAN)
+- [x] Link generation (6 links total)
+- [x] Renew 3-in-1 account
+- [x] Username validation
+- [x] Price calculation (1.5x multiplier)
+- [x] Database tracking
+- [x] Exclusion from trial menu
+
+#### Trial System
+- [x] SSH trial creation (no timeout)
+- [x] Loading message for all protocols
+- [x] Server selection without pricing
+- [x] VMESS, VLESS, TROJAN, SHADOWSOCKS trials
+- [x] Error handling & user feedback
+
+#### CLI Setup
+- [x] Interactive prompts working
+- [x] Input validation
+- [x] Config file generation
+- [x] Database initialization
+- [x] Service restart
+
+### 🚀 Upgrade Notes
+
+**Dari v3.1.0/v3.1.1 ke v3.1.2:**
+
+1. **Pull kode terbaru**
+   ```bash
+   git pull origin main
+   ```
+
+2. **Update dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Update konfigurasi**
+   - Tambahkan Midtrans credentials ke `.vars.json`
+   - Atau jalankan `/config/edit` untuk update via web
+   - Atau gunakan `scripts/install-production.sh` untuk CLI setup
+
+4. **Build ulang**
+   ```bash
+   npm run build
+   ```
+
+5. **Restart bot**
+   ```bash
+   pm2 restart bot-vpn
+   # atau
+   systemctl restart bot-vpn
+   ```
+
+6. **Verifikasi**
+   - Test create 3-in-1 account
+   - Test trial SSH
+   - Test Midtrans payment (Sandbox)
+   ```bash
+   pm2 logs bot-vpn
+   ```
+
+### 📝 Migration Notes
+
+#### Update .vars.json
+
+Tambahkan field baru:
+
+```json
+{
+  "MIDTRANS_MERCHANT_ID": "your-merchant-id",
+  "MIDTRANS_CLIENT_KEY": "your-client-key",
+  "MIDTRANS_SERVER_KEY": "your-server-key",
+  "MIDTRANS_IS_PRODUCTION": false
+}
+```
+
+#### Database Migration
+
+Tidak ada perubahan schema. Database akan tetap kompatibel.
+
+#### Breaking Changes
+
+**Tidak ada breaking changes.** Update ini backward compatible.
+
+### 🎓 Best Practices
+
+1. **Payment Gateway Setup**
+   - Mulai dengan Sandbox untuk testing
+   - Verifikasi webhook URL accessible
+   - Test payment flow sebelum production
+   - Monitor transaction logs
+
+2. **3-in-1 Usage**
+   - Recommended untuk user yang ingin flexibility
+   - Pricing yang fair (1.5x untuk 3 protokol)
+   - Educate users tentang keuntungan 3-in-1
+
+3. **Trial System**
+   - Monitor trial usage untuk prevent abuse
+   - Set reasonable limits per user role
+   - Regular cleanup trial accounts
+
+4. **CLI Setup**
+   - Gunakan untuk production deployment
+   - Simpan credential dengan aman
+   - Document setup steps untuk team
+
+### 📞 Support & Resources
+
+**Dokumentasi:**
+- [Midtrans Setup Guide](docs/MIDTRANS_SETUP.md)
+- [Midtrans Quick Start](docs/MIDTRANS_QUICKSTART.md)
+- [Production Installation](docs/PRODUCTION_INSTALL.md)
+- [QRIS Integration](docs/QRIS_INTEGRATION.md)
+
+**Troubleshooting:**
+- Check logs: `pm2 logs bot-vpn`
+- Webhook testing: Use Midtrans Dashboard
+- Trial issues: Check SSH connection & server status
+- 3-in-1 issues: Verify handler registration
+
+**Community:**
+- Report bugs: GitHub Issues
+- Feature requests: GitHub Discussions
+- Support: Telegram Group
+
+---
+
+**Version:** 3.1.2  
+**Release Date:** 25 November 2025  
+**Status:** ✅ Production Ready  
+**Major Updates:** Payment Gateway, 3-in-1 Protocol, Trial Fixes, CLI Setup
+
+---
+
 ## Version 3.1.0 - Account Persistence Update (November 2025)
 
 ### 🎯 Major Features

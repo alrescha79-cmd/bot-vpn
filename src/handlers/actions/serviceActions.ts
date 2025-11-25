@@ -47,11 +47,19 @@ async function handleServiceAction(ctx, type) {
       ],
       [
         Markup.button.callback('🕶️ SHADOWSOCKS', `${type}_shadowsocks`)
-      ],
-      [
-        Markup.button.callback('🔙 Menu Utama', 'send_main_menu')
       ]
     ];
+
+    // Add 3IN1 button only for create and renew (not trial)
+    if (type === 'create' || type === 'renew') {
+      protocolButtons.push([
+        Markup.button.callback('🎁 3 IN 1 (VMESS + VLESS + TROJAN)', `${type}_3in1`)
+      ]);
+    }
+
+    protocolButtons.push([
+      Markup.button.callback('🔙 Menu Utama', 'send_main_menu')
+    ]);
 
     const message = `
 ${label.emoji} *${label.text}*
@@ -93,7 +101,12 @@ async function showServerSelection(ctx, protocol, action) {
     const buttons = servers.map(server => {
       const flag = getFlagEmoji(server.lokasi || '');
       const harga = server.harga || 0;
-      const label = `${flag} ${server.nama_server} (Rp ${harga.toLocaleString('id-ID')}/Hari)`;
+      
+      // For trial, show only server name without price
+      const label = action === 'trial'
+        ? `${flag} ${server.nama_server}`
+        : `${flag} ${server.nama_server} (Rp ${harga.toLocaleString('id-ID')}/Hari)`;
+      
       return [Markup.button.callback(label, `${action}_server_${protocol}_${server.id}`)];
     });
 
@@ -104,7 +117,8 @@ async function showServerSelection(ctx, protocol, action) {
       vmess: '📡 VMESS',
       vless: '🌐 VLESS',
       trojan: '🔒 TROJAN',
-      shadowsocks: '🕶️ SHADOWSOCKS'
+      shadowsocks: '🕶️ SHADOWSOCKS',
+      '3in1': '🎁 3 IN 1 (VMESS+VLESS+TROJAN)'
     };
 
     const message = `
@@ -151,7 +165,8 @@ async function showDurationSelection(ctx, protocol, action, serverId) {
       vmess: '📡 VMESS',
       vless: '🌐 VLESS',
       trojan: '🔒 TROJAN',
-      shadowsocks: '🕶️ SHADOWSOCKS'
+      shadowsocks: '🕶️ SHADOWSOCKS',
+      '3in1': '🎁 3 IN 1 (VMESS+VLESS+TROJAN)'
     };
 
     const message = `
@@ -227,7 +242,14 @@ function registerProtocolActions(bot) {
     });
   });
 
-  logger.info('✅ Protocol actions registered (create/renew/trial for all protocols)');
+  // Register 3in1 only for create and renew (not trial)
+  ['create', 'renew'].forEach(action => {
+    bot.action(`${action}_3in1`, async (ctx) => {
+      await showServerSelection(ctx, '3in1', action);
+    });
+  });
+
+  logger.info('✅ Protocol actions registered (create/renew/trial for all protocols + 3in1)');
 }
 
 /**

@@ -147,9 +147,15 @@ function registerTrialSSHAction(bot) {
         );
       }
 
-      // Get server name
-      const server = await dbGetAsync('SELECT nama_server FROM Server WHERE id = ?', [serverId]);
-      const serverName = server?.nama_server || 'Unknown';
+      // Get server
+      const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]);
+      if (!server) {
+        return bot.telegram.sendMessage(chatId, '❌ Server tidak ditemukan.');
+      }
+      const serverName = server.nama_server || 'Unknown';
+
+      // Show loading message
+      await bot.telegram.sendMessage(chatId, '⏳ *Sedang membuat akun trial...* Mohon tunggu.', { parse_mode: 'Markdown' });
 
       // Execute trial SSH
       const result = await trialssh(serverId);
@@ -237,9 +243,15 @@ function registerTrialVMESSAction(bot) {
         );
       }
 
-      // Get server name
-      const server = await dbGetAsync('SELECT nama_server FROM Server WHERE id = ?', [serverId]);
-      const serverName = server?.nama_server || 'Unknown';
+      // Get server
+      const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]);
+      if (!server) {
+        return bot.telegram.sendMessage(chatId, '❌ Server tidak ditemukan.');
+      }
+      const serverName = server.nama_server || 'Unknown';
+
+      // Show loading message
+      await bot.telegram.sendMessage(chatId, '⏳ *Sedang membuat akun trial...* Mohon tunggu.', { parse_mode: 'Markdown' });
 
       // Execute trial VMESS
       const result = await trialvmess(serverId);
@@ -325,9 +337,15 @@ function registerTrialVLESSAction(bot) {
         );
       }
 
-      // Get server name
-      const server = await dbGetAsync('SELECT nama_server FROM Server WHERE id = ?', [serverId]);
-      const serverName = server?.nama_server || 'Unknown';
+      // Get server
+      const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]);
+      if (!server) {
+        return bot.telegram.sendMessage(chatId, '❌ Server tidak ditemukan.');
+      }
+      const serverName = server.nama_server || 'Unknown';
+
+      // Show loading message
+      await bot.telegram.sendMessage(chatId, '⏳ *Sedang membuat akun trial...* Mohon tunggu.', { parse_mode: 'Markdown' });
 
       // Execute trial VLESS
       const result = await trialvless(serverId);
@@ -413,9 +431,15 @@ function registerTrialTROJANAction(bot) {
         );
       }
 
-      // Get server name
-      const server = await dbGetAsync('SELECT nama_server FROM Server WHERE id = ?', [serverId]);
-      const serverName = server?.nama_server || 'Unknown';
+      // Get server
+      const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]);
+      if (!server) {
+        return bot.telegram.sendMessage(chatId, '❌ Server tidak ditemukan.');
+      }
+      const serverName = server.nama_server || 'Unknown';
+
+      // Show loading message
+      await bot.telegram.sendMessage(chatId, '⏳ *Sedang membuat akun trial...* Mohon tunggu.', { parse_mode: 'Markdown' });
 
       // Execute trial TROJAN
       const result = await trialtrojan(serverId);
@@ -501,9 +525,19 @@ function registerTrialSHADOWSOCKSAction(bot) {
         );
       }
 
-      // Get server name
+      // Get server
       const server = await dbGetAsync('SELECT nama_server FROM Server WHERE id = ?', [serverId]);
-      const serverName = server?.nama_server || 'Unknown';
+      if (!server) {
+        return await bot.telegram.sendMessage(chatId, '❌ Server tidak ditemukan!');
+      }
+      const serverName = server.nama_server;
+
+      // Send loading message
+      await bot.telegram.sendMessage(
+        chatId,
+        '⏳ *Sedang membuat akun trial...* Mohon tunggu.',
+        { parse_mode: 'Markdown' }
+      );
 
       // Execute trial SHADOWSOCKS
       const result = await trialshadowsocks(serverId);

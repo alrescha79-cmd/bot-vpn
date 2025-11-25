@@ -12,13 +12,14 @@ const createVMESS = require('../../modules/protocols/vmess/createVMESS');
 const createVLESS = require('../../modules/protocols/vless/createVLESS');
 const createTROJAN = require('../../modules/protocols/trojan/createTROJAN');
 const createSHADOWSOCKS = require('../../modules/protocols/shadowsocks/createSHADOWSOCKS');
+const create3IN1 = require('../../modules/protocols/3in1/create3IN1');
 
 /**
  * Register all create account actions
  */
 function registerCreateActions(bot) {
   // Server selection handlers - redirect to username input
-  const protocols = ['ssh', 'vmess', 'vless', 'trojan', 'shadowsocks'];
+  const protocols = ['ssh', 'vmess', 'vless', 'trojan', 'shadowsocks', '3in1'];
   
   protocols.forEach(protocol => {
     bot.action(new RegExp(`^create_server_${protocol}_(\\d+)$`), async (ctx) => {
@@ -28,17 +29,17 @@ function registerCreateActions(bot) {
   });
 
   // Duration selection handlers - show username input
-  bot.action(/^duration_create_([a-z]+)_(\d+)_(\d+)$/, async (ctx) => {
+  bot.action(/^duration_create_([a-z0-9]+)_(\d+)_(\d+)$/, async (ctx) => {
     await handleDurationSelection(ctx, 'create');
   });
 
   // Payment confirmation handlers
-  bot.action(/^pay_create_([a-z]+)_(\d+)_(\d+)$/, async (ctx) => {
+  bot.action(/^pay_create_([a-z0-9]+)_(\d+)_(\d+)$/, async (ctx) => {
     await handlePaymentConfirmation(ctx, 'create');
   });
 
   // Cancel handlers
-  bot.action(/^cancel_create_([a-z]+)_(\d+)_(\d+)$/, async (ctx) => {
+  bot.action(/^cancel_create_([a-z0-9]+)_(\d+)_(\d+)$/, async (ctx) => {
     await ctx.editMessageText('❌ *Pembuatan akun dibatalkan.*', { parse_mode: 'Markdown' });
     delete global.userState[ctx.chat.id];
   });
@@ -106,17 +107,7 @@ async function handleDurationSelection(ctx, action) {
     // Update state with duration
     state.duration = duration;
 
-    // For SSH, ask for password
-    if (protocol === 'ssh' && action === 'create') {
-      state.step = `password_${action}_${protocol}`;
-      await ctx.editMessageText(
-        `🔑 Masukkan Password\n\n` +
-        `Password untuk akun SSH (minimal 6 karakter):`
-      );
-      return;
-    }
-
-    // For other protocols or renew, show payment confirmation
+    // Show payment confirmation (password already collected in text handler for SSH)
     const { showPaymentConfirmation } = require('../events/textHandler');
     await showPaymentConfirmation(ctx, state);
 
@@ -171,7 +162,9 @@ async function handlePaymentConfirmation(ctx, action) {
       : 0.1
       : 0;
 
-    const hargaSatuan = Math.floor(server.harga * (1 - diskon));
+    // For 3in1, price is 1.5x
+    const priceMultiplier = protocol === '3in1' ? 1.5 : 1;
+    const hargaSatuan = Math.floor(server.harga * (1 - diskon) * priceMultiplier);
     const totalHarga = hargaSatuan * duration;
 
     // Check balance again
@@ -198,7 +191,8 @@ async function handlePaymentConfirmation(ctx, action) {
       vmess: () => createVMESS.createvmess(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration),
       vless: () => createVLESS.createvless(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration),
       trojan: () => createTROJAN.createtrojan(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration),
-      shadowsocks: () => createSHADOWSOCKS.createshadowsocks(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration)
+      shadowsocks: () => createSHADOWSOCKS.createshadowsocks(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration),
+      '3in1': () => create3IN1.create3in1(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration)
     };
 
     const handler = handlerMap[protocol];
@@ -221,6 +215,25 @@ async function handlePaymentConfirmation(ctx, action) {
     if (msg.startsWith('❌')) {
       // Refund if creation failed
       await dbRunAsync('UPDATE users SET saldo = saldo + ? WHERE user_id = ?', [totalHarga, userId]);
+      
+      // If username already exists, keep state and ask for new username
+      if (msg.includes('Username sudah digunakan')) {
+        state.step = `username_${action}_${protocol}`;
+        delete state.username; // Clear old username
+        if (state.password) delete state.password; // Clear password too for SSH
+        
+        return ctx.reply(
+          `${msg}\n\n` +
+          `📝 Masukkan Username Baru\n\n` +
+          `Format: huruf kecil, angka, underscore (3-20 karakter)\n` +
+          `Contoh: user123, my_vpn\n\n` +
+          `Ketik username yang diinginkan:`,
+          { parse_mode: 'Markdown' }
+        );
+      }
+      
+      // For other errors, clear state
+      delete global.userState[chatId];
       return ctx.reply(msg, { parse_mode: 'Markdown' });
     }
 
@@ -235,7 +248,14 @@ async function handlePaymentConfirmation(ctx, action) {
     `, [userId, ctx.from.username || ctx.from.first_name, protocol, username, duration, totalHarga, komisi]);
 
     // Mark account as active
-    await dbRunAsync('INSERT OR REPLACE INTO akun_aktif (username, jenis) VALUES (?, ?)', [username, protocol]);
+    // For 3in1, mark all three protocols
+    if (protocol === '3in1') {
+      await dbRunAsync('INSERT OR REPLACE INTO akun_aktif (username, jenis) VALUES (?, ?)', [username, 'vmess']);
+      await dbRunAsync('INSERT OR REPLACE INTO akun_aktif (username, jenis) VALUES (?, ?)', [username, 'vless']);
+      await dbRunAsync('INSERT OR REPLACE INTO akun_aktif (username, jenis) VALUES (?, ?)', [username, 'trojan']);
+    } else {
+      await dbRunAsync('INSERT OR REPLACE INTO akun_aktif (username, jenis) VALUES (?, ?)', [username, protocol]);
+    }
 
     // Handle reseller commission
     if (user.role === 'reseller') {

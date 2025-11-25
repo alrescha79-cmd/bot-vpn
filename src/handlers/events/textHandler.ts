@@ -26,11 +26,13 @@ const { createvmess } = require('../../modules/protocols/vmess/createVMESS');
 const { createvless } = require('../../modules/protocols/vless/createVLESS');
 const { createtrojan } = require('../../modules/protocols/trojan/createTROJAN');
 const { createshadowsocks } = require('../../modules/protocols/shadowsocks/createSHADOWSOCKS');
+const { create3in1 } = require('../../modules/protocols/3in1/create3IN1');
 const { renewssh } = require('../../modules/protocols/ssh/renewSSH');
 const { renewvmess } = require('../../modules/protocols/vmess/renewVMESS');
 const { renewvless } = require('../../modules/protocols/vless/renewVLESS');
 const { renewtrojan } = require('../../modules/protocols/trojan/renewTROJAN');
 const { renewshadowsocks } = require('../../modules/protocols/shadowsocks/renewSHADOWSOCKS');
+const { renew3in1 } = require('../../modules/protocols/3in1/renew3IN1');
 
 // Import utilities (these functions should exist in app.js or be moved to utils)
 // const { resolveDomainToIP, getISPAndLocation } = require('../../utils/serverUtils');
@@ -58,20 +60,66 @@ async function handleServiceFlow(ctx, state, text, bot) {
         return ctx.reply('❌ *Username tidak valid.* Gunakan huruf, angka, underscore (3-20 karakter).', { parse_mode: 'Markdown' });
       }
 
+      // For create action, check if username already exists
+      if (state.action === 'create') {
+        const existingUser = await dbGetAsync(
+          'SELECT * FROM akun_aktif WHERE username = ?',
+          [text]
+        );
+        if (existingUser) {
+          return ctx.reply(
+            `❌ *Username sudah digunakan!*\n\n` +
+            `Username \`${text}\` sudah terdaftar untuk ${existingUser.jenis.toUpperCase()}.\n` +
+            `Silakan masukkan username lain:`,
+            { parse_mode: 'Markdown' }
+          );
+        }
+      }
+
       state.username = text;
 
       // For renew action, check if account exists
       if (state.action === 'renew') {
-        const row = await dbGetAsync(
-          'SELECT * FROM akun_aktif WHERE username = ? AND jenis = ?',
-          [text, state.type]
-        );
-        if (!row) {
-          return ctx.reply('❌ *Akun tidak ditemukan atau tidak aktif.*', { parse_mode: 'Markdown' });
+        // For 3in1, check if account exists in all three protocols
+        if (state.type === '3in1') {
+          const vmessExists = await dbGetAsync('SELECT * FROM akun_aktif WHERE username = ? AND jenis = ?', [text, 'vmess']);
+          const vlessExists = await dbGetAsync('SELECT * FROM akun_aktif WHERE username = ? AND jenis = ?', [text, 'vless']);
+          const trojanExists = await dbGetAsync('SELECT * FROM akun_aktif WHERE username = ? AND jenis = ?', [text, 'trojan']);
+          
+          if (!vmessExists || !vlessExists || !trojanExists) {
+            const missing = [];
+            if (!vmessExists) missing.push('VMESS');
+            if (!vlessExists) missing.push('VLESS');
+            if (!trojanExists) missing.push('TROJAN');
+            return ctx.reply(
+              `❌ *Akun 3IN1 tidak lengkap!*\n\n` +
+              `Username \`${text}\` tidak ditemukan di: ${missing.join(', ')}.\n` +
+              `Akun 3IN1 harus ada di ketiga protokol.`,
+              { parse_mode: 'Markdown' }
+            );
+          }
+        } else {
+          // For other protocols, check normally
+          const row = await dbGetAsync(
+            'SELECT * FROM akun_aktif WHERE username = ? AND jenis = ?',
+            [text, state.type]
+          );
+          if (!row) {
+            return ctx.reply('❌ *Akun tidak ditemukan atau tidak aktif.*', { parse_mode: 'Markdown' });
+          }
         }
       }
 
-      // Show duration selection
+      // For SSH create, ask for password first
+      if (state.type === 'ssh' && state.action === 'create') {
+        state.step = `password_${state.action}_${state.type}`;
+        return ctx.reply(
+          `🔑 Masukkan Password\n\n` +
+          `Password untuk akun SSH (minimal 6 karakter):`
+        );
+      }
+
+      // For other protocols or renew, show duration selection
       const { showDurationSelection } = require('../actions/serviceActions');
       return await showDurationSelection(ctx, state.type, state.action, state.serverId);
     }
@@ -84,7 +132,7 @@ async function handleServiceFlow(ctx, state, text, bot) {
 
       state.password = text;
       
-      // Show duration selection
+      // Show duration selection after password
       const { showDurationSelection } = require('../actions/serviceActions');
       return await showDurationSelection(ctx, state.type, state.action, state.serverId);
     }
@@ -127,7 +175,9 @@ async function handleServiceFlow(ctx, state, text, bot) {
         : 0.1
         : 0;
 
-      const hargaSatuan = Math.floor(server.harga * (1 - diskon));
+      // For 3in1, price is 1.5x
+      const priceMultiplier = type === '3in1' ? 1.5 : 1;
+      const hargaSatuan = Math.floor(server.harga * (1 - diskon) * priceMultiplier);
       const totalHarga = hargaSatuan * days;
       const komisi = user.role === 'reseller' ? Math.floor(server.harga * days * 0.1) : 0;
 
@@ -157,14 +207,16 @@ async function handleServiceFlow(ctx, state, text, bot) {
           vless: () => createvless(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
           trojan: () => createtrojan(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
           shadowsocks: () => createshadowsocks(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
-          ssh: () => createssh(username, password, days, server.iplimit, serverId, totalHarga, days)
+          ssh: () => createssh(username, password, days, server.iplimit, serverId, totalHarga, days),
+          '3in1': () => create3in1(username, days, server.quota, server.iplimit, serverId, totalHarga, days)
         },
         renew: {
           vmess: () => renewvmess(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
           vless: () => renewvless(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
           trojan: () => renewtrojan(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
           shadowsocks: () => renewshadowsocks(username, days, server.quota, server.iplimit, serverId, totalHarga, days),
-          ssh: () => renewssh(username, days, server.iplimit, serverId, totalHarga, days)
+          ssh: () => renewssh(username, days, server.iplimit, serverId, totalHarga, days),
+          '3in1': () => renew3in1(username, days, server.quota, server.iplimit, serverId, totalHarga, days)
         }
       };
 
@@ -182,6 +234,24 @@ async function handleServiceFlow(ctx, state, text, bot) {
 
       // Check for error message
       if (msg.startsWith('❌')) {
+        // If username already exists, keep state and ask for new username
+        if (msg.includes('Username sudah digunakan')) {
+          state.step = `username_${action}_${type}`;
+          delete state.username;
+          if (state.password) delete state.password;
+          
+          return ctx.reply(
+            `${msg}\n\n` +
+            `📝 Masukkan Username Baru\n\n` +
+            `Format: huruf kecil, angka, underscore (3-20 karakter)\n` +
+            `Contoh: user123, my_vpn\n\n` +
+            `Ketik username yang diinginkan:`,
+            { parse_mode: 'Markdown' }
+          );
+        }
+        
+        // For other errors, clear state
+        delete global.userState[chatId];
         return ctx.reply(msg, { parse_mode: 'Markdown' });
       }
 
@@ -196,7 +266,14 @@ async function handleServiceFlow(ctx, state, text, bot) {
 
       // Mark account as active
       if (action === 'create') {
-        await dbRunAsync('INSERT OR REPLACE INTO akun_aktif (username, jenis) VALUES (?, ?)', [username, type]);
+        // For 3in1, mark all three protocols
+        if (type === '3in1') {
+          await dbRunAsync('INSERT OR REPLACE INTO akun_aktif (username, jenis) VALUES (?, ?)', [username, 'vmess']);
+          await dbRunAsync('INSERT OR REPLACE INTO akun_aktif (username, jenis) VALUES (?, ?)', [username, 'vless']);
+          await dbRunAsync('INSERT OR REPLACE INTO akun_aktif (username, jenis) VALUES (?, ?)', [username, 'trojan']);
+        } else {
+          await dbRunAsync('INSERT OR REPLACE INTO akun_aktif (username, jenis) VALUES (?, ?)', [username, type]);
+        }
       }
 
       // Handle reseller commission
@@ -667,7 +744,9 @@ async function showPaymentConfirmation(ctx, state) {
       : 0.1
       : 0;
 
-    const hargaSatuan = Math.floor(server.harga * (1 - diskon));
+    // For 3in1, price is 1.5x
+    const priceMultiplier = type === '3in1' ? 1.5 : 1;
+    const hargaSatuan = Math.floor(server.harga * (1 - diskon) * priceMultiplier);
     const totalHarga = hargaSatuan * duration;
 
     // Protocol label
@@ -676,7 +755,8 @@ async function showPaymentConfirmation(ctx, state) {
       vmess: 'VMESS',
       vless: 'VLESS',
       trojan: 'TROJAN',
-      shadowsocks: 'SHADOWSOCKS'
+      shadowsocks: 'SHADOWSOCKS',
+      '3in1': '3IN1 (VMESS+VLESS+TROJAN)'
     };
 
     // Check balance

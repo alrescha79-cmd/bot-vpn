@@ -12,13 +12,14 @@ const renewVMESS = require('../../modules/protocols/vmess/renewVMESS');
 const renewVLESS = require('../../modules/protocols/vless/renewVLESS');
 const renewTROJAN = require('../../modules/protocols/trojan/renewTROJAN');
 const renewSHADOWSOCKS = require('../../modules/protocols/shadowsocks/renewSHADOWSOCKS');
+const renew3IN1 = require('../../modules/protocols/3in1/renew3IN1');
 
 /**
  * Register all renew account actions
  */
 function registerRenewActions(bot) {
   // Server selection handlers - redirect to username input
-  const protocols = ['ssh', 'vmess', 'vless', 'trojan', 'shadowsocks'];
+  const protocols = ['ssh', 'vmess', 'vless', 'trojan', 'shadowsocks', '3in1'];
   
   protocols.forEach(protocol => {
     bot.action(new RegExp(`^renew_server_${protocol}_(\\d+)$`), async (ctx) => {
@@ -28,17 +29,17 @@ function registerRenewActions(bot) {
   });
 
   // Duration selection handlers - continue flow
-  bot.action(/^duration_renew_([a-z]+)_(\d+)_(\d+)$/, async (ctx) => {
+  bot.action(/^duration_renew_([a-z0-9]+)_(\d+)_(\d+)$/, async (ctx) => {
     await handleDurationSelection(ctx, 'renew');
   });
 
   // Payment confirmation handlers
-  bot.action(/^pay_renew_([a-z]+)_(\d+)_(\d+)$/, async (ctx) => {
+  bot.action(/^pay_renew_([a-z0-9]+)_(\d+)_(\d+)$/, async (ctx) => {
     await handlePaymentConfirmation(ctx, 'renew');
   });
 
   // Cancel handlers
-  bot.action(/^cancel_renew_([a-z]+)_(\d+)_(\d+)$/, async (ctx) => {
+  bot.action(/^cancel_renew_([a-z0-9]+)_(\d+)_(\d+)$/, async (ctx) => {
     await ctx.editMessageText('❌ *Perpanjangan dibatalkan.*', { parse_mode: 'Markdown' });
     delete global.userState[ctx.chat.id];
   });
@@ -168,7 +169,9 @@ async function handlePaymentConfirmation(ctx, action) {
       : 0.1
       : 0;
 
-    const hargaSatuan = Math.floor(server.harga * (1 - diskon));
+    // For 3in1, price is 1.5x
+    const priceMultiplier = protocol === '3in1' ? 1.5 : 1;
+    const hargaSatuan = Math.floor(server.harga * (1 - diskon) * priceMultiplier);
     const totalHarga = hargaSatuan * duration;
 
     // Check balance again
@@ -195,7 +198,8 @@ async function handlePaymentConfirmation(ctx, action) {
       vmess: () => renewVMESS.renewvmess(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration),
       vless: () => renewVLESS.renewvless(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration),
       trojan: () => renewTROJAN.renewtrojan(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration),
-      shadowsocks: () => renewSHADOWSOCKS.renewshadowsocks(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration)
+      shadowsocks: () => renewSHADOWSOCKS.renewshadowsocks(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration),
+      '3in1': () => renew3IN1.renew3in1(username, duration, server.quota, server.iplimit, serverId, totalHarga, duration)
     };
 
     const handler = handlerMap[protocol];
