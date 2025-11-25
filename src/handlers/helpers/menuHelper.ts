@@ -42,7 +42,7 @@ async function sendMainMenu(ctx) {
 Selamat Datang *${user.first_name}* di BOT VPN *${vars.NAMA_STORE}*!
 
 ╔═════════════════════════╗
-                    📋 *Informasi Akun*
+                📋 *Informasi Akun*
 ╠═════════════════════════╣
       🛍 *Store              : ${vars.NAMA_STORE}*
       💰 *Saldo              : Rp${user.saldo.toLocaleString('id-ID')}*

@@ -42,8 +42,26 @@ async function createssh(username, password, exp, iplimit, serverId, harga = 0, 
         expDate.setDate(expDate.getDate() + parseInt(exp));
         const expFormatted = expDate.toISOString().split('T')[0]; // YYYY-MM-DD
         
-        // Simple one-liner command
-        const cmd = `useradd -M -N -s /bin/false -e ${expFormatted} ${username} 2>/dev/null || usermod -e ${expFormatted} ${username}; echo "${username}:${password}" | chpasswd; mkdir -p /etc/ssh; echo "### ${username} ${expFormatted} ${iplimit}" >> /etc/ssh/.ssh.db; echo "SUCCESS"`;
+        // Command with proper user existence check
+        const cmd = `
+# Check if user already exists
+if id "${username}" &>/dev/null; then
+  echo "ERROR:User already exists"
+  exit 1
+fi
+
+# Create user
+useradd -M -N -s /bin/false -e ${expFormatted} ${username} || exit 1
+
+# Set password
+echo "${username}:${password}" | chpasswd || exit 1
+
+# Save to database
+mkdir -p /etc/ssh
+echo "### ${username} ${expFormatted} ${iplimit}" >> /etc/ssh/.ssh.db
+
+echo "SUCCESS"
+`;
         
         console.log('🔨 Executing command...');
         
@@ -73,6 +91,9 @@ async function createssh(username, password, exp, iplimit, serverId, harga = 0, 
             
             if (code !== 0) {
               console.error('❌ Command failed with exit code:', code);
+              if (output.includes('ERROR:User already exists')) {
+                return resolve('❌ Username sudah digunakan. Gunakan username lain.');
+              }
               return resolve('❌ Gagal membuat akun SSH di server (exit code ' + code + ').');
             }
 
