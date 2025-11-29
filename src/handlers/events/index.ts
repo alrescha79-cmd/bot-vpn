@@ -6,7 +6,7 @@ import type { BotContext, DatabaseUser, DatabaseServer } from "../../types";
  * @module handlers/events
  */
 
-const { registerTextHandler } = require('./textHandler');
+const { registerTextHandler, registerPhotoHandler } = require('./textHandler');
 const { registerCallbackRouter } = require('./callbackRouter');
 
 /**
@@ -15,11 +15,13 @@ const { registerCallbackRouter } = require('./callbackRouter');
  */
 function registerAllEvents(bot) {
   registerTextHandler(bot);
+  registerPhotoHandler(bot);
   registerCallbackRouter(bot);
 }
 
 module.exports = {
   registerAllEvents,
   registerTextHandler,
+  registerPhotoHandler,
   registerCallbackRouter
 };

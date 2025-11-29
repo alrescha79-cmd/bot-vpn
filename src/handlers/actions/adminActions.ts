@@ -148,7 +148,8 @@ function registerSystemMenuAction(bot) {
           { text: '♻️ Reset Trial', callback_data: 'admin_reset_trial' }
         ],
         [
-          { text: '💰 Lihat Top Up', callback_data: 'admin_view_topup' }
+          { text: '💰 Lihat Top Up', callback_data: 'admin_view_topup' },
+          { text: '💳 Pending Deposits', callback_data: 'admin_pending_deposits' }
         ],
         [{ text: '⬅️ Kembali', callback_data: 'menu_adminreseller' }]
       ]
@@ -205,7 +206,7 @@ function registerListServersAction(bot) {
       }).join('\n────────────────────────────\n');
 
       const msg = `📄 *List Server Tersimpan:*\n\n${list}`;
-      
+
       await ctx.reply(msg, { parse_mode: 'Markdown' });
     } catch (err) {
       logger.error('❌ Failed to fetch server list:', err.message);

@@ -385,7 +385,7 @@ if [ "$MANUAL_CONFIG" = true ] && [ ! -f "${INSTALL_PATH}/.vars.json" ]; then
     PORT=${PORT:-50123}
     read -p "Data QRIS: " DATA_QRIS
     read -p "Merchant ID: " MERCHANT_ID
-    read -p "API Key: " API_KEY
+    read -p "API Key: " SERVER_KEY
     read -p "Admin Username: " ADMIN_USERNAME
     
     # Create .vars.json file
@@ -399,7 +399,7 @@ if [ "$MANUAL_CONFIG" = true ] && [ ! -f "${INSTALL_PATH}/.vars.json" ]; then
   "PORT": "${PORT}",
   "DATA_QRIS": "${DATA_QRIS}",
   "MERCHANT_ID": "${MERCHANT_ID}",
-  "API_KEY": "${API_KEY}",
+  "SERVER_KEY": "${SERVER_KEY}",
   "ADMIN_USERNAME": "${ADMIN_USERNAME}"
 }
 EOF
@@ -639,7 +639,7 @@ if [ ! -f "${INSTALL_PATH}/.vars.json" ]; then
         PORT=${PORT:-50123}
         read -p "Data QRIS: " DATA_QRIS
         read -p "Merchant ID: " MERCHANT_ID
-        read -p "API Key: " API_KEY
+        read -p "API Key: " SERVER_KEY
         read -p "Admin Username: " ADMIN_USERNAME
         
         # Create .vars.json file
@@ -653,7 +653,7 @@ if [ ! -f "${INSTALL_PATH}/.vars.json" ]; then
   "PORT": "${PORT}",
   "DATA_QRIS": "${DATA_QRIS}",
   "MERCHANT_ID": "${MERCHANT_ID}",
-  "API_KEY": "${API_KEY}",
+  "SERVER_KEY": "${SERVER_KEY}",
   "ADMIN_USERNAME": "${ADMIN_USERNAME}"
 }
 EOF

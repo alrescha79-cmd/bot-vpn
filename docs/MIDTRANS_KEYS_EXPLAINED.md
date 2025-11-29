@@ -68,7 +68,7 @@ Production: Mid-server-xxxxxxxxxxxxx
 - **WAJIB dijaga kerahasiaannya** (jangan expose ke client)
 
 **Digunakan di Bot?**
-✅ **YA** - Disimpan di `.vars.json` sebagai `API_KEY`
+✅ **YA** - Disimpan di `.vars.json` sebagai `SERVER_KEY`
 
 **Keamanan:**
 - ⚠️ **SANGAT RAHASIA** - Jangan commit ke git
@@ -83,7 +83,7 @@ Production: Mid-server-xxxxxxxxxxxxx
 |--------------|------------|------|------------|
 | **Merchant ID** | `MERCHANT_ID` | `.vars.json` | ✅ Ya |
 | **Client Key** | - | - | ❌ Tidak |
-| **Server Key** | `API_KEY` | `.vars.json` | ✅ Ya |
+| **Server Key** | `SERVER_KEY` | `.vars.json` | ✅ Ya |
 
 ## ⚙️ Konfigurasi `.vars.json`
 
@@ -96,14 +96,14 @@ Production: Mid-server-xxxxxxxxxxxxx
   "PORT": 50123,
   "DATA_QRIS": "00020101...",
   "MERCHANT_ID": "G123456789",
-  "API_KEY": "SB-Mid-server-xxxxxxxxxxxxx",
+  "SERVER_KEY": "SB-Mid-server-xxxxxxxxxxxxx",
   "ADMIN_USERNAME": "admin"
 }
 ```
 
 **Penjelasan:**
 - `MERCHANT_ID` = **Merchant ID** dari Midtrans
-- `API_KEY` = **Server Key** dari Midtrans
+- `SERVER_KEY` = **Server Key** dari Midtrans
 - Client Key **TIDAK** digunakan
 
 ## 🔍 Cara Ambil Keys
@@ -165,7 +165,7 @@ axios.post('https://api.midtrans.com/v2/charge', {
 ```
 
 **Keys Used:**
-- ✅ Server Key (via API_KEY)
+- ✅ Server Key (via SERVER_KEY)
 - ✅ Merchant ID (for logging/tracking)
 
 ### Frontend/Website (Not applicable for bot)
@@ -263,11 +263,11 @@ curl -X POST https://api.sandbox.midtrans.com/v2/charge \
 
 **A:** ❌ Tidak. Client Key hanya untuk frontend (website/mobile app).
 
-### Q: Kenapa ada 2 keys di bot (MERCHANT_ID dan API_KEY)?
+### Q: Kenapa ada 2 keys di bot (MERCHANT_ID dan SERVER_KEY)?
 
 **A:** 
 - `MERCHANT_ID` = Identifier merchant Anda
-- `API_KEY` = Server Key untuk autentikasi API
+- `SERVER_KEY` = Server Key untuk autentikasi API
 
 ### Q: Apakah bisa pakai Client Key di bot?
 

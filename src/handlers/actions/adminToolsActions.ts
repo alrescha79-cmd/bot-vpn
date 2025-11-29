@@ -26,10 +26,10 @@ const GROUP_ID = process.env.GROUP_ID;
 function registerAdminStatsAction(bot) {
   bot.action('admin_stats', async (ctx) => {
     const userId = ctx.from.id;
-    
+
     // Check if user is admin from database only
     const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
-    
+
     if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.answerCbQuery('❌ Tidak diizinkan.');
     }
@@ -103,10 +103,10 @@ function registerAdminStatsAction(bot) {
 function registerAdminBroadcastAction(bot) {
   bot.action('admin_broadcast', async (ctx) => {
     const userId = ctx.from.id;
-    
+
     // Check if user is admin from database only
     const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
-    
+
     if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('🚫 Kamu tidak punya izin untuk broadcast.');
     }
@@ -123,10 +123,10 @@ function registerAdminBroadcastAction(bot) {
 function registerAdminResetTrialAction(bot) {
   bot.action('admin_reset_trial', async (ctx) => {
     const userId = ctx.from.id;
-    
+
     // Check if user is admin from database only
     const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
-    
+
     if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.answerCbQuery('❌ Akses ditolak bro.');
     }
@@ -148,10 +148,10 @@ function registerAdminResetTrialAction(bot) {
 function registerAdminViewTopupAction(bot) {
   bot.action('admin_view_topup', async (ctx) => {
     const userId = ctx.from.id;
-    
+
     // Check if user is admin from database only
     const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
-    
+
     if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.answerCbQuery('❌ Tidak diizinkan.');
     }
@@ -209,10 +209,10 @@ function registerAdminViewTopupAction(bot) {
 function registerAdminListResellersAction(bot) {
   bot.action('admin_listreseller', async (ctx) => {
     const userId = ctx.from.id;
-    
+
     // Check if user is admin from database only
     const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
-    
+
     if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('🚫 Kamu tidak memiliki izin.');
     }
@@ -264,10 +264,10 @@ function registerAdminListResellersAction(bot) {
 function registerAdminListUsersAction(bot) {
   bot.action('admin_listuser', async (ctx) => {
     const userId = ctx.from.id;
-    
+
     // Check if user is admin from database only
     const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
-    
+
     if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('🚫 Kamu tidak memiliki izin.');
     }
@@ -311,10 +311,10 @@ function registerAdminListUsersAction(bot) {
 function registerAdminListServersAction(bot) {
   bot.action('admin_listserver', async (ctx) => {
     const userId = ctx.from.id;
-    
+
     // Check if user is admin from database only
     const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
-    
+
     if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('🚫 Kamu tidak memiliki izin.');
     }
@@ -328,12 +328,12 @@ function registerAdminListServersAction(bot) {
 
       const list = rows.map((row, i) => {
         return `${i + 1}. ${row.nama_server}\n` +
-               `🌐 Domain   : ${row.domain}\n` +
-               `🔐 Auth     : ${row.auth}\n` +
-               `💾 Quota    : ${row.quota} GB\n` +
-               `🌍 IP Limit : ${row.iplimit}\n` +
-               `📦 Harga    : Rp${row.harga.toLocaleString('id-ID')}\n` +
-               `🧮 Total Buat: ${row.total_create_akun}`;
+          `🌐 Domain   : ${row.domain}\n` +
+          `🔐 Auth     : ${row.auth}\n` +
+          `💾 Quota    : ${row.quota} GB\n` +
+          `🌍 IP Limit : ${row.iplimit}\n` +
+          `📦 Harga    : Rp${row.harga.toLocaleString('id-ID')}\n` +
+          `🧮 Total Buat: ${row.total_create_akun}`;
       }).join('\n──────────────\n');
 
       const msg = `📄 List Server Tersimpan:\n\n${list}`;
@@ -351,10 +351,10 @@ function registerAdminListServersAction(bot) {
 function registerAdminPromoteResellerAction(bot) {
   bot.action('admin_promote_reseller', async (ctx) => {
     const adminId = ctx.from.id;
-    
+
     // Check if user is admin from database only
     const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [adminId]);
-    
+
     if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('⛔ Hanya admin yang bisa akses fitur ini.');
     }
@@ -362,14 +362,14 @@ function registerAdminPromoteResellerAction(bot) {
     // Prompt input user ID
     if (!global.userState) global.userState = {};
     global.userState[ctx.chat.id] = { step: 'await_reseller_id' };
-    
+
     setTimeout(() => {
       if (global.userState[ctx.chat.id]?.step === 'await_reseller_id') {
         delete global.userState[ctx.chat.id];
         ctx.reply('⏳ Waktu habis. Silakan ulangi /promote_reseller jika masih ingin mempromosikan user.');
       }
     }, 30000); // 30 detik
-    
+
     return ctx.reply('📥 Masukkan user ID yang ingin dipromosikan jadi reseller:');
   });
 }
@@ -380,10 +380,10 @@ function registerAdminPromoteResellerAction(bot) {
 function registerAdminDowngradeResellerAction(bot) {
   bot.action('admin_downgrade_reseller', async (ctx) => {
     const adminId = ctx.from.id;
-    
+
     // Check if user is admin from database only
     const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [adminId]);
-    
+
     if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('⛔ *Khusus admin.*', { parse_mode: 'Markdown' });
     }
@@ -402,10 +402,10 @@ function registerAdminDowngradeResellerAction(bot) {
 function registerAdminChangeResellerLevelAction(bot) {
   bot.action('admin_ubah_level', async (ctx) => {
     const adminId = ctx.from.id;
-    
+
     // Check if user is admin from database only
     const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [adminId]);
-    
+
     if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('⛔ *Khusus admin.*', { parse_mode: 'Markdown' });
     }
@@ -434,10 +434,10 @@ function registerAdminChangeResellerLevelAction(bot) {
 function registerAdminResetKomisiAction(bot) {
   bot.action('admin_resetkomisi', async (ctx) => {
     const adminId = ctx.from.id;
-    
+
     // Check if user is admin from database only
     const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [adminId]);
-    
+
     if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply(escapeMarkdown('⛔ Akses ditolak. Hanya admin.'), {
         parse_mode: 'MarkdownV2'
@@ -461,10 +461,10 @@ function registerAdminResetKomisiAction(bot) {
 function registerAdminRestoreDBAction(bot) {
   bot.action('admin_restore2_db', async (ctx) => {
     const userId = ctx.from.id;
-    
+
     // Check if user is admin from database only
     const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
-    
+
     if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
       return ctx.reply('🚫 Kamu tidak memiliki izin.');
     }
@@ -477,6 +477,325 @@ function registerAdminRestoreDBAction(bot) {
       '_Contoh: botvpn_2025-06-01_10-00.db_',
       { parse_mode: 'Markdown' }
     );
+  });
+}
+
+/**
+ * Register admin pending deposits action
+ */
+function registerAdminPendingDepositsAction(bot) {
+  bot.action('admin_pending_deposits', async (ctx) => {
+    const userId = ctx.from.id;
+
+    // Check if user is admin
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
+      return ctx.answerCbQuery('❌ Tidak diizinkan.');
+    }
+
+    try {
+      const { getAwaitingVerificationDeposits } = require('../../repositories/depositRepository');
+      const deposits = await getAwaitingVerificationDeposits();
+
+      if (deposits.length === 0) {
+        const emptyMessage = '📭 *Tidak ada deposit yang menunggu verifikasi*';
+        const emptyButtons = [[{ text: '🔙 Kembali', callback_data: 'admin_system_menu' }]];
+
+        // Check if callback came from photo message
+        const isPhotoMessage = ctx.callbackQuery?.message?.photo;
+
+        if (isPhotoMessage) {
+          await ctx.reply(emptyMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: emptyButtons }
+          });
+        } else {
+          await ctx.editMessageText(emptyMessage, {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: emptyButtons }
+          });
+        }
+        return;
+      }
+
+      let text = `💰 *Deposit Menunggu Verifikasi*\n\n`;
+      text += `Total: ${deposits.length} deposit\n\n`;
+
+      const buttons = deposits.slice(0, 10).map(dep => {
+        const userInfo = `User ${dep.user_id}`;
+        const amount = `Rp ${dep.amount.toLocaleString('id-ID')}`;
+        const time = new Date(dep.timestamp).toLocaleString('id-ID', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        return [{
+          text: `${userInfo} - ${amount} - ${time}`,
+          callback_data: `view_deposit_${dep.unique_code}`
+        }];
+      });
+
+      buttons.push([{ text: '🔙 Kembali', callback_data: 'admin_system_menu' }]);
+
+      // Check if callback came from photo message
+      const isPhotoMessage = ctx.callbackQuery?.message?.photo;
+
+      if (isPhotoMessage) {
+        await ctx.reply(text, {
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: buttons }
+        });
+      } else {
+        await ctx.editMessageText(text, {
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: buttons }
+        });
+      }
+    } catch (error) {
+      logger.error('❌ Error fetching pending deposits:', error);
+      try {
+        // Try to send new message if edit fails
+        await ctx.reply('❌ *Gagal mengambil data deposit*', { parse_mode: 'Markdown' });
+      } catch (replyError) {
+        await ctx.answerCbQuery('❌ Gagal mengambil data deposit', { show_alert: true });
+      }
+    }
+  });
+}
+
+/**
+ * Register view deposit detail action
+ */
+function registerViewDepositDetailAction(bot) {
+  bot.action(/^view_deposit_(.+)$/, async (ctx) => {
+    const invoiceId = ctx.match[1];
+    const userId = ctx.from.id;
+
+    // Check if user is admin
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
+      return ctx.answerCbQuery('❌ Tidak diizinkan.');
+    }
+
+    try {
+      const { getPendingDeposit } = require('../../repositories/depositRepository');
+      const deposit = await getPendingDeposit(invoiceId);
+
+      if (!deposit) {
+        return ctx.answerCbQuery('❌ Deposit tidak ditemukan', { show_alert: true });
+      }
+
+      // Get user info
+      const depositUser = await dbGetAsync('SELECT username, first_name FROM users WHERE user_id = ?', [deposit.user_id]);
+      const username = depositUser?.username || 'Unknown';
+
+      // Escape underscores in status for Markdown
+      const statusDisplay = deposit.status.replace(/_/g, '\\_');
+
+      const text = `
+📋 *Detail Deposit*
+
+👤 *User:* @${username} (ID: \`${deposit.user_id}\`)
+💰 *Jumlah:* Rp ${deposit.amount.toLocaleString('id-ID')}
+🆔 *Invoice:* \`${invoiceId}\`
+📅 *Waktu:* ${new Date(deposit.timestamp).toLocaleString('id-ID')}
+💳 *Metode:* ${deposit.payment_method === 'static_qris' ? 'QRIS Statis' : 'Midtrans'}
+📊 *Status:* ${statusDisplay}
+      `.trim();
+
+      const buttons = [
+        [
+          { text: '✅ Setujui', callback_data: `approve_deposit_${invoiceId}` },
+          { text: '❌ Tolak', callback_data: `reject_deposit_${invoiceId}` }
+        ],
+        [{ text: '🔙 Kembali', callback_data: 'admin_pending_deposits' }]
+      ];
+
+      // Check if callback came from photo message or text message
+      const isPhotoMessage = ctx.callbackQuery?.message?.photo;
+
+      // Send proof image first if available
+      if (deposit.proof_image_id) {
+        await ctx.telegram.sendPhoto(ctx.chat.id, deposit.proof_image_id, {
+          caption: `📸 *Bukti Pembayaran*\n\nInvoice: \`${invoiceId}\`\nJumlah: Rp ${deposit.amount.toLocaleString('id-ID')}`,
+          parse_mode: 'Markdown'
+        });
+      }
+
+      // Then send detail with buttons below the proof
+      if (isPhotoMessage) {
+        // Send new message instead of editing photo message
+        await ctx.reply(text, {
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: buttons }
+        });
+      } else {
+        // Edit existing text message
+        await ctx.editMessageText(text, {
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: buttons }
+        });
+      }
+    } catch (error) {
+      logger.error('❌ Error viewing deposit detail:', error);
+      await ctx.answerCbQuery('❌ Gagal menampilkan detail', { show_alert: true });
+    }
+  });
+}
+
+/**
+ * Register approve deposit action
+ */
+function registerApproveDepositAction(bot) {
+  bot.action(/^approve_deposit_(.+)$/, async (ctx) => {
+    const invoiceId = ctx.match[1];
+    const userId = ctx.from.id;
+
+    // Check if user is admin
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
+      return ctx.answerCbQuery('❌ Tidak diizinkan.');
+    }
+
+    try {
+      const { getPendingDeposit, approveDeposit } = require('../../repositories/depositRepository');
+      const { getUserById, updateUserSaldo } = require('../../repositories/userRepository');
+
+      const deposit = await getPendingDeposit(invoiceId);
+
+      if (!deposit) {
+        return ctx.answerCbQuery('❌ Deposit tidak ditemukan', { show_alert: true });
+      }
+
+      if (deposit.status !== 'awaiting_verification') {
+        return ctx.answerCbQuery(`ℹ️ Deposit sudah ${deposit.status}`, { show_alert: true });
+      }
+
+      // Get user
+      const depositUser = await getUserById(deposit.user_id);
+      if (!depositUser) {
+        return ctx.answerCbQuery('❌ User tidak ditemukan', { show_alert: true });
+      }
+
+      // Approve deposit
+      await approveDeposit(invoiceId, userId, 'Approved by admin');
+
+      // Update user balance
+      const newBalance = depositUser.saldo + deposit.amount;
+      await updateUserSaldo(deposit.user_id, newBalance);
+
+      // Log to topup_log
+      await dbRunAsync(
+        `INSERT INTO topup_log (user_id, username, amount, reference, created_at)
+         VALUES (?, ?, ?, ?, datetime('now'))`,
+        [deposit.user_id, depositUser.username || depositUser.first_name, deposit.amount, invoiceId]
+      );
+
+      // Notify user
+      const mention = depositUser.username ? `@${depositUser.username}` : depositUser.first_name;
+      await ctx.telegram.sendMessage(
+        deposit.user_id,
+        `✅ *Deposit Disetujui!*\n\n` +
+        `💰 Jumlah: Rp ${deposit.amount.toLocaleString('id-ID')}\n` +
+        `💳 Saldo baru: Rp ${newBalance.toLocaleString('id-ID')}\n` +
+        `🆔 Invoice: \`${invoiceId}\`\n\n` +
+        `Terima kasih! Saldo Anda telah ditambahkan.`,
+        { parse_mode: 'Markdown' }
+      );
+
+      // Log approval (notification to other admins not needed for single admin setup)
+      logger.info(`Deposit ${invoiceId} approved by admin ${userId} for user ${mention}`);
+
+      await ctx.editMessageText(
+        `✅ *Deposit Berhasil Disetujui*\n\n` +
+        `User ${mention} telah menerima Rp ${deposit.amount.toLocaleString('id-ID')}`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🔙 Kembali', callback_data: 'admin_pending_deposits' }]
+            ]
+          }
+        }
+      );
+
+      logger.info(`Deposit ${invoiceId} approved by admin ${userId}`);
+    } catch (error) {
+      logger.error('❌ Error approving deposit:', error);
+      await ctx.answerCbQuery('❌ Gagal menyetujui deposit', { show_alert: true });
+    }
+  });
+}
+
+/**
+ * Register reject deposit action
+ */
+function registerRejectDepositAction(bot) {
+  bot.action(/^reject_deposit_(.+)$/, async (ctx) => {
+    const invoiceId = ctx.match[1];
+    const userId = ctx.from.id;
+
+    // Check if user is admin
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+
+    if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
+      return ctx.answerCbQuery('❌ Tidak diizinkan.');
+    }
+
+    try {
+      const { getPendingDeposit, rejectDeposit } = require('../../repositories/depositRepository');
+
+      const deposit = await getPendingDeposit(invoiceId);
+
+      if (!deposit) {
+        return ctx.answerCbQuery('❌ Deposit tidak ditemukan', { show_alert: true });
+      }
+
+      if (deposit.status !== 'awaiting_verification') {
+        return ctx.answerCbQuery(`ℹ️ Deposit sudah ${deposit.status}`, { show_alert: true });
+      }
+
+      // Reject deposit
+      const rejectionReason = 'Bukti pembayaran tidak valid atau tidak sesuai';
+      await rejectDeposit(invoiceId, userId, rejectionReason);
+
+      // Notify user
+      const depositUser = await dbGetAsync('SELECT username, first_name FROM users WHERE user_id = ?', [deposit.user_id]);
+      const mention = depositUser?.username ? `@${depositUser.username}` : depositUser?.first_name || 'User';
+
+      await ctx.telegram.sendMessage(
+        deposit.user_id,
+        `❌ *Deposit Ditolak*\n\n` +
+        `💰 Jumlah: Rp ${deposit.amount.toLocaleString('id-ID')}\n` +
+        `🆔 Invoice: \`${invoiceId}\`\n\n` +
+        `📝 Alasan: ${rejectionReason}\n\n` +
+        `Silakan upload ulang dengan bukti pembayaran yang sesuai.`,
+        { parse_mode: 'Markdown' }
+      );
+
+      await ctx.editMessageText(
+        `❌ *Deposit Ditolak*\n\n` +
+        `User ${mention} telah diberi tahu tentang penolakan.`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '🔙 Kembali', callback_data: 'admin_pending_deposits' }]
+            ]
+          }
+        }
+      );
+
+      logger.info(`Deposit ${invoiceId} rejected by admin ${userId}`);
+    } catch (error) {
+      logger.error('❌ Error rejecting deposit:', error);
+      await ctx.answerCbQuery('❌ Gagal menolak deposit', { show_alert: true });
+    }
   });
 }
 
@@ -496,8 +815,12 @@ function registerAllAdminToolsActions(bot) {
   registerAdminChangeResellerLevelAction(bot);
   registerAdminResetKomisiAction(bot);
   registerAdminRestoreDBAction(bot);
+  registerAdminPendingDepositsAction(bot);
+  registerViewDepositDetailAction(bot);
+  registerApproveDepositAction(bot);
+  registerRejectDepositAction(bot);
 
-  logger.info('✅ Admin tools actions registered (12 actions)');
+  logger.info('✅ Admin tools actions registered (16 actions)');
 }
 
 module.exports = {

@@ -42,14 +42,14 @@ interface MidtransNotification {
  */
 function verifySignature(notification: MidtransNotification): boolean {
   const { order_id, status_code, gross_amount, signature_key } = notification;
-  const serverKey = config.API_KEY;
-  
+  const serverKey = config.SERVER_KEY;
+
   // Create signature string
   const signatureString = `${order_id}${status_code}${gross_amount}${serverKey}`;
-  
+
   // Hash with SHA512
   const hash = crypto.createHash('sha512').update(signatureString).digest('hex');
-  
+
   return hash === signature_key;
 }
 
@@ -62,7 +62,7 @@ function verifySignature(notification: MidtransNotification): boolean {
 async function handleMidtransNotification(req: any, res: any, bot: any) {
   try {
     const notification: MidtransNotification = req.body;
-    
+
     logger.info('Received Midtrans notification:', {
       order_id: notification.order_id,
       transaction_status: notification.transaction_status,
@@ -85,7 +85,7 @@ async function handleMidtransNotification(req: any, res: any, bot: any) {
 
     // Get pending deposit
     const deposit = await getPendingDeposit(orderId);
-    
+
     if (!deposit) {
       logger.warn(`Deposit not found for order: ${orderId}`);
       return res.status(404).json({
@@ -108,7 +108,7 @@ async function handleMidtransNotification(req: any, res: any, bot: any) {
       if (fraudStatus === 'accept') {
         // Payment success
         await handleSuccessfulPayment(bot, deposit, orderId, grossAmount);
-        
+
         return res.status(200).json({
           success: true,
           message: 'Payment processed successfully'
@@ -117,7 +117,7 @@ async function handleMidtransNotification(req: any, res: any, bot: any) {
     } else if (transactionStatus === 'pending') {
       // Still pending
       logger.info(`Payment still pending: ${orderId}`);
-      
+
       return res.status(200).json({
         success: true,
         message: 'Payment pending'
@@ -125,10 +125,10 @@ async function handleMidtransNotification(req: any, res: any, bot: any) {
     } else if (transactionStatus === 'deny' || transactionStatus === 'cancel' || transactionStatus === 'expire') {
       // Payment failed/cancelled/expired
       await updateDepositStatus(orderId, transactionStatus === 'expire' ? 'expired' : 'failed');
-      
+
       // Notify user
       await notifyPaymentFailed(bot, deposit, transactionStatus);
-      
+
       return res.status(200).json({
         success: true,
         message: `Payment ${transactionStatus}`
@@ -157,7 +157,7 @@ async function handleMidtransNotification(req: any, res: any, bot: any) {
 async function handleSuccessfulPayment(bot: any, deposit: any, orderId: string, amount: number) {
   try {
     const userId = deposit.user_id;
-    
+
     logger.info(`Payment successful (webhook): ${orderId} for user ${userId}`);
 
     // Update deposit status
@@ -165,7 +165,7 @@ async function handleSuccessfulPayment(bot: any, deposit: any, orderId: string, 
 
     // Get current user
     const user = await getUserById(userId);
-    
+
     if (!user) {
       throw new Error('User not found');
     }
@@ -242,10 +242,10 @@ Terima kasih! Saldo Anda telah ditambahkan.
 async function notifyPaymentFailed(bot: any, deposit: any, status: string) {
   try {
     const userId = deposit.user_id;
-    
+
     const statusMessage = status === 'expire' ? 'EXPIRED' : 'GAGAL';
     const statusEmoji = status === 'expire' ? '⏰' : '❌';
-    
+
     if (deposit.qr_message_id) {
       await bot.telegram.editMessageCaption(
         userId,
@@ -258,10 +258,10 @@ ${statusEmoji} *PEMBAYARAN ${statusMessage}*
 💰 *Amount:* Rp ${deposit.amount.toLocaleString('id-ID')}
 ${statusEmoji} *Status:* ${statusMessage}
 
-${status === 'expire' 
-  ? 'QR code sudah tidak valid. Silakan buat deposit baru.' 
-  : 'Pembayaran gagal atau dibatalkan.'
-}
+${status === 'expire'
+            ? 'QR code sudah tidak valid. Silakan buat deposit baru.'
+            : 'Pembayaran gagal atau dibatalkan.'
+          }
         `.trim(),
         {
           parse_mode: 'Markdown',

@@ -1,4 +1,4 @@
-# 🤖 Bot VPN Telegram - Production Ready v3.1.2
+# 🤖 Bot VPN Telegram - Production Ready v3.1.21
 
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-blue.svg)](https://www.typescriptlang.org/)
@@ -18,7 +18,17 @@ curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts
 
 ---
 
-> **🆕 What's New in v3.1.2:**
+> **🆕 What's New in v3.1.21:**
+> - ✅ **Static QRIS Payment** - Support QRIS statis (Dana Bisnis, ShopeePay, GoPay) dengan verifikasi manual admin
+> - ✅ **Dynamic QRIS** - Library `@agungjsp/qris-dinamis` untuk embed nominal otomatis di QR code
+> - ✅ **Admin Verification System** - Admin panel untuk approve/reject deposit manual dengan inline buttons
+> - ✅ **Payment Proof Upload** - User upload bukti pembayaran, admin langsung dapat notifikasi real-time
+> - ✅ **Dual Payment Mode** - Midtrans (auto-verify) atau QRIS Statis (manual) dengan fallback otomatis
+> - ✅ **API_KEY → SERVER_KEY** - Rename config sesuai konvensi Midtrans
+> - ✅ **Manual Input Bug Fix** - Perbaiki bug input manual topup yang menampilkan "num_1num_000"
+> - 📖 **[QRIS Setup Guide](docs/QRIS_SETUP.md)** - Dokumentasi lengkap setup QRIS statis
+
+> **Previous Updates (v3.1.2):**
 > - ✅ **Midtrans Payment Gateway** - Integrasi lengkap dengan Midtrans untuk pembayaran otomatis
 > - ✅ **3-in-1 Protocol** - VMESS + VLESS + TROJAN dalam satu paket (harga 1.5x)
 > - ✅ **Trial System Fixed** - Perbaikan bug SSH trial timeout & loading messages
@@ -43,12 +53,14 @@ curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts
 - **User** - Akses basic & pembelian
 
 ### 💰 Payment Integration
-- **QRIS** - Pembayaran via QRIS (otomatis)
-- **Midtrans** - Payment Gateway terintegrasi (Sandbox & Production)
-- **Auto-Verification** - Verifikasi pembayaran otomatis setiap 10 detik
-- **Instant Webhook** - Webhook untuk verifikasi instant (optional)
-- **Deposit System** - Top-up saldo otomatis
+- **QRIS Dinamis** - QRIS dengan nominal otomatis (manual verification)
+- **Midtrans** - Payment Gateway terintegrasi (Sandbox & Production) - Auto-verification
+- **Auto-Verification** - Verifikasi pembayaran otomatis setiap 10 detik (Midtrans)
+- **Manual Verification** - Admin approve manual untuk QRIS statis
+- **Instant Webhook** - Webhook untuk verifikasi instant (optional, Midtrans)
+- **Deposit System** - Top-up saldo otomatis/manual
 - **Transaction History** - Riwayat lengkap transaksi
+- 📖 **[Setup QRIS Statis](docs/QRIS_SETUP.md)** - Panduan setup Dana Bisnis, ShopeePay, GoPay
 - ⏳ **Payment Gateway Lainnya** - Xendit, Duitku, dll (Coming Soon)
 
 ### 🌐 Web Interface (Config Only)
@@ -168,12 +180,15 @@ npm run dev
 Isi form dengan:
 - ✅ **Bot Token** - Dari @BotFather
 - ✅ **Admin User ID** - Telegram ID Anda (dapatkan dari @userinfobot)
-- ✅ **Group ID** - Group untuk notifikasi
+- ✅ **Admin Username** - Username Telegram admin (tanpa @)
+- ✅ **Group ID** - Group untuk notifikasi (optional)
 - ✅ **Store Name** - Nama toko VPN Anda
-- ✅ **QRIS Data** - Data QRIS untuk pembayaran
-- ✅ **Midtrans Keys** - Merchant ID, Client Key, Server Key (lihat [Midtrans Setup](docs/MIDTRANS_SETUP.md))
+- ✅ **QRIS Data** - String QRIS statis (Dana, ShopeePay, GoPay - lihat [QRIS Setup](docs/QRIS_SETUP.md))
+- ✅ **Midtrans Keys** - Merchant ID & Server Key (optional, lihat [Midtrans Setup](docs/MIDTRANS_SETUP.md))
 
-> 📖 **Setup Payment Gateway**: Lihat [Quick Start Midtrans](docs/MIDTRANS_QUICKSTART.md) untuk setup 5 menit
+> 📖 **Setup Payment**: 
+> - **QRIS Statis**: Lihat [QRIS Setup Guide](docs/QRIS_SETUP.md) untuk setup Dana Bisnis, ShopeePay, atau GoPay
+> - **Midtrans**: Lihat [Quick Start Midtrans](docs/MIDTRANS_QUICKSTART.md) untuk setup 5 menit
 
 **Klik**: `Simpan & Lanjutkan`
 
@@ -250,6 +265,7 @@ bot-vpn/
 |---------|-----------|
 | **[QUICKSTART.md](docs/QUICKSTART.md)** | Panduan setup cepat & deployment |
 | **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Deployment detail untuk VPS |
+| **[QRIS_SETUP.md](docs/QRIS_SETUP.md)** | Setup QRIS Statis (Dana, ShopeePay, GoPay) |
 | **[CHANGELOG_V3.md](docs/CHANGELOG_V3.md)** | Changelog & implementation summary |
 | **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** | Troubleshooting common issues |
 | **[MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)** | Upgrade dari v2.0 ke v3.0 |

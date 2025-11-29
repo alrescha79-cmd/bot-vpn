@@ -28,7 +28,7 @@ Edit file `.vars.json` dan tambahkan konfigurasi QRIS:
   "PORT": 50123,
   "DATA_QRIS": "your_static_qris_string",
   "MERCHANT_ID": "your_merchant_id",
-  "API_KEY": "your_api_key",
+  "SERVER_KEY": "your_SERVER_KEY",
   "ADMIN_USERNAME": "admin"
 }
 ```
@@ -53,7 +53,7 @@ const response = await axios.post(
   },
   {
     headers: {
-      'Authorization': `Bearer ${config.API_KEY}`,
+      'Authorization': `Bearer ${config.SERVER_KEY}`,
       'Content-Type': 'application/json'
     }
   }
@@ -64,7 +64,7 @@ const response = await axios.get(
   `https://api.qris-payment.com/v1/status/${invoiceId}`, // ⚠️ Ganti dengan endpoint provider Anda
   {
     headers: {
-      'Authorization': `Bearer ${config.API_KEY}`,
+      'Authorization': `Bearer ${config.SERVER_KEY}`,
       'Content-Type': 'application/json'
     }
   }
@@ -252,7 +252,7 @@ Jika API provider gagal atau tidak tersedia, bot akan menggunakan **Static QRIS*
 # Via terminal/API testing tool
 curl -X GET \
   'https://api.qris-payment.com/v1/status/DEP1732445678123456789' \
-  -H 'Authorization: Bearer YOUR_API_KEY'
+  -H 'Authorization: Bearer YOUR_SERVER_KEY'
 ```
 
 ## Troubleshooting
@@ -260,7 +260,7 @@ curl -X GET \
 ### QR Code tidak muncul
 
 **Penyebab:**
-- API_KEY tidak valid
+- SERVER_KEY tidak valid
 - MERCHANT_ID salah
 - Endpoint API salah
 - Network timeout
@@ -301,7 +301,7 @@ curl -X GET \
 
 ⚠️ **Penting:**
 
-1. **Jangan share API_KEY** di public repo
+1. **Jangan share SERVER_KEY** di public repo
 2. **Gunakan HTTPS** untuk production
 3. **Validate payment** di server side
 4. **Log all transactions** untuk audit
