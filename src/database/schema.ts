@@ -15,7 +15,7 @@ const logger = require('../utils/logger');
  */
 async function initializeSchema() {
   const isNew = isNewDatabase();
-  
+
   if (isNew) {
     logger.info('🆕 Initializing new database schema...');
   }
@@ -99,7 +99,12 @@ async function initializeSchema() {
       original_amount INTEGER,
       timestamp INTEGER,
       status TEXT,
-      qr_message_id INTEGER
+      qr_message_id INTEGER,
+      payment_method TEXT DEFAULT 'midtrans',
+      proof_image_id TEXT,
+      admin_approved_by INTEGER,
+      admin_approved_at TEXT,
+      admin_notes TEXT
     )`);
 
     // Trial Logs table
@@ -151,6 +156,13 @@ async function initializeSchema() {
       reference TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`);
+
+    // Migrate pending_deposits table - add new columns if they don't exist
+    await addColumnSafely('pending_deposits', 'payment_method', "TEXT DEFAULT 'midtrans'");
+    await addColumnSafely('pending_deposits', 'proof_image_id', 'TEXT');
+    await addColumnSafely('pending_deposits', 'admin_approved_by', 'INTEGER');
+    await addColumnSafely('pending_deposits', 'admin_approved_at', 'TEXT');
+    await addColumnSafely('pending_deposits', 'admin_notes', 'TEXT');
 
     // Accounts table - stores created premium accounts
     await dbRunAsync(`CREATE TABLE IF NOT EXISTS accounts (

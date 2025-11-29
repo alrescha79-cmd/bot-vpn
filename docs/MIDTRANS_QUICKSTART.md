@@ -26,7 +26,7 @@ nano .vars.json
   "BOT_TOKEN": "your_bot_token",
   "USER_ID": "your_user_id",
   "MERCHANT_ID": "G123456789",
-  "API_KEY": "SB-Mid-server-xxxxx"
+  "SERVER_KEY": "SB-Mid-server-xxxxx"
 }
 ```
 

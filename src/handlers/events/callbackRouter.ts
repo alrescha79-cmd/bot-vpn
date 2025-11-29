@@ -44,6 +44,13 @@ function registerCallbackRouter(bot) {
       logger.warn('Failed to answer callback query:', error.message);
     }
 
+    // === 1.3️⃣ DEPOSIT STATE (NUMERIC KEYBOARD) ===
+    if (data.startsWith('num_')) {
+      // Strip 'num_' prefix and pass only the number/action to handleDepositState
+      const numericData = data.replace('num_', '');
+      return await handleDepositState(ctx, userId, numericData);
+    }
+
     // === 1️⃣ DEPOSIT STATE HANDLING ===
     if (global.depositState?.[userId]?.action === 'request_amount') {
       return await handleDepositState(ctx, userId, data);
@@ -58,6 +65,12 @@ function registerCallbackRouter(bot) {
     if (data.startsWith('cancel_payment_')) {
       const invoiceId = data.replace('cancel_payment_', '');
       return await handleCancelPayment(ctx, invoiceId, userId);
+    }
+
+    // === 1.6️⃣ UPLOAD PAYMENT PROOF ===
+    if (data.startsWith('upload_proof_')) {
+      const invoiceId = data.replace('upload_proof_', '');
+      return await handleUploadProof(ctx, invoiceId, userId);
     }
 
     // === 2️⃣ USER STATE HANDLING (EDIT OPERATIONS) ===
@@ -269,7 +282,7 @@ async function handleRestoreUploadedFile(ctx, fileName, userId) {
     fs.copyFileSync(filePath, DB_PATH);
     await ctx.editMessageText(`✅ Restore berhasil dari upload: ${fileName}`);
     logger.info(`[RESTORE_UPLOAD] User ${userId} restored uploaded file ${fileName}`);
-    
+
     // Clean up state
     delete global.userState[ctx.chat.id];
   } catch (err) {
@@ -344,23 +357,23 @@ async function handleDeleteUploadedFile(ctx, fileName, userId) {
 async function handleCheckPaymentStatus(ctx, invoiceId, userId) {
   const { getPendingDeposit } = require('../../repositories/depositRepository');
   const { checkPaymentStatus } = require('../../services/qris.service');
-  
+
   try {
     await ctx.answerCbQuery('🔄 Mengecek status pembayaran...');
-    
+
     const deposit = await getPendingDeposit(invoiceId);
-    
+
     if (!deposit) {
       return await ctx.answerCbQuery('❌ Deposit tidak ditemukan', { show_alert: true });
     }
-    
+
     if (deposit.status !== 'pending') {
       return await ctx.answerCbQuery(`ℹ️ Status: ${deposit.status}`, { show_alert: true });
     }
-    
+
     // Check payment status from API
     const statusResult = await checkPaymentStatus(invoiceId);
-    
+
     if (statusResult.success && statusResult.status === 'paid') {
       const { handleSuccessfulPayment } = require('../../services/depositService');
       await handleSuccessfulPayment(ctx, invoiceId, userId, deposit.amount, deposit.qr_message_id);
@@ -379,21 +392,21 @@ async function handleCheckPaymentStatus(ctx, invoiceId, userId) {
  */
 async function handleCancelPayment(ctx, invoiceId, userId) {
   const { updateDepositStatus, getPendingDeposit } = require('../../repositories/depositRepository');
-  
+
   try {
     const deposit = await getPendingDeposit(invoiceId);
-    
+
     if (!deposit) {
       return await ctx.answerCbQuery('❌ Deposit tidak ditemukan', { show_alert: true });
     }
-    
+
     if (deposit.status !== 'pending') {
       return await ctx.answerCbQuery(`ℹ️ Deposit sudah ${deposit.status}`, { show_alert: true });
     }
-    
+
     // Update status to cancelled
     await updateDepositStatus(invoiceId, 'cancelled');
-    
+
     // Update message
     await ctx.editMessageCaption(
       `
@@ -415,12 +428,64 @@ Deposit telah dibatalkan oleh user.
         }
       }
     );
-    
+
     await ctx.answerCbQuery('✅ Deposit dibatalkan');
     logger.info(`Payment cancelled: ${invoiceId} by user ${userId}`);
   } catch (error) {
     logger.error('Error cancelling payment:', error);
     await ctx.answerCbQuery('❌ Gagal membatalkan deposit', { show_alert: true });
+  }
+}
+
+/**
+ * Handle upload payment proof request
+ */
+async function handleUploadProof(ctx, invoiceId, userId) {
+  const { getPendingDeposit } = require('../../repositories/depositRepository');
+
+  try {
+    const deposit = await getPendingDeposit(invoiceId);
+
+    if (!deposit) {
+      return await ctx.answerCbQuery('❌ Deposit tidak ditemukan', { show_alert: true });
+    }
+
+    if (deposit.status !== 'pending') {
+      return await ctx.answerCbQuery(`ℹ️ Deposit sudah ${deposit.status}`, { show_alert: true });
+    }
+
+    if (deposit.payment_method !== 'static_qris') {
+      return await ctx.answerCbQuery('⚠️ Upload bukti hanya untuk QRIS statis', { show_alert: true });
+    }
+
+    // Set user state to await photo upload
+    if (!global.userState) global.userState = {};
+    global.userState[ctx.chat.id] = {
+      step: 'await_payment_proof',
+      invoice_id: invoiceId,
+      timestamp: Date.now()
+    };
+
+    await ctx.reply(
+      `📤 *Upload Bukti Pembayaran*\n\n` +
+      `🆔 Invoice: \`${invoiceId}\`\n` +
+      `💰 Jumlah: Rp ${deposit.amount.toLocaleString('id-ID')}\n\n` +
+      `📸 *Silakan upload screenshot/foto bukti pembayaran Anda*\n\n` +
+      `_Kirim sebagai foto (bukan file)_`,
+      { parse_mode: 'Markdown' }
+    );
+
+    // Auto-timeout after 5 minutes
+    setTimeout(() => {
+      if (global.userState[ctx.chat.id]?.step === 'await_payment_proof') {
+        delete global.userState[ctx.chat.id];
+      }
+    }, 300000); // 5 minutes
+
+    logger.info(`User ${userId} initiated proof upload for ${invoiceId}`);
+  } catch (error) {
+    logger.error('Error handling upload proof:', error);
+    await ctx.answerCbQuery('❌ Gagal memproses permintaan', { show_alert: true });
   }
 }
 

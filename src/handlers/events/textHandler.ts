@@ -85,7 +85,7 @@ async function handleServiceFlow(ctx, state, text, bot) {
           const vmessExists = await dbGetAsync('SELECT * FROM akun_aktif WHERE username = ? AND jenis = ?', [text, 'vmess']);
           const vlessExists = await dbGetAsync('SELECT * FROM akun_aktif WHERE username = ? AND jenis = ?', [text, 'vless']);
           const trojanExists = await dbGetAsync('SELECT * FROM akun_aktif WHERE username = ? AND jenis = ?', [text, 'trojan']);
-          
+
           if (!vmessExists || !vlessExists || !trojanExists) {
             const missing = [];
             if (!vmessExists) missing.push('VMESS');
@@ -131,7 +131,7 @@ async function handleServiceFlow(ctx, state, text, bot) {
       }
 
       state.password = text;
-      
+
       // Show duration selection after password
       const { showDurationSelection } = require('../actions/serviceActions');
       return await showDurationSelection(ctx, state.type, state.action, state.serverId);
@@ -171,8 +171,8 @@ async function handleServiceFlow(ctx, state, text, bot) {
       // Calculate price with reseller discount
       const diskon = user.role === 'reseller'
         ? user.reseller_level === 'gold' ? 0.2
-        : user.reseller_level === 'platinum' ? 0.3
-        : 0.1
+          : user.reseller_level === 'platinum' ? 0.3
+            : 0.1
         : 0;
 
       // For 3in1, price is 1.5x
@@ -239,7 +239,7 @@ async function handleServiceFlow(ctx, state, text, bot) {
           state.step = `username_${action}_${type}`;
           delete state.username;
           if (state.password) delete state.password;
-          
+
           return ctx.reply(
             `${msg}\n\n` +
             `📝 Masukkan Username Baru\n\n` +
@@ -249,7 +249,7 @@ async function handleServiceFlow(ctx, state, text, bot) {
             { parse_mode: 'Markdown' }
           );
         }
-        
+
         // For other errors, clear state
         delete global.userState[chatId];
         return ctx.reply(msg, { parse_mode: 'Markdown' });
@@ -545,7 +545,7 @@ function registerTextHandler(bot) {
       if (state.step === 'await_broadcast_message') {
         // Check if user is admin from database only
         const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
-        
+
         if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
           return ctx.reply('❌ Kamu tidak punya izin untuk melakukan broadcast.');
         }
@@ -585,7 +585,7 @@ function registerTextHandler(bot) {
       // Add server flow (step-by-step)
       // Note: These flows reference resolveDomainToIP and getISPAndLocation
       // which should be extracted from app.js to utils/serverUtils.js
-      
+
       if (state.step === 'addserver') {
         const domain = text;
         if (!domain) return ctx.reply('⚠️ *Domain tidak boleh kosong.* Silakan masukkan domain server yang valid.', { parse_mode: 'Markdown' });
@@ -675,9 +675,9 @@ function registerTextHandler(bot) {
             errno: err.errno,
             stack: err.stack
           });
-          
+
           let errorMsg = '❌ *Terjadi kesalahan saat menambahkan server.*\n\n';
-          
+
           if (err.message.includes('UNIQUE constraint failed')) {
             errorMsg += '⚠️ Domain atau nama server sudah ada.';
           } else if (err.message.includes('no such table')) {
@@ -685,7 +685,7 @@ function registerTextHandler(bot) {
           } else {
             errorMsg += `Detail: ${err.message}`;
           }
-          
+
           await ctx.reply(errorMsg, { parse_mode: 'Markdown' });
         }
 
@@ -740,8 +740,8 @@ async function showPaymentConfirmation(ctx, state) {
     // Calculate price with reseller discount
     const diskon = user.role === 'reseller'
       ? user.reseller_level === 'gold' ? 0.2
-      : user.reseller_level === 'platinum' ? 0.3
-      : 0.1
+        : user.reseller_level === 'platinum' ? 0.3
+          : 0.1
       : 0;
 
     // For 3in1, price is 1.5x
@@ -805,8 +805,123 @@ async function showPaymentConfirmation(ctx, state) {
   }
 }
 
+/**
+ * Register photo event handler (for payment proof upload)
+ */
+function registerPhotoHandler(bot) {
+  bot.on('photo', async (ctx) => {
+    const userId = String(ctx.from.id);
+    const chatId = ctx.chat.id;
+    const state = global.userState?.[chatId];
+
+    // Only process if user is awaiting payment proof upload
+    if (!state || state.step !== 'await_payment_proof') {
+      return;
+    }
+
+    try {
+      const invoiceId = state.invoice_id;
+      const { getPendingDeposit, updateDepositProof } = require('../../repositories/depositRepository');
+
+      // Get deposit info
+      const deposit = await getPendingDeposit(invoiceId);
+
+      if (!deposit) {
+        await ctx.reply('❌ *Deposit tidak ditemukan*', { parse_mode: 'Markdown' });
+        delete global.userState[chatId];
+        return;
+      }
+
+      if (deposit.status !== 'pending') {
+        await ctx.reply(`ℹ️ *Deposit sudah ${deposit.status}*`, { parse_mode: 'Markdown' });
+        delete global.userState[chatId];
+        return;
+      }
+
+      // Get the largest photo (best quality)
+      const photo = ctx.message.photo[ctx.message.photo.length - 1];
+      const fileId = photo.file_id;
+
+      //Save file_id and update status
+      await updateDepositProof(invoiceId, fileId, 'awaiting_verification');
+
+      // Send confirmation to user
+      await ctx.reply(
+        `✅ *Bukti pembayaran diterima!*\n\n` +
+        `🆔 Invoice: \`${invoiceId}\`\n` +
+        `💰 Jumlah: Rp ${deposit.amount.toLocaleString('id-ID')}\n\n` +
+        `⏳ *Status: Menunggu verifikasi admin*\n\n` +
+        `Anda akan menerima notifikasi setelah admin memverifikasi pembayaran Anda.`,
+        { parse_mode: 'Markdown' }
+      );
+
+      // Notify admin user by username
+      const config = require('../../config');
+      if (config.ADMIN_USERNAME) {
+        const { dbGetAsync } = require('../../database/connection');
+
+        try {
+          // Find admin user by username in database
+          const adminUser = await dbGetAsync(
+            'SELECT user_id, username FROM users WHERE username = ? AND (role = ? OR role = ?)',
+            [config.ADMIN_USERNAME, 'admin', 'owner']
+          );
+
+          if (adminUser) {
+            const mention = ctx.from.username ? `@${ctx.from.username}` : ctx.from.first_name;
+            const notificationCaption = `💰 *Deposit Baru - Menunggu Verifikasi*\n\n` +
+              `👤 User: ${mention}\n` +
+              `🆔 User ID: \`${userId}\`\n` +
+              `💵 Jumlah: Rp ${deposit.amount.toLocaleString('id-ID')}\n` +
+              `🆔 Invoice: \`${invoiceId}\`\n\n` +
+              `📸 Bukti pembayaran di atas\n` +
+              `⚠️ Silakan verifikasi melalui menu admin`;
+
+            await bot.telegram.sendPhoto(
+              adminUser.user_id,
+              fileId,
+              {
+                caption: notificationCaption,
+                parse_mode: 'Markdown',
+                reply_markup: {
+                  inline_keyboard: [
+                    [
+                      { text: '✅ Verifikasi Sekarang', callback_data: `view_deposit_${invoiceId}` }
+                    ],
+                    [
+                      { text: '📋 Lihat Semua Pending', callback_data: 'admin_pending_deposits' }
+                    ]
+                  ]
+                }
+              }
+            );
+            logger.info(`Sent deposit notification to admin @${config.ADMIN_USERNAME} (ID: ${adminUser.user_id})`);
+          } else {
+            logger.warn(`Admin user @${config.ADMIN_USERNAME} not found in database or not admin/owner role`);
+          }
+        } catch (adminError) {
+          logger.error(`Failed to send notification to admin:`, adminError);
+        }
+      } else {
+        logger.warn('ADMIN_USERNAME not configured, skipping admin notification');
+      }
+
+      logger.info(`Payment proof uploaded for ${invoiceId} by user ${userId}`);
+
+      // Clear state
+      delete global.userState[chatId];
+    } catch (error) {
+      logger.error('Error handling payment proof upload:', error);
+      await ctx.reply('❌ *Gagal memproses bukti pembayaran*\n\nSilakan coba lagi.', { parse_mode: 'Markdown' });
+    }
+  });
+
+  logger.info('✅ Photo event handler registered');
+}
+
 module.exports = {
   registerTextHandler,
+  registerPhotoHandler,
   handleServiceFlow,
   showPaymentConfirmation
 };

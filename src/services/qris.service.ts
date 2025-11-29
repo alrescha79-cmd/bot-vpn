@@ -8,6 +8,7 @@ import type { BotContext } from "../types";
 
 const axios = require('axios');
 const logger = require('../utils/logger');
+const qrisDinamis = require('@agungjsp/qris-dinamis');
 
 // Import config properly
 let config: any;
@@ -25,6 +26,7 @@ interface QRISResponse {
     invoice_id: string;
     amount: number;
     expired_at: string;
+    payment_method?: 'midtrans' | 'static_qris';
   };
   error?: string;
 }
@@ -48,96 +50,145 @@ async function generateQRIS(amount: number, userId: string): Promise<QRISRespons
   try {
     logger.info(`Generating QRIS for amount: ${amount}, user: ${userId}`);
 
-    // Check if QRIS credentials are configured
-    if (!config.MERCHANT_ID || !config.API_KEY) {
-      logger.error('Midtrans credentials not configured');
-      return {
-        success: false,
-        error: 'QRIS payment system not configured. Please contact administrator.'
-      };
-    }
-
     // Generate unique order ID
     const orderId = `ORDER-${Date.now()}-${userId}`;
-    
-    // Midtrans API Configuration
-    const isProduction = process.env.MIDTRANS_ENV === 'production';
-    const apiUrl = isProduction 
-      ? 'https://api.midtrans.com/v2/charge'
-      : 'https://api.sandbox.midtrans.com/v2/charge';
-    
-    // Create server key authorization (Base64 encoded)
-    const serverKey = config.API_KEY; // Midtrans Server Key
-    const authString = Buffer.from(serverKey + ':').toString('base64');
-    
-    // Midtrans Charge Request
-    const requestBody = {
-      payment_type: 'gopay',
-      transaction_details: {
-        order_id: orderId,
-        gross_amount: amount
-      },
-      gopay: {
-        enable_callback: true,
-        callback_url: `http://localhost:${config.PORT}/api/payment/callback`
-      },
-      customer_details: {
-        first_name: `User`,
-        last_name: userId,
-        email: `user${userId}@telegram.local`,
-        phone: '08123456789'
+
+    // Check if Midtrans credentials are configured (priority)
+    if (config.MERCHANT_ID && config.SERVER_KEY) {
+      logger.info('Using Midtrans payment gateway');
+
+      // Midtrans API Configuration
+      const isProduction = process.env.MIDTRANS_ENV === 'production';
+      const apiUrl = isProduction
+        ? 'https://api.midtrans.com/v2/charge'
+        : 'https://api.sandbox.midtrans.com/v2/charge';
+
+      // Create server key authorization (Base64 encoded)
+      const serverKey = config.SERVER_KEY; // Midtrans Server Key
+      const authString = Buffer.from(serverKey + ':').toString('base64');
+
+      // Midtrans Charge Request
+      const requestBody = {
+        payment_type: 'gopay',
+        transaction_details: {
+          order_id: orderId,
+          gross_amount: amount
+        },
+        gopay: {
+          enable_callback: true,
+          callback_url: `http://localhost:${config.PORT}/api/payment/callback`
+        },
+        customer_details: {
+          first_name: `User`,
+          last_name: userId,
+          email: `user${userId}@telegram.local`,
+          phone: '08123456789'
+        }
+      };
+
+      logger.info(`Calling Midtrans API (Merchant: ${config.MERCHANT_ID}):`, apiUrl);
+
+      try {
+        const response = await axios.post(apiUrl, requestBody, {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${authString}`
+          },
+          timeout: 15000
+        });
+
+        if (response.data && response.data.status_code === '201') {
+          logger.info(`QRIS generated successfully via Midtrans: ${orderId}`);
+
+          // Extract QR code string and actions
+          const qrString = response.data.actions?.find((a: any) => a.name === 'generate-qr-code')?.url || '';
+          const deeplink = response.data.actions?.find((a: any) => a.name === 'deeplink-redirect')?.url || '';
+
+          return {
+            success: true,
+            data: {
+              qr_string: qrString,
+              qr_image_url: qrString, // Midtrans provides QR image URL directly
+              invoice_id: orderId,
+              amount: amount,
+              expired_at: response.data.transaction_time,
+              payment_method: 'midtrans'
+            }
+          };
+        } else {
+          throw new Error(response.data?.status_message || 'Failed to generate QRIS via Midtrans');
+        }
+      } catch (midtransError: any) {
+        logger.error('Midtrans API error:', midtransError.response?.data || midtransError.message);
+
+        // Fallback to static QRIS if Midtrans fails and DATA_QRIS is available
+        if (config.DATA_QRIS) {
+          logger.warn('Midtrans failed, falling back to static QRIS');
+          return {
+            success: true,
+            data: {
+              qr_string: config.DATA_QRIS,
+              invoice_id: orderId,
+              amount: amount,
+              expired_at: new Date(Date.now() + 24 * 60 * 60000).toISOString(), // 24 hours for static
+              payment_method: 'static_qris'
+            }
+          };
+        }
+
+        throw midtransError;
       }
-    };
-
-    logger.info(`Calling Midtrans API (Merchant: ${config.MERCHANT_ID}):`, apiUrl);
-    
-    const response = await axios.post(apiUrl, requestBody, {
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${authString}`
-      },
-      timeout: 15000
-    });
-
-    if (response.data && response.data.status_code === '201') {
-      logger.info(`QRIS generated successfully via Midtrans: ${orderId}`);
-      
-      // Extract QR code string and actions
-      const qrString = response.data.actions?.find((a: any) => a.name === 'generate-qr-code')?.url || '';
-      const deeplink = response.data.actions?.find((a: any) => a.name === 'deeplink-redirect')?.url || '';
-      
-      return {
-        success: true,
-        data: {
-          qr_string: qrString,
-          qr_image_url: qrString, // Midtrans provides QR image URL directly
-          invoice_id: orderId,
-          amount: amount,
-          expired_at: response.data.transaction_time // Midtrans doesn't return expiry, use transaction time
-        }
-      };
-    } else {
-      throw new Error(response.data?.status_message || 'Failed to generate QRIS via Midtrans');
     }
-  } catch (error: any) {
-    logger.error('Error generating QRIS via Midtrans:', error.response?.data || error.message);
-    
-    // Fallback: Use static QRIS if API fails
+
+    // Use static QRIS if Midtrans credentials not available
     if (config.DATA_QRIS) {
-      logger.warn('Using static QRIS as fallback');
-      const orderId = `ORDER-${Date.now()}-${userId}`;
-      return {
-        success: true,
-        data: {
-          qr_string: config.DATA_QRIS,
-          invoice_id: orderId,
-          amount: amount,
-          expired_at: new Date(Date.now() + 30 * 60000).toISOString()
-        }
-      };
+      logger.info('Using static QRIS payment (no Midtrans credentials)');
+
+      try {
+        // Generate dynamic QRIS with amount embedded using @agungjsp/qris-dinamis
+        // API: makeString(qris, { nominal: 'amount' })
+        const dynamicQRIS = qrisDinamis.makeString(config.DATA_QRIS, {
+          nominal: amount.toString()
+        });
+
+        logger.info(`Generated dynamic QRIS with amount: ${amount}`);
+
+        return {
+          success: true,
+          data: {
+            qr_string: dynamicQRIS,
+            invoice_id: orderId,
+            amount: amount,
+            expired_at: new Date(Date.now() + 24 * 60 * 60000).toISOString(), // 24 hours for manual verification
+            payment_method: 'static_qris'
+          }
+        };
+      } catch (qrisError: any) {
+        logger.error('Error generating dynamic QRIS:', qrisError.message);
+        // Fallback to original static QRIS if dynamic generation fails
+        logger.warn('Falling back to original static QRIS (user must input amount manually)');
+        return {
+          success: true,
+          data: {
+            qr_string: config.DATA_QRIS,
+            invoice_id: orderId,
+            amount: amount,
+            expired_at: new Date(Date.now() + 24 * 60 * 60000).toISOString(),
+            payment_method: 'static_qris'
+          }
+        };
+      }
     }
-    
+
+    // No payment method available
+    logger.error('No payment method configured (neither Midtrans nor static QRIS)');
+    return {
+      success: false,
+      error: 'Payment system not configured. Please contact administrator.'
+    };
+  } catch (error: any) {
+    logger.error('Error generating QRIS:', error.response?.data || error.message);
     return {
       success: false,
       error: error.response?.data?.status_message || error.message || 'Failed to generate QRIS code'
@@ -150,25 +201,51 @@ async function generateQRIS(amount: number, userId: string): Promise<QRISRespons
  * @param invoiceId - Invoice ID to check
  * @returns Payment status
  */
-async function checkPaymentStatus(invoiceId: string): Promise<PaymentStatus> {
+async function checkPaymentStatus(invoiceId: string, paymentMethod?: string): Promise<PaymentStatus> {
   try {
-    logger.info(`Checking payment status for order: ${invoiceId}`);
+    logger.info(`Checking payment status for order: ${invoiceId}, method: ${paymentMethod || 'unknown'}`);
 
-    if (!config.API_KEY) {
+    // For static QRIS, check database status (manual verification)
+    if (paymentMethod === 'static_qris' || !config.SERVER_KEY) {
+      // Static QRIS requires manual verification, return pending until admin approves
+      const { getPendingDeposit } = require('../repositories/depositRepository');
+      const deposit = await getPendingDeposit(invoiceId);
+
+      if (!deposit) {
+        return {
+          success: false,
+          status: 'failed',
+          error: 'Deposit not found'
+        };
+      }
+
+      // Map database status to payment status
+      let status: 'pending' | 'paid' | 'expired' | 'failed' = 'pending';
+      if (deposit.status === 'paid') {
+        status = 'paid';
+      } else if (deposit.status === 'awaiting_verification') {
+        status = 'pending'; // Show as pending to user
+      } else if (deposit.status === 'rejected') {
+        status = 'failed';
+      } else if (deposit.status === 'expired') {
+        status = 'expired';
+      }
+
       return {
-        success: false,
-        status: 'failed',
-        error: 'Midtrans credentials not configured'
+        success: true,
+        status: status,
+        invoice_id: invoiceId,
+        amount: deposit.amount
       };
     }
 
-    // Midtrans Status Check API
+    // For Midtrans, check via API
     const isProduction = process.env.MIDTRANS_ENV === 'production';
-    const apiUrl = isProduction 
+    const apiUrl = isProduction
       ? `https://api.midtrans.com/v2/${invoiceId}/status`
       : `https://api.sandbox.midtrans.com/v2/${invoiceId}/status`;
-    
-    const serverKey = config.API_KEY;
+
+    const serverKey = config.SERVER_KEY;
     const authString = Buffer.from(serverKey + ':').toString('base64');
 
     const response = await axios.get(apiUrl, {
@@ -184,9 +261,9 @@ async function checkPaymentStatus(invoiceId: string): Promise<PaymentStatus> {
       // Midtrans transaction status mapping
       const transactionStatus = response.data.transaction_status;
       const fraudStatus = response.data.fraud_status;
-      
+
       let status: 'pending' | 'paid' | 'expired' | 'failed' = 'pending';
-      
+
       if (transactionStatus === 'capture' || transactionStatus === 'settlement') {
         if (fraudStatus === 'accept') {
           status = 'paid';
@@ -219,7 +296,7 @@ async function checkPaymentStatus(invoiceId: string): Promise<PaymentStatus> {
         invoice_id: invoiceId
       };
     }
-    
+
     logger.error('Error checking payment status:', error.response?.data || error.message);
     return {
       success: false,
@@ -243,15 +320,25 @@ function generateQRImageURL(qrString: string): string {
 
 /**
  * Validate QRIS configuration
- * @returns true if QRIS is properly configured
+ * @returns true if any QRIS payment method is properly configured
  */
 function isQRISConfigured(): boolean {
-  return !!(config.MERCHANT_ID && config.API_KEY && config.DATA_QRIS);
+  // Return true if either Midtrans OR static QRIS is configured
+  return !!((config.MERCHANT_ID && config.SERVER_KEY) || config.DATA_QRIS);
+}
+
+/**
+ * Check if static QRIS is configured
+ * @returns true if static QRIS is available (with or without Midtrans)
+ */
+function isStaticQRISConfigured(): boolean {
+  return !!(config.DATA_QRIS && !config.MERCHANT_ID && !config.SERVER_KEY);
 }
 
 module.exports = {
   generateQRIS,
   checkPaymentStatus,
   generateQRImageURL,
-  isQRISConfigured
+  isQRISConfigured,
+  isStaticQRISConfigured
 };

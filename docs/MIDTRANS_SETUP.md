@@ -78,14 +78,14 @@ Buka file `.vars.json` di root project:
   "PORT": 50123,
   "DATA_QRIS": "00020101021226660014ID.LINKAJA.WWW011893600915133...",
   "MERCHANT_ID": "G123456789",
-  "API_KEY": "SB-Mid-server-xxxxxxxxxxxxxxxxx",
+  "SERVER_KEY": "SB-Mid-server-xxxxxxxxxxxxxxxxx",
   "ADMIN_USERNAME": "admin"
 }
 ```
 
 **Penjelasan:**
 - `MERCHANT_ID`: Isi dengan **Merchant ID** dari Midtrans (contoh: `G123456789`)
-- `API_KEY`: Isi dengan **Server Key** dari Midtrans (contoh: `SB-Mid-server-xxxxx`)
+- `SERVER_KEY`: Isi dengan **Server Key** dari Midtrans (contoh: `SB-Mid-server-xxxxx`)
 - `DATA_QRIS`: Static QRIS sebagai fallback (optional)
 
 **📝 Catatan Penting:**
@@ -196,7 +196,7 @@ Di sandbox, beberapa payment auto-success setelah QR generated.
 Edit `.vars.json`:
 ```json
 {
-  "API_KEY": "Mid-server-xxxxxxxxxxxxxxxxx"
+  "SERVER_KEY": "Mid-server-xxxxxxxxxxxxxxxxx"
 }
 ```
 

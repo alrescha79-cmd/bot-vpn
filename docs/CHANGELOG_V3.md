@@ -1,5 +1,334 @@
 # 📝 Changelog & Implementation Summary
 
+## Version 3.1.21 - Static QRIS Payment System (November 2025)
+
+### 🎯 Fitur Utama
+
+#### ✅ Static QRIS Payment Integration
+- **Multiple E-Wallet Support** - Dana Bisnis, ShopeePay Merchant, GoPay Merchant, OVO Business
+- **Dynamic QRIS Library** - Menggunakan `@agungjsp/qris-dinamis` untuk embed nominal otomatis
+- **Manual Verification** - Admin approve/reject deposit dengan photo proof
+- **No API Required** - Tidak perlu integrasi API merchant, cukup QR code statis
+- **Zero Transaction Fee** - Tidak ada biaya tambahan dari payment gateway
+
+#### ✅ Admin Verification System
+- **Pending Deposits Menu** - Admin panel untuk lihat semua deposit menunggu verifikasi
+- **Inline Verification** - Approve/reject langsung dengan inline buttons
+- **Real-time Notifications** - Admin dapat notif Telegram saat ada upload bukti bayar
+- **Photo Proof Display** - Lihat bukti pembayaran langsung di Telegram
+- **Audit Trail** - Tracking admin yang approve/reject dengan timestamp
+
+#### ✅ User Experience Enhancement
+- **Automatic Amount** - Nominal otomatis terisi saat scan QR (tidak perlu input manual)
+- **Payment Proof Upload** - User upload foto bukti pembayaran via Telegram
+- **Step-by-step Guide** - Instruksi jelas untuk setiap langkah pembayaran
+- **Real-time Status** - User dapat cek status deposit kapan saja
+- **Instant Notification** - User langsung dapat notif saat deposit approved/rejected
+
+#### ✅ Dual Payment Mode
+- **Smart Detection** - Auto-detect Midtrans atau QRIS statis dari config
+- **Priority System** - Midtrans (auto-verify) prioritas, QRIS statis sebagai fallback
+- **Seamless Fallback** - Jika Midtrans error, otomatis gunakan QRIS statis
+- **Flexible Configuration** - Support salah satu atau keduanya sekaligus
+
+### 📦 File Baru
+
+#### Documentation
+- `docs/QRIS_SETUP.md` - Panduan lengkap setup QRIS statis
+  - Extract string dari QR code via https://www.imagetotext.info/qr-code-scanner
+  - Konfigurasi `.vars.json`
+  - Flow diagram lengkap
+  - FAQ dan troubleshooting
+  - Comparison merchant e-wallet
+
+#### Services & Handlers
+- Enhanced `src/services/qris.service.ts` - Dual mode support (Midtrans + Static QRIS)
+- Enhanced `src/services/depositService.ts` - Payment proof upload flow
+- Enhanced `src/handlers/events/textHandler.ts` - Photo upload handler
+- Enhanced `src/handlers/events/callbackRouter.ts` - Upload proof callback
+- Enhanced `src/handlers/actions/adminToolsActions.ts` - Admin verification actions
+
+#### Database
+- Enhanced `src/database/schema.ts` - New fields for manual verification:
+  - `payment_method` - Track Midtrans vs Static QRIS
+  - `proof_image_id` - Telegram file_id bukti pembayaran
+  - `admin_approved_by` - Admin user_id yang approve/reject
+  - `admin_approved_at` - Timestamp approval
+  - `admin_notes` - Catatan admin
+
+#### Repository
+- Enhanced `src/repositories/depositRepository.ts` - Manual verification functions:
+  - `updateDepositProof()` - Save payment proof
+  - `getAwaitingVerificationDeposits()` - Get pending deposits
+  - `approveDeposit()` - Approve with balance update
+  - `rejectDeposit()` - Reject with notification
+
+### 🔧 File yang Dimodifikasi
+
+#### Configuration
+- `src/config/index.ts`
+  - Rename `API_KEY` → `SERVER_KEY` (Midtrans convention)
+  - Support optional `SERVER_KEY` untuk QRIS-only setup
+
+- `.vars.json.example`
+  - Updated field names: `SERVER_KEY`
+  - Added `ADMIN_USERNAME` untuk notification
+  - Improved inline documentation
+
+#### Services
+- `src/services/qris.service.ts`
+  - Smart payment method detection
+  - Dynamic QRIS generation dengan `@agungjsp/qris-dinamis`
+  - Dual status checking (API vs Database)
+  - Graceful fallback mechanism
+
+- `src/services/depositService.ts`
+  - Different UI untuk Midtrans vs Static QRIS
+  - Payment proof upload button untuk static QRIS
+  - Skip auto-check untuk manual verification
+  - Fixed numeric keyboard bug (num_1num_000)
+
+#### Handlers
+- `src/handlers/events/textHandler.ts`
+  - Registered photo handler untuk payment proof
+  - State management untuk upload flow
+  - Admin notification dengan photo
+
+- `src/handlers/events/callbackRouter.ts`
+  - Upload proof button handler
+  - Strip 'num_' prefix untuk numeric keyboard
+  - State timeout management
+
+- `src/handlers/actions/adminToolsActions.ts`
+  - `registerAdminPendingDepositsAction()` - List deposits
+  - `registerViewDepositDetailAction()` - View detail + buttons
+  - `registerApproveDepositAction()` - Approve + credit balance
+  - `registerRejectDepositAction()` - Reject + notify user
+  - Handle photo message callbacks
+
+- `src/handlers/actions/adminActions.ts`
+  - Added "💳 Pending Deposits" button di admin system menu
+
+#### Database & Repository
+- `src/database/schema.ts`
+  - Migration for `pending_deposits` table
+  - Safe column addition dengan `addColumnSafely()`
+
+- `src/repositories/depositRepository.ts`
+  - CRUD operations untuk manual verification
+  - Balance update integration
+
+#### Utilities
+- `src/handlers/events/index.ts`
+  - Register photo handler
+
+### 🐛 Bug Fixes
+
+1. **Numeric Keyboard Input Bug**
+   - Root cause: Callback data `num_1` langsung di-append ke amount string
+   - Fix: Strip prefix 'num_' sebelum concatenate
+   - Result: "1000" instead of "num_1num_0num_0num_0"
+
+2. **Markdown Parsing Error**
+   - Root cause: Underscore dalam `awaiting_verification` merusak Markdown
+   - Fix: Escape underscores dengan `\_`
+   - Result: Telegram Markdown render dengan benar
+
+3. **Photo Message Edit Error**
+   - Root cause: `editMessageText` tidak bisa edit photo message
+   - Fix: Detect photo message → `reply()` instead of `editMessageText()`
+   - Result: No more "can't edit message" errors
+
+4. **Admin Notification Config Error**
+   - Root cause: `GROUP_ID` invalid atau tidak terisi
+   - Fix: Gunakan `ADMIN_USERNAME` → lookup user_id dari database
+   - Result: Notification langsung ke admin user
+
+5. **QR Code Display Order**
+   - Root cause: Detail message dengan buttons muncul dulu, photo bukti di bawah
+   - Fix: Send photo dulu, baru detail message dengan buttons
+   - Result: Admin lihat photo dulu, tombol langsung terlihat
+
+### 📊 Peningkatan Performa
+
+1. **Payment Processing**
+   - Static QRIS: Tidak hit external API (lebih cepat)
+   - Dynamic QR generation: Library lokal (< 100ms)
+   - Photo upload: Direct Telegram API (instant)
+
+2. **Admin Verification**
+   - Real-time notification via Telegram
+   - Inline buttons (no menu navigation)
+   - Instant approval (< 1 second balance credit)
+
+3. **User Experience**
+   - No manual amount input (embedded in QR)
+   - Photo upload via Telegram (familiar UX)
+   - Clear step-by-step instructions
+
+### 🧪 Testing Checklist
+
+#### Static QRIS Flow
+- [x] Extract QRIS string dari QR code
+- [x] Configure `DATA_QRIS` di `.vars.json`
+- [x] Generate dynamic QRIS dengan nominal
+- [x] QR code scannable dengan e-wallet
+- [x] Nominal otomatis terisi saat scan
+- [x] User upload bukti pembayaran
+- [x] Admin dapat notification real-time
+
+#### Admin Verification
+- [x] Admin lihat pending deposits
+- [x] View detail deposit + photo proof
+- [x] Approve deposit → balance credited
+- [x] Reject deposit → user notified
+- [x] Audit trail tercatat di database
+
+#### Dual Mode
+- [x] Midtrans-only config works
+- [x] Static QRIS-only config works
+- [x] Both configured → Midtrans priority
+- [x] Midtrans fail → fallback to static
+- [x] No config → error message jelas
+
+#### Bug Fixes
+- [x] Numeric keyboard input correct
+- [x] Markdown rendering fixed
+- [x] Photo message handling fixed
+- [x] Admin notification working
+- [x] Button placement correct
+
+### 🚀 Upgrade Notes
+
+**Dari v3.1.2 ke v3.1.21:**
+
+1. **Pull kode terbaru**
+   ```bash
+   git pull origin main
+   ```
+
+2. **Install dependencies baru**
+   ```bash
+   npm install @agungjsp/qris-dinamis
+   ```
+
+3. **Update konfigurasi**
+   - Rename `API_KEY` → `SERVER_KEY` di `.vars.json`
+   - Tambahkan `ADMIN_USERNAME` untuk notification
+   - Tambahkan `DATA_QRIS` untuk static QRIS (optional)
+   
+   ```json
+   {
+     "SERVER_KEY": "your-midtrans-server-key",
+     "ADMIN_USERNAME": "yourusername",
+     "DATA_QRIS": "00020101021126570011ID.DANA..."
+   }
+   ```
+
+4. **Build ulang**
+   ```bash
+   npm run build
+   ```
+
+5. **Restart bot**
+   ```bash
+   pm2 restart bot-vpn
+   # atau
+   systemctl restart bot-vpn
+   ```
+
+6. **Verifikasi**
+   - Test static QRIS deposit flow
+   - Test admin verification
+   - Check logs: `pm2 logs bot-vpn`
+
+### 📝 Migration Notes
+
+#### Database Migration
+Schema akan auto-migrate saat restart. Kolom baru:
+- `payment_method`
+- `proof_image_id`
+- `admin_approved_by`
+- `admin_approved_at`
+- `admin_notes`
+
+No manual SQL needed.
+
+#### Configuration Changes
+**BREAKING**: Rename `API_KEY` → `SERVER_KEY`
+
+**Before:**
+```json
+{
+  "API_KEY": "your-api-key"
+}
+```
+
+**After:**
+```json
+{
+  "SERVER_KEY": "your-server-key"
+}
+```
+
+#### New Dependencies
+```bash
+npm install @agungjsp/qris-dinamis
+```
+
+### 🎓 Best Practices
+
+1. **QRIS Setup**
+   - Gunakan merchant account (bukan personal)
+   - Save QR code secara permanen
+   - Test dengan amount kecil dulu
+   - Monitor admin verification queue
+
+2. **Admin Management**
+   - Assign admin username di config
+   - Ensure admin sudah `/start` bot
+   - Set role ke 'admin' atau 'owner' di database
+   - Monitor notification settings
+
+3. **Dual Mode Strategy**
+   - Use Midtrans untuk auto-verification
+   - Use Static QRIS sebagai fallback
+   - Configure keduanya untuk redundancy
+   - Document mana yang priority
+
+4. **Security**
+   - Validate payment proof sebelum approve
+   - Check amount matches dengan deposit
+   - Record admin actions untuk audit
+   - Reject suspicious uploads
+
+### 📞 Support & Resources
+
+**Dokumentasi:**
+- [QRIS Setup Guide](docs/QRIS_SETUP.md) - Setup Dana Bisnis, ShopeePay, GoPay
+- [Midtrans Setup](docs/MIDTRANS_SETUP.md) - Setup Midtrans
+- [Production Installation](docs/PRODUCTION_INSTALL.md) - Deploy ke VPS
+
+**Troubleshooting:**
+- Nominal tidak otomatis: Install `@agungjsp/qris-dinamis`
+- Admin tidak dapat notif: Check `ADMIN_USERNAME` dan role
+- QR tidak bisa scan: Verify QRIS string complete
+- Photo upload error: Check Telegram file permissions
+
+**Community:**
+- Report bugs: GitHub Issues
+- Feature requests: GitHub Discussions
+- Quick help: Telegram Group
+
+---
+
+**Version:** 3.1.21  
+**Release Date:** 29 November 2025  
+**Status:** ✅ Production Ready  
+**Major Updates:** Static QRIS Payment, Admin Verification, Dynamic QR, Manual Deposit Flow
+
+---
+
 ## Version 3.1.2 - Payment Gateway & 3-in-1 Protocol (November 2025)
 
 ### 🎯 Fitur Utama

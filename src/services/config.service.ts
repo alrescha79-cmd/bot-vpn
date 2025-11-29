@@ -17,7 +17,7 @@ export interface ConfigData {
   PORT?: number | string;
   DATA_QRIS: string;
   MERCHANT_ID: string;
-  API_KEY: string;
+  SERVER_KEY: string;
   ADMIN_USERNAME?: string;
 }
 
@@ -88,11 +88,11 @@ class ConfigService {
       'GROUP_ID',
       'DATA_QRIS',
       'MERCHANT_ID',
-      'API_KEY'
+      'SERVER_KEY'
     ];
 
     const missing: string[] = [];
-    
+
     for (const field of requiredFields) {
       if (!config[field as keyof ConfigData]) {
         missing.push(field);

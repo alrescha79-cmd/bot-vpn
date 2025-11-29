@@ -35,9 +35,9 @@ try {
 async function handleDepositState(ctx, userId, data) {
   let currentAmount = global.depositState[userId].amount;
 
-  if (data === 'delete') {
+  if (data === 'backspace') {
     currentAmount = currentAmount.slice(0, -1);
-  } else if (data === 'confirm') {
+  } else if (data === 'submit') {
     if (currentAmount.length === 0) {
       return await ctx.answerCbQuery('⚠️ Jumlah tidak boleh kosong!', { show_alert: true });
     }
@@ -47,7 +47,16 @@ async function handleDepositState(ctx, userId, data) {
     global.depositState[userId].action = 'confirm_amount';
     await processDeposit(ctx, currentAmount);
     return;
+  } else if (data === 'cancel') {
+    delete global.depositState[userId];
+    await ctx.editMessageText('❌ Input nominal dibatalkan.', {
+      reply_markup: {
+        inline_keyboard: [[{ text: '🔙 Kembali', callback_data: 'topup_saldo' }]]
+      }
+    });
+    return;
   } else {
+    // data is a number ('1', '2', '0', '00', '000', etc.)
     if (currentAmount.length < 12) {
       currentAmount += data;
     } else {
@@ -56,8 +65,9 @@ async function handleDepositState(ctx, userId, data) {
   }
 
   global.depositState[userId].amount = currentAmount;
-  const newMessage = `💰 *Silakan masukkan jumlah nominal saldo yang Anda ingin tambahkan ke akun Anda:*\n\nJumlah saat ini: *Rp ${currentAmount}*`;
-  
+  const formattedAmount = currentAmount ? parseInt(currentAmount).toLocaleString('id-ID') : '0';
+  const newMessage = `💰 *Silakan masukkan jumlah nominal saldo yang Anda ingin tambahkan ke akun Anda:*\n\nJumlah saat ini: *Rp ${formattedAmount}*`;
+
   try {
     await ctx.editMessageText(newMessage, {
       reply_markup: { inline_keyboard: keyboard_nomor() },
@@ -80,9 +90,9 @@ async function processDeposit(ctx, amount) {
   try {
     const userId = String(ctx.from.id);
     const numAmount = parseInt(amount);
-    
+
     logger.info(`Processing deposit: ${amount} for user ${userId}`);
-    
+
     // Validate amount
     if (numAmount < 10000) {
       await ctx.editMessageText(
@@ -103,26 +113,70 @@ async function processDeposit(ctx, amount) {
 
     // Generate unique code for this deposit
     const uniqueCode = `${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
-    
+
     // Generate QRIS payment
     await ctx.editMessageText('⏳ Generating QRIS code...', { parse_mode: 'Markdown' });
-    
+
     const qrisResult = await generateQRIS(numAmount, userId);
-    
+
     if (!qrisResult.success || !qrisResult.data) {
       throw new Error(qrisResult.error || 'Failed to generate QRIS');
     }
 
-    const { qr_string, qr_image_url, invoice_id, expired_at } = qrisResult.data;
-    
+    const { qr_string, qr_image_url, invoice_id, expired_at, payment_method } = qrisResult.data;
+    const paymentMethod = payment_method || 'midtrans';
+
     // Generate QR image URL if not provided
-    const qrImageUrl = qr_image_url || generateQRImageURL(qr_string);
-    
-    // Send QR code image
-    const qrMessage = await ctx.replyWithPhoto(
-      { url: qrImageUrl },
-      {
-        caption: `
+    let qrImageUrl = qr_image_url;
+    let sendAsPhoto = true;
+
+    if (!qrImageUrl) {
+      try {
+        qrImageUrl = generateQRImageURL(qr_string);
+        // Test if we can access the URL (for static QRIS)
+        if (paymentMethod === 'static_qris') {
+          // For static QRIS, we'll send as photo with the QR string
+          // Since external service might be unreliable, we'll handle error on send
+          logger.info('Using external QR generator for static QRIS');
+        }
+      } catch (err) {
+        logger.warn('Failed to generate QR image URL, will send as text:', err.message);
+        sendAsPhoto = false;
+      }
+    }
+
+    // Different UI for static QRIS vs Midtrans
+    let caption = '';
+    let buttons = [];
+
+    if (paymentMethod === 'static_qris') {
+      caption = `
+💳 *QRIS Payment - Deposit*
+
+💰 *Nominal:* Rp ${numAmount.toLocaleString('id-ID')}
+🆔 *Invoice:* \`${invoice_id}\`
+⏰ *Valid:* ${new Date(expired_at).toLocaleString('id-ID')}
+
+📱 *Cara Pembayaran:*
+1️⃣ Scan QR code di atas
+2️⃣ Masukan Nominal sebesar: *Rp ${numAmount.toLocaleString('id-ID')}*
+3️⃣ Lakukan pembayaran
+4️⃣ Upload bukti pembayaran
+5️⃣ Tunggu verifikasi admin
+
+✅ *Support E-Wallet (Gopay, OVO, ShopeePay, Dana, Dll) dan E-Mbanking (Brimo, Livin, MyBCA, Dll)*
+
+_Status: Menunggu bukti pembayaran..._
+      `.trim();
+
+      buttons = [
+        [{ text: '📤 Upload Bukti Bayar', callback_data: `upload_proof_${invoice_id}` }],
+        [{ text: '🔄 Cek Status', callback_data: `check_payment_${invoice_id}` }],
+        [{ text: '❌ Batalkan', callback_data: `cancel_payment_${invoice_id}` }],
+        [{ text: '🔙 Menu Utama', callback_data: 'send_main_menu' }]
+      ];
+    } else {
+      caption = `
 💳 *QRIS Payment - Deposit*
 
 💰 *Amount:* Rp ${numAmount.toLocaleString('id-ID')}
@@ -134,19 +188,49 @@ async function processDeposit(ctx, amount) {
 ⚠️ QR Code valid selama 30 menit
 
 _Status: Menunggu pembayaran..._
-        `.trim(),
+      `.trim();
+
+      buttons = [
+        [{ text: '🔄 Cek Status', callback_data: `check_payment_${invoice_id}` }],
+        [{ text: '❌ Batalkan', callback_data: `cancel_payment_${invoice_id}` }],
+        [{ text: '🔙 Menu Utama', callback_data: 'send_main_menu' }]
+      ];
+    }
+
+    let qrMessage;
+
+    // Try to send as photo first
+    if (sendAsPhoto && qrImageUrl) {
+      try {
+        qrMessage = await ctx.replyWithPhoto(
+          { url: qrImageUrl },
+          {
+            caption: caption,
+            parse_mode: 'Markdown',
+            reply_markup: {
+              inline_keyboard: buttons
+            }
+          }
+        );
+      } catch (photoErr) {
+        logger.warn('Failed to send QR as photo, falling back to text:', photoErr.message);
+        sendAsPhoto = false;
+      }
+    }
+
+    // Fallback: Send as text if photo failed
+    if (!sendAsPhoto || !qrMessage) {
+      const textMessage = `${caption}\n\n🔗 *QRIS String:*\n\`${qr_string}\`\n\n_Gunakan aplikasi e-wallet untuk scan QR code_`;
+
+      qrMessage = await ctx.reply(textMessage, {
         parse_mode: 'Markdown',
         reply_markup: {
-          inline_keyboard: [
-            [{ text: '🔄 Cek Status', callback_data: `check_payment_${invoice_id}` }],
-            [{ text: '❌ Batalkan', callback_data: `cancel_payment_${invoice_id}` }],
-            [{ text: '🔙 Menu Utama', callback_data: 'send_main_menu' }]
-          ]
+          inline_keyboard: buttons
         }
-      }
-    );
+      });
+    }
 
-    // Save to pending deposits
+    // Save to pending deposits with payment method
     await createPendingDeposit({
       unique_code: invoice_id,
       user_id: userId,
@@ -154,11 +238,16 @@ _Status: Menunggu pembayaran..._
       original_amount: numAmount,
       timestamp: Date.now(),
       status: 'pending',
-      qr_message_id: qrMessage.message_id
+      qr_message_id: qrMessage.message_id,
+      payment_method: paymentMethod
     });
 
-    // Start auto-check payment status (every 10 seconds for 30 minutes)
-    startPaymentStatusCheck(ctx, invoice_id, userId, numAmount, qrMessage.message_id);
+    // Start auto-check payment status only for Midtrans
+    if (paymentMethod === 'midtrans') {
+      startPaymentStatusCheck(ctx, invoice_id, userId, numAmount, qrMessage.message_id, paymentMethod);
+    } else {
+      logger.info(`Static QRIS deposit created: ${invoice_id}, awaiting manual upload`);
+    }
 
     // Delete the "Generating..." message
     try {
@@ -169,14 +258,14 @@ _Status: Menunggu pembayaran..._
 
     // Clean up deposit state
     clearDepositState(userId);
-    
+
     logger.info(`Deposit request created: ${invoice_id} for user ${userId}`);
   } catch (error: any) {
     const userId = String(ctx.from?.id || 'unknown');
     logger.error('Error processing deposit:', error);
-    
+
     try {
-      await ctx.reply('❌ *Gagal memproses deposit. Silakan coba lagi.*', { 
+      await ctx.reply('❌ *Gagal memproses deposit. Silakan coba lagi.*', {
         parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
@@ -188,7 +277,7 @@ _Status: Menunggu pembayaran..._
     } catch (replyError) {
       logger.error('Error sending error message:', replyError);
     }
-    
+
     clearDepositState(userId);
   }
 }
@@ -201,7 +290,7 @@ _Status: Menunggu pembayaran..._
  * @param {number} amount - Payment amount
  * @param {number} messageId - QR message ID
  */
-async function startPaymentStatusCheck(ctx, invoiceId, userId, amount, messageId) {
+async function startPaymentStatusCheck(ctx, invoiceId, userId, amount, messageId, paymentMethod) {
   const maxAttempts = 180; // 30 minutes (180 * 10 seconds)
   let attempts = 0;
 
@@ -211,14 +300,14 @@ async function startPaymentStatusCheck(ctx, invoiceId, userId, amount, messageId
     try {
       // Check if deposit still exists and pending
       const deposit = await getPendingDeposit(invoiceId);
-      
+
       if (!deposit || deposit.status !== 'pending') {
         clearInterval(checkInterval);
         return;
       }
 
-      // Check payment status
-      const statusResult = await checkPaymentStatus(invoiceId);
+      // Check payment status (pass payment method)
+      const statusResult = await checkPaymentStatus(invoiceId, paymentMethod);
 
       if (statusResult.success && statusResult.status === 'paid') {
         // Payment successful
@@ -231,7 +320,7 @@ async function startPaymentStatusCheck(ctx, invoiceId, userId, amount, messageId
       }
     } catch (error) {
       logger.error(`Error checking payment status for ${invoiceId}:`, error);
-      
+
       if (attempts >= maxAttempts) {
         clearInterval(checkInterval);
       }
@@ -256,7 +345,7 @@ async function handleSuccessfulPayment(ctx, invoiceId, userId, amount, messageId
 
     // Get current user
     const user = await getUserById(userId);
-    
+
     if (!user) {
       throw new Error('User not found');
     }
@@ -377,7 +466,7 @@ function initializeDepositState(userId) {
   if (!global.depositState) {
     global.depositState = {};
   }
-  
+
   global.depositState[userId] = {
     action: 'request_amount',
     amount: ''
