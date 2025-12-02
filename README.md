@@ -18,15 +18,19 @@ curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts
 
 ---
 
-> **🆕 What's New in v3.1.21:**
+> **🆕 What's New in v3.1.22:**
+> - ✅ **Pakasir Payment Gateway** - Payment gateway alternatif dengan QRIS & Virtual Account
+> - ✅ **Auto-fallback Payment** - Otomatis gunakan Pakasir jika Midtrans/QRIS tidak dikonfigurasi
+> - ✅ **Pakasir Webhook** - Auto-verification pembayaran via webhook
+> - ✅ **Multi Payment Support** - Midtrans, Static QRIS, dan Pakasir dalam satu sistem
+> - 📖 **[Pakasir Setup Guide](docs/PAKASIR_SETUP.md)** - Dokumentasi lengkap setup Pakasir
+
+> **Previous Updates (v3.1.21):**
 > - ✅ **Static QRIS Payment** - Support QRIS statis (Dana Bisnis, ShopeePay, GoPay) dengan verifikasi manual admin
 > - ✅ **Dynamic QRIS** - Library `@agungjsp/qris-dinamis` untuk embed nominal otomatis di QR code
 > - ✅ **Admin Verification System** - Admin panel untuk approve/reject deposit manual dengan inline buttons
 > - ✅ **Payment Proof Upload** - User upload bukti pembayaran, admin langsung dapat notifikasi real-time
 > - ✅ **Dual Payment Mode** - Midtrans (auto-verify) atau QRIS Statis (manual) dengan fallback otomatis
-> - ✅ **API_KEY → SERVER_KEY** - Rename config sesuai konvensi Midtrans
-> - ✅ **Manual Input Bug Fix** - Perbaiki bug input manual topup yang menampilkan "num_1num_000"
-> - 📖 **[QRIS Setup Guide](docs/QRIS_SETUP.md)** - Dokumentasi lengkap setup QRIS statis
 
 > **Previous Updates (v3.1.2):**
 > - ✅ **Midtrans Payment Gateway** - Integrasi lengkap dengan Midtrans untuk pembayaran otomatis
@@ -55,12 +59,14 @@ curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts
 ### 💰 Payment Integration
 - **QRIS Dinamis** - QRIS dengan nominal otomatis (manual verification)
 - **Midtrans** - Payment Gateway terintegrasi (Sandbox & Production) - Auto-verification
-- **Auto-Verification** - Verifikasi pembayaran otomatis setiap 10 detik (Midtrans)
+- **Pakasir** - Payment Gateway alternatif dengan QRIS & Virtual Account - Auto-verification
+- **Auto-Verification** - Verifikasi pembayaran otomatis setiap 10 detik (Midtrans/Pakasir)
 - **Manual Verification** - Admin approve manual untuk QRIS statis
-- **Instant Webhook** - Webhook untuk verifikasi instant (optional, Midtrans)
+- **Instant Webhook** - Webhook untuk verifikasi instant (Midtrans & Pakasir)
 - **Deposit System** - Top-up saldo otomatis/manual
 - **Transaction History** - Riwayat lengkap transaksi
 - 📖 **[Setup QRIS Statis](docs/QRIS_SETUP.md)** - Panduan setup Dana Bisnis, ShopeePay, GoPay
+- 📖 **[Setup Pakasir](docs/PAKASIR_SETUP.md)** - Panduan setup Pakasir Payment Gateway
 - ⏳ **Payment Gateway Lainnya** - Xendit, Duitku, dll (Coming Soon)
 
 ### 🌐 Web Interface (Config Only)
@@ -266,6 +272,7 @@ bot-vpn/
 | **[QUICKSTART.md](docs/QUICKSTART.md)** | Panduan setup cepat & deployment |
 | **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Deployment detail untuk VPS |
 | **[QRIS_SETUP.md](docs/QRIS_SETUP.md)** | Setup QRIS Statis (Dana, ShopeePay, GoPay) |
+| **[PAKASIR_SETUP.md](docs/PAKASIR_SETUP.md)** | Setup Pakasir Payment Gateway |
 | **[CHANGELOG_V3.md](docs/CHANGELOG_V3.md)** | Changelog & implementation summary |
 | **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** | Troubleshooting common issues |
 | **[MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)** | Upgrade dari v2.0 ke v3.0 |

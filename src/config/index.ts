@@ -19,6 +19,10 @@ export interface VarsConfig {
   SERVER_KEY: string;
   SSH_USER?: string;
   SSH_PASS?: string;
+  // Pakasir Payment Gateway (supports both PAKASIR_PROJECT and PAKASIR_SLUG)
+  PAKASIR_PROJECT?: string;
+  PAKASIR_SLUG?: string;
+  PAKASIR_API_KEY?: string;
 }
 
 export interface Config {
@@ -42,6 +46,10 @@ export interface Config {
   DATA_QRIS: string;
   MERCHANT_ID: string;
   SERVER_KEY: string;
+
+  // Pakasir Payment Gateway Configuration
+  PAKASIR_PROJECT: string;
+  PAKASIR_API_KEY: string;
 
   // SSH Configuration
   SSH_USER: string;
@@ -74,6 +82,8 @@ function loadConfig(): Config {
       DATA_QRIS: '',
       MERCHANT_ID: '',
       SERVER_KEY: '',
+      PAKASIR_PROJECT: '',
+      PAKASIR_API_KEY: '',
       SSH_USER: 'root',
       SSH_PASS: '',
       adminIds: [],
@@ -106,6 +116,10 @@ function loadConfig(): Config {
     DATA_QRIS: vars.DATA_QRIS,
     MERCHANT_ID: vars.MERCHANT_ID,
     SERVER_KEY: vars.SERVER_KEY,
+
+    // Pakasir Payment Gateway Configuration (supports both PAKASIR_PROJECT and PAKASIR_SLUG)
+    PAKASIR_PROJECT: vars.PAKASIR_PROJECT || vars.PAKASIR_SLUG || '',
+    PAKASIR_API_KEY: vars.PAKASIR_API_KEY || '',
 
     // SSH Configuration
     SSH_USER: vars.SSH_USER || 'root',

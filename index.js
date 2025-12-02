@@ -255,6 +255,7 @@ function setupExpressRoutes() {
     logger.info(`   ⚙️  Edit Config (Network): http://${localIP}:${PORT}/config/edit`);
     logger.info(`   ❤️  Health Check:          http://localhost:${PORT}/health`);
     logger.info(`   💳 Midtrans Webhook:       http://${localIP}:${PORT}/api/midtrans/notification`);
+    logger.info(`   💳 Pakasir Webhook:        http://${localIP}:${PORT}/api/pakasir/notification`);
     logger.info('');
   });
 }
@@ -347,6 +348,10 @@ async function main() {
     logger.info(`   ⚙️  Edit Config (Local):   http://localhost:${PORT}/config/edit`);
     logger.info(`   ⚙️  Edit Config (Network): http://${localIP}:${PORT}/config/edit`);
     logger.info(`   ❤️  Health Check:          http://localhost:${PORT}/health`);
+    logger.info('');
+    logger.info('💳 Payment Gateway Webhooks:');
+    logger.info(`   🔶 Midtrans:  http://${localIP}:${PORT}/api/midtrans/notification`);
+    logger.info(`   🟢 Pakasir:   http://${localIP}:${PORT}/api/pakasir/notification`);
     logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   } catch (err) {
