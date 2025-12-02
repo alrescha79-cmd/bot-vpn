@@ -1,7 +1,7 @@
 {
   "name": "bot-telegram-vpn-qris",
-  "version": "3.1.21",
-  "description": "Telegram Bot untuk otomatisasi pembuatan akun VPN (SSH, Vmess, Vless, Trojan dan Shadowsocks) serta pembayaran QRIS.",
+  "version": "3.1.22",
+  "description": "Telegram Bot untuk otomatisasi pembuatan akun VPN (SSH, Vmess, Vless, Trojan dan Shadowsocks) serta pembayaran QRIS/Pakasir.",
   "main": "index.js",
   "author": "Anggun Caksono",
   "license": "MIT",

@@ -145,7 +145,7 @@ async function processDeposit(ctx, amount) {
       }
     }
 
-    // Different UI for static QRIS vs Midtrans
+    // Different UI for static QRIS vs Midtrans/Pakasir
     let caption = '';
     let buttons = [];
 
@@ -175,7 +175,33 @@ _Status: Menunggu bukti pembayaran..._
         [{ text: '❌ Batalkan', callback_data: `cancel_payment_${invoice_id}` }],
         [{ text: '🔙 Menu Utama', callback_data: 'send_main_menu' }]
       ];
+    } else if (paymentMethod === 'pakasir') {
+      // Pakasir payment - auto verification like Midtrans
+      const fee = qrisResult.data.fee || 0;
+      const totalPayment = qrisResult.data.total_payment || numAmount;
+      
+      caption = `
+💳 *QRIS Payment - Deposit (Pakasir)*
+
+💰 *Amount:* Rp ${numAmount.toLocaleString('id-ID')}
+${fee > 0 ? `💸 *Biaya Admin:* Rp ${fee.toLocaleString('id-ID')}\n💵 *Total Bayar:* Rp ${totalPayment.toLocaleString('id-ID')}` : ''}
+🆔 *Invoice:* \`${invoice_id}\`
+⏰ *Expired:* ${new Date(expired_at).toLocaleString('id-ID')}
+
+📱 Scan QR code untuk melakukan pembayaran
+✅ Pembayaran akan otomatis terverifikasi
+⚠️ QR Code valid hingga waktu expired
+
+_Status: Menunggu pembayaran..._
+      `.trim();
+
+      buttons = [
+        [{ text: '🔄 Cek Status', callback_data: `check_payment_${invoice_id}` }],
+        [{ text: '❌ Batalkan', callback_data: `cancel_payment_${invoice_id}` }],
+        [{ text: '🔙 Menu Utama', callback_data: 'send_main_menu' }]
+      ];
     } else {
+      // Midtrans payment
       caption = `
 💳 *QRIS Payment - Deposit*
 
@@ -242,8 +268,8 @@ _Status: Menunggu pembayaran..._
       payment_method: paymentMethod
     });
 
-    // Start auto-check payment status only for Midtrans
-    if (paymentMethod === 'midtrans') {
+    // Start auto-check payment status for Midtrans and Pakasir
+    if (paymentMethod === 'midtrans' || paymentMethod === 'pakasir') {
       startPaymentStatusCheck(ctx, invoice_id, userId, numAmount, qrMessage.message_id, paymentMethod);
     } else {
       logger.info(`Static QRIS deposit created: ${invoice_id}, awaiting manual upload`);

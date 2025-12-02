@@ -209,6 +209,9 @@ export interface QRISPaymentData {
   amount: number;
   unique_code: string;
   expired_at: number;
+  payment_method?: 'midtrans' | 'static_qris' | 'pakasir';
+  fee?: number;
+  total_payment?: number;
 }
 
 export interface PaymentCheckResult {

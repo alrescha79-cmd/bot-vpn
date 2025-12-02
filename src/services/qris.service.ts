@@ -10,6 +10,9 @@ const axios = require('axios');
 const logger = require('../utils/logger');
 const qrisDinamis = require('@agungjsp/qris-dinamis');
 
+// Import Pakasir service
+const { isPakasirConfigured, generatePakasirPayment, checkPakasirPaymentStatus } = require('./pakasir.service');
+
 // Import config properly
 let config: any;
 try {
@@ -26,7 +29,9 @@ interface QRISResponse {
     invoice_id: string;
     amount: number;
     expired_at: string;
-    payment_method?: 'midtrans' | 'static_qris';
+    payment_method?: 'midtrans' | 'static_qris' | 'pakasir';
+    fee?: number;
+    total_payment?: number;
   };
   error?: string;
 }
@@ -181,8 +186,34 @@ async function generateQRIS(amount: number, userId: string): Promise<QRISRespons
       }
     }
 
+    // Try Pakasir if configured (as fallback when Midtrans and static QRIS not available)
+    if (isPakasirConfigured()) {
+      logger.info('Using Pakasir payment gateway (no Midtrans/static QRIS configured)');
+      
+      const pakasirResult = await generatePakasirPayment(amount, userId, 'qris');
+      
+      if (pakasirResult.success && pakasirResult.data) {
+        logger.info(`Pakasir QRIS generated successfully: ${pakasirResult.data.invoice_id}`);
+        return {
+          success: true,
+          data: {
+            qr_string: pakasirResult.data.qr_string,
+            qr_image_url: pakasirResult.data.qr_image_url,
+            invoice_id: pakasirResult.data.invoice_id,
+            amount: pakasirResult.data.amount,
+            expired_at: pakasirResult.data.expired_at,
+            payment_method: 'pakasir',
+            fee: pakasirResult.data.fee,
+            total_payment: pakasirResult.data.total_payment
+          }
+        };
+      } else {
+        logger.error('Pakasir payment generation failed:', pakasirResult.error);
+      }
+    }
+
     // No payment method available
-    logger.error('No payment method configured (neither Midtrans nor static QRIS)');
+    logger.error('No payment method configured (Midtrans, static QRIS, or Pakasir)');
     return {
       success: false,
       error: 'Payment system not configured. Please contact administrator.'
@@ -205,8 +236,26 @@ async function checkPaymentStatus(invoiceId: string, paymentMethod?: string): Pr
   try {
     logger.info(`Checking payment status for order: ${invoiceId}, method: ${paymentMethod || 'unknown'}`);
 
+    // For Pakasir, use Pakasir API to check status
+    if (paymentMethod === 'pakasir') {
+      // Get deposit to retrieve amount for Pakasir API
+      const { getPendingDeposit } = require('../repositories/depositRepository');
+      const deposit = await getPendingDeposit(invoiceId);
+      
+      if (!deposit) {
+        return {
+          success: false,
+          status: 'failed',
+          error: 'Deposit not found'
+        };
+      }
+
+      const pakasirStatus = await checkPakasirPaymentStatus(invoiceId, deposit.amount);
+      return pakasirStatus;
+    }
+
     // For static QRIS, check database status (manual verification)
-    if (paymentMethod === 'static_qris' || !config.SERVER_KEY) {
+    if (paymentMethod === 'static_qris' || (!config.SERVER_KEY && !isPakasirConfigured())) {
       // Static QRIS requires manual verification, return pending until admin approves
       const { getPendingDeposit } = require('../repositories/depositRepository');
       const deposit = await getPendingDeposit(invoiceId);
@@ -323,8 +372,8 @@ function generateQRImageURL(qrString: string): string {
  * @returns true if any QRIS payment method is properly configured
  */
 function isQRISConfigured(): boolean {
-  // Return true if either Midtrans OR static QRIS is configured
-  return !!((config.MERCHANT_ID && config.SERVER_KEY) || config.DATA_QRIS);
+  // Return true if Midtrans, static QRIS, or Pakasir is configured
+  return !!((config.MERCHANT_ID && config.SERVER_KEY) || config.DATA_QRIS || isPakasirConfigured());
 }
 
 /**
@@ -332,7 +381,22 @@ function isQRISConfigured(): boolean {
  * @returns true if static QRIS is available (with or without Midtrans)
  */
 function isStaticQRISConfigured(): boolean {
-  return !!(config.DATA_QRIS && !config.MERCHANT_ID && !config.SERVER_KEY);
+  return !!(config.DATA_QRIS && !config.MERCHANT_ID && !config.SERVER_KEY && !isPakasirConfigured());
+}
+
+/**
+ * Get active payment method name
+ * @returns Name of the active payment method
+ */
+function getActivePaymentMethod(): string {
+  if (config.MERCHANT_ID && config.SERVER_KEY) {
+    return 'Midtrans';
+  } else if (config.DATA_QRIS) {
+    return 'Static QRIS';
+  } else if (isPakasirConfigured()) {
+    return 'Pakasir';
+  }
+  return 'Not configured';
 }
 
 module.exports = {
@@ -340,5 +404,6 @@ module.exports = {
   checkPaymentStatus,
   generateQRImageURL,
   isQRISConfigured,
-  isStaticQRISConfigured
+  isStaticQRISConfigured,
+  getActivePaymentMethod
 };

@@ -1,6 +1,6 @@
 # 📚 Documentation Index
 
-Complete documentation for the VPN Telegram Bot v3.1 - Account Persistence Update
+Complete documentation for the VPN Telegram Bot v3.1.22 - Pakasir Payment Gateway Integration
 
 ---
 
@@ -8,7 +8,7 @@ Complete documentation for the VPN Telegram Bot v3.1 - Account Persistence Updat
 
 ### For New Users
 1. **[README.md](./README.md)** - Main project documentation
-   - Latest features (v3.1 with Account Persistence)
+   - Latest features (v3.1.22 with Pakasir Payment Gateway)
    - Installation guide
    - Configuration
    - Usage
@@ -17,6 +17,34 @@ Complete documentation for the VPN Telegram Bot v3.1 - Account Persistence Updat
    - Development setup
    - Build process
    - VPS deployment
+
+---
+
+## 💰 Payment Integration
+
+### Payment Gateways
+- **[docs/MIDTRANS_SETUP.md](docs/MIDTRANS_SETUP.md)** - Midtrans setup guide
+  - Sandbox & Production setup
+  - Webhook configuration
+  - Auto-verification
+
+- **[docs/PAKASIR_SETUP.md](docs/PAKASIR_SETUP.md)** - Pakasir setup guide
+  - Project registration
+  - API Key configuration
+  - QRIS & Virtual Account
+  - Webhook setup
+
+- **[docs/QRIS_SETUP.md](docs/QRIS_SETUP.md)** - Static QRIS setup
+  - Dana Bisnis, ShopeePay, GoPay
+  - Manual verification flow
+  - No API required
+
+### Payment Priority
+| Priority | Method | Auto-Verify | 
+|----------|--------|-------------|
+| 1 | Midtrans | ✅ Yes |
+| 2 | Static QRIS | ❌ Manual |
+| 3 | Pakasir | ✅ Yes |
 
 ---
 
@@ -45,6 +73,8 @@ Complete documentation for the VPN Telegram Bot v3.1 - Account Persistence Updat
 ## 📋 Changelog
 
 - **[docs/CHANGELOG_V3.md](docs/CHANGELOG_V3.md)** - Version history
+  - v3.1.22: Pakasir Payment Gateway
+  - v3.1.21: Static QRIS Payment
   - v3.1: Account persistence & Akunku menu
   - v3.0: Modular architecture
 
@@ -82,4 +112,13 @@ pm2 logs bot-vpn
 
 ---
 
-**Last Updated:** November 2025 - v3.1
+## 🔗 Webhook Endpoints
+
+| Gateway | Endpoint | Method |
+|---------|----------|--------|
+| Midtrans | `/api/midtrans/notification` | POST |
+| Pakasir | `/api/pakasir/notification` | POST |
+
+---
+
+**Last Updated:** November 2025 - v3.1.22

@@ -1,5 +1,131 @@
 # 📝 Changelog & Implementation Summary
 
+## Version 3.1.22 - Pakasir Payment Gateway Integration (November 2025)
+
+### 🎯 Fitur Utama
+
+#### ✅ Pakasir Payment Gateway
+- **Payment Gateway Alternatif** - Fallback otomatis jika Midtrans/Static QRIS tidak dikonfigurasi
+- **Multiple Payment Method** - QRIS dan berbagai Virtual Account (BNI, BRI, Mandiri, CIMB, dll)
+- **Auto-verification** - Verifikasi otomatis via polling setiap 10 detik
+- **Webhook Support** - Instant notification saat pembayaran berhasil
+- **Transparent Integration** - User tidak perlu tahu payment gateway yang digunakan
+- **Low Fee** - Fee transparan yang ditampilkan di UI
+
+#### ✅ Smart Payment Fallback System
+- **Priority Chain** - Midtrans → Static QRIS → Pakasir
+- **Auto Detection** - Otomatis pilih payment gateway berdasarkan konfigurasi
+- **Seamless UX** - User experience yang konsisten apapun payment gateway-nya
+- **Configuration Flexibility** - Support kombinasi apapun dari 3 payment method
+
+#### ✅ Pakasir API Integration
+- **Transaction Create** - Generate QRIS/VA untuk pembayaran
+- **Status Check** - Cek status transaksi real-time
+- **Transaction Cancel** - Batalkan transaksi jika diperlukan
+- **Payment Simulation** - Simulasi pembayaran untuk testing (Sandbox mode)
+
+### 📦 File Baru
+
+#### Services
+- `src/services/pakasir.service.ts` - Pakasir API integration
+  - `isPakasirConfigured()` - Check if Pakasir is configured
+  - `generatePakasirPayment()` - Generate QRIS/VA payment
+  - `checkPakasirPaymentStatus()` - Check payment status
+  - `cancelPakasirPayment()` - Cancel pending transaction
+  - `simulatePakasirPayment()` - Simulate payment (Sandbox)
+  - Support multiple payment methods (QRIS, BNI VA, BRI VA, dll)
+
+#### Webhook Handler
+- `src/api/pakasir.webhook.ts` - Pakasir webhook handler
+  - `handlePakasirNotification()` - Handle payment notifications
+  - `verifyPakasirWebhook()` - Verify webhook authenticity
+  - `handleSuccessfulPakasirPayment()` - Process successful payment
+  - `notifyPakasirPaymentFailed()` - Notify on failed payment
+
+#### Documentation
+- `docs/PAKASIR_SETUP.md` - Panduan lengkap setup Pakasir
+  - Registrasi dan konfigurasi proyek
+  - Setup `.vars.json`
+  - Webhook configuration
+  - Testing dengan Sandbox mode
+  - FAQ dan troubleshooting
+
+### 🔧 File yang Dimodifikasi
+
+#### Configuration
+- `src/config/index.ts`
+  - Added `PAKASIR_PROJECT` dan `PAKASIR_API_KEY`
+  - Support alias `PAKASIR_SLUG` untuk backward compatibility
+  - VarsConfig interface update
+
+- `.vars.json.example`
+  - Added Pakasir configuration section
+  - Documentation for Pakasir fields
+
+#### Routes
+- `src/api/config.routes.ts`
+  - Added `/pakasir/notification` webhook route
+  - Import Pakasir webhook handler
+
+#### Services
+- `src/services/qris.service.ts`
+  - Integrated Pakasir as fallback payment method
+  - Updated `isQRISConfigured()` to include Pakasir check
+  - Added `getActivePaymentMethod()` function
+  - Updated `checkPaymentStatus()` for Pakasir support
+
+- `src/services/depositService.ts`
+  - Pakasir-specific UI dengan fee display
+  - Auto-check enabled untuk Pakasir (sama seperti Midtrans)
+  - Smart caption generation based on payment method
+
+#### Types
+- `src/types/index.ts`
+  - Added `PakasirPaymentResponse` interface
+  - Added `PakasirPaymentStatus` interface
+  - Added `PakasirWebhookPayload` interface
+
+#### Main Application
+- `index.js`
+  - Added Pakasir webhook URL ke startup logs
+
+### 🔐 Configuration Changes
+
+#### `.vars.json` - Pakasir Configuration
+```json
+{
+  "PAKASIR_PROJECT": "your-project-slug",
+  "PAKASIR_API_KEY": "your-api-key"
+}
+```
+
+**Catatan:** 
+- Bisa juga gunakan `PAKASIR_SLUG` sebagai pengganti `PAKASIR_PROJECT`
+- Dapatkan credentials dari https://app.pakasir.com
+
+### 📊 Payment Method Priority
+
+| Priority | Method | Auto-Verify | Config Required |
+|----------|--------|-------------|-----------------|
+| 1 | Midtrans | ✅ Yes | `MERCHANT_ID`, `CLIENT_KEY`, `SERVER_KEY` |
+| 2 | Static QRIS | ❌ Manual | `QRIS_STRING` |
+| 3 | Pakasir | ✅ Yes | `PAKASIR_PROJECT`, `PAKASIR_API_KEY` |
+
+### 🧪 Testing
+
+1. **Sandbox Mode** - Set proyek Pakasir ke mode Sandbox
+2. **Simulasi Pembayaran** - Gunakan API `/api/paymentsimulation`
+3. **Webhook Test** - Webhook akan dipanggil saat simulasi berhasil
+
+### 🔗 Webhook Endpoints
+
+| Gateway | Endpoint | Method |
+|---------|----------|--------|
+| Midtrans | `/api/midtrans/notification` | POST |
+| Pakasir | `/api/pakasir/notification` | POST |
+
+---
+
 ## Version 3.1.21 - Static QRIS Payment System (November 2025)
 
 ### 🎯 Fitur Utama
