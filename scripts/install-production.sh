@@ -721,16 +721,16 @@ fi
 cat << 'EOF' > "${INSTALL_PATH}/.vars.json"
 {
   "BOT_TOKEN": "ISIDISNI",
-  "USER_ID": "ISIDISNI",
-  "ADMIN_USERNAME": "ISIDISNI",
-  "GROUP_ID": "ISIDISNI",
-  "NAMA_STORE": "ISIDISNI",
+  "USER_ID": "",
+  "ADMIN_USERNAME": "",
+  "GROUP_ID": "",
+  "NAMA_STORE": "",
   "PORT": "50123",
-  "DATA_QRIS": "ISIDISNI",
-  "MERCHANT_ID": "ISIDISNI",
-  "SERVER_KEY": "ISIDISNI",
-  "PAKASIR_SLUG": "ISIDISNI",
-  "PAKASIR_API_KEY": "ISIDISNI"
+  "DATA_QRIS": "",
+  "MERCHANT_ID": "",
+  "SERVER_KEY": "",
+  "PAKASIR_SLUG": "",
+  "PAKASIR_API_KEY": ""
 }
 EOF
 
@@ -759,9 +759,8 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${BLUE}Setup Configuration${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  Sudo Akses: sudo -i"
-echo "  Folder Setup: cd ${INSTALL_PATH}"
-echo "  Edit/Ubah Konfigurasi: nano ${INSTALL_PATH}/.vars.json"
-echo "  Restart App: pm2 restart bot-vpn"
+echo "  Catatan: Untuk Payment gateway isi sesuai yang Anda miliki dan biarkan kosong untuk lainnya."
+echo "  Edit/Ubah Konfigurasi: sudo nano ${INSTALL_PATH}/.vars.json"
+echo "  Restart App: sudo pm2 restart bot-vpn"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
