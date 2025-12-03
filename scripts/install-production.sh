@@ -717,6 +717,34 @@ else
     echo ""
 fi
 
+# create .vars.json di ${INSTALL_PATH}
+cat << 'EOF' > "${INSTALL_PATH}/.vars.json"
+{
+  "BOT_TOKEN": "ISIDISNI",
+  "USER_ID": "ISIDISNI",
+  "ADMIN_USERNAME": "ISIDISNI",
+  "GROUP_ID": "ISIDISNI",
+  "NAMA_STORE": "ISIDISNI",
+  "PORT": "50123",
+  "DATA_QRIS": "ISIDISNI",
+  "MERCHANT_ID": "ISIDISNI",
+  "SERVER_KEY": "ISIDISNI",
+  "PAKASIR_SLUG": "ISIDISNI",
+  "PAKASIR_API_KEY": "ISIDISNI"
+}
+EOF
+
+
+# Check application status
+sleep 2
+echo ""
+log_info "Checking application status..."
+pm2 status bot-vpn
+
+echo ""
+log_success "Installation script completed! 🚀"
+echo ""
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "${BLUE}📝 Useful Commands:${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -731,18 +759,9 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${BLUE}Setup Configuration${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  pergi ke ${INSTALL_PATH}" cd ${INSTALL_PATH}
-echo "  Edit/Ubah Konfigurasi: ${INSTALL_PATH}/.vars.json" nano ${INSTALL_PATH}/.vars.json
-echo "  Restart App: pm2 restart bot-vpn" pm2 restart bot-vpn
+echo "  Sudo Akses: sudo -i"
+echo "  Folder Setup: cd ${INSTALL_PATH}"
+echo "  Edit/Ubah Konfigurasi: nano ${INSTALL_PATH}/.vars.json"
+echo "  Restart App: pm2 restart bot-vpn"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-
-# Check application status
-sleep 2
-echo ""
-log_info "Checking application status..."
-pm2 status bot-vpn
-
-echo ""
-log_success "Installation script completed! 🚀"
-echo ""
