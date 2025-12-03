@@ -155,10 +155,10 @@ const constants: Constants = {
   CACHE_TTL_MS: 60000, // 1 minute
 
   // File Paths
-  TELEGRAM_UPLOAD_DIR: '/backup/bot/uploaded_restore',
-  BACKUP_DIR: '/backup/bot/backups',
+  TELEGRAM_UPLOAD_DIR: './data/uploaded_restore',
+  BACKUP_DIR: './data/backups',
   DB_PATH: './data/botvpn.db',
-  UPLOAD_DIR: '/backup/bot/uploaded_restore',
+  UPLOAD_DIR: './data/uploaded_restore',
 
   // Cron Schedules
   CRON_SCHEDULES: {

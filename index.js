@@ -28,7 +28,7 @@ const os = require('os');
 function getLocalIPAddress() {
   const networkInterfaces = os.networkInterfaces();
   let localIP = 'localhost';
-  
+
   try {
     Object.keys(networkInterfaces).forEach(interfaceName => {
       const addresses = networkInterfaces[interfaceName];
@@ -43,7 +43,7 @@ function getLocalIPAddress() {
   } catch (error) {
     // Fallback to localhost if error
   }
-  
+
   return localIP;
 }
 
@@ -71,7 +71,7 @@ const config = require(`${srcPath}/config`);
 const constants = require(`${srcPath}/config/constants`);
 const logger = require(`${srcPath}/utils/logger`);
 const { dbRunAsync, dbGetAsync, dbAllAsync } = require(`${srcPath}/database/connection`);
-const { initializeDatabase } = require(`${srcPath}/infrastructure/database`);
+const { initializeDatabase, syncAdmins } = require(`${srcPath}/infrastructure/database`);
 
 // Load all handlers
 const { loadAllHandlers } = require(`${srcPath}/app/loader`);
@@ -123,11 +123,11 @@ logSetupStatus(PORT || 50123);
 if (configIsSetupMode || isSetupMode()) {
   logger.warn('⚠️ Application in SETUP MODE - Bot will not start');
   logger.info(`🌐 Web server starting on port ${PORT || 50123}...`);
-  
+
   app.listen(PORT || 50123, () => {
     const port = PORT || 50123;
     const localIP = getLocalIPAddress();
-    
+
     logger.info('');
     logger.info('🌐 Web Server URLs:');
     logger.info(`   📝 Setup Page (Local):  http://localhost:${port}/setup`);
@@ -135,7 +135,7 @@ if (configIsSetupMode || isSetupMode()) {
     logger.info(`   ❤️  Health Check:        http://localhost:${port}/health`);
     logger.info('');
   });
-  
+
   return; // Exit here, don't start bot
 }
 
@@ -234,7 +234,7 @@ function setupCronJobs() {
 function setupExpressRoutes() {
   // Make bot instance available to routes
   app.set('bot', bot);
-  
+
   // Health check endpoint
   app.get('/health', (req, res) => {
     res.json({
@@ -247,7 +247,7 @@ function setupExpressRoutes() {
   // Start Express server
   app.listen(PORT, () => {
     const localIP = getLocalIPAddress();
-    
+
     logger.info(`🌐 Express server listening on port ${PORT}`);
     logger.info('');
     logger.info('🌐 Web Interface URLs:');
@@ -281,7 +281,7 @@ function setupErrorHandlers() {
   // Graceful shutdown on SIGINT (Ctrl+C)
   process.once('SIGINT', () => {
     logger.warn('⚠️ SIGINT received, shutting down gracefully...');
-    bot.stop('SIGINT').catch(() => {});
+    bot.stop('SIGINT').catch(() => { });
     db.close(() => {
       logger.info('📊 Database connection closed');
       process.exit(0);
@@ -291,7 +291,7 @@ function setupErrorHandlers() {
   // Graceful shutdown on SIGTERM (PM2)
   process.once('SIGTERM', () => {
     logger.warn('⚠️ SIGTERM received, shutting down gracefully...');
-    bot.stop('SIGTERM').catch(() => {});
+    bot.stop('SIGTERM').catch(() => { });
     db.close(() => {
       logger.info('📊 Database connection closed');
       process.exit(0);
@@ -315,22 +315,26 @@ async function main() {
     // 2. Initialize database tables
     await initializeTables();
 
-    // 3. Load all handlers (commands, actions, events)
+    // 3. Sync admin users from config to database
+    await syncAdmins();
+    logger.info('✅ Admin users synced from config');
+
+    // 4. Load all handlers (commands, actions, events)
     loadAllHandlers(bot, {
       adminIds: config.adminIds,
       ownerId: config.USER_ID
     });
 
-    // 4. Setup cron jobs
+    // 5. Setup cron jobs
     setupCronJobs();
 
-    // 5. Setup Express server
+    // 6. Setup Express server
     setupExpressRoutes();
 
-    // 6. Setup error handlers
+    // 7. Setup error handlers
     setupErrorHandlers();
 
-    // 7. Start the bot
+    // 8. Start the bot
     await bot.launch();
 
     const localIP = getLocalIPAddress();

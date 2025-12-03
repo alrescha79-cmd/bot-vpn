@@ -20,13 +20,11 @@ const {
   handleEditQuota,
   handleEditHarga
 } = require('../../utils/serverEditHelpers');
+const { DB_PATH, BACKUP_DIR, UPLOAD_DIR } = require('../../config/constants');
+const { dbGetAsync } = require('../../database/connection');
 
 const fs = require('fs');
 const path = require('path');
-
-const BACKUP_DIR = process.env.BACKUP_DIR || path.join(__dirname, '../../backups');
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../../database.db');
-const adminIds = process.env.ADMIN_IDS ? process.env.ADMIN_IDS.split(',').map(id => parseInt(id.trim())) : [];
 
 /**
  * Register centralized callback query handler
@@ -105,10 +103,13 @@ function registerCallbackRouter(bot) {
 
     const isAdminAction = adminOnlyActions.some(action => data.startsWith(action));
 
-    // Only check admin permission for admin-only actions
-    if (isAdminAction && !adminIds.includes(parseInt(userId))) {
-      logger.warn(`Unauthorized admin action attempt by user ${userId}: ${data}`);
-      return await ctx.reply('⛔ Aksi ini hanya untuk admin.');
+    // Only check admin permission for admin-only actions using database
+    if (isAdminAction) {
+      const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [parseInt(userId)]);
+      if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
+        logger.warn(`Unauthorized admin action attempt by user ${userId}: ${data}`);
+        return await ctx.reply('⛔ Aksi ini hanya untuk admin.');
+      }
     }
 
     // Admin backup database
@@ -138,17 +139,8 @@ function registerCallbackRouter(bot) {
       return await handleRestoreUploadedFile(ctx, fileName, userId);
     }
 
-    // Delete backup file
-    if (data.startsWith('delete_file::')) {
-      const fileName = data.split('::')[1];
-      return await handleDeleteFileConfirm(ctx, fileName);
-    }
-
-    // Confirm delete backup file
-    if (data.startsWith('confirm_delete::')) {
-      const fileName = data.split('::')[1];
-      return await handleConfirmDelete(ctx, fileName, userId);
-    }
+    // NOTE: confirm_delete:: and delete_file:: are handled by backupRestoreActions, not here
+    // This prevents callback_query catchall from interfering with specific bot.action handlers
 
     // Cancel delete
     if (data === 'cancel_delete') {
@@ -272,7 +264,7 @@ async function handleRestoreFile(ctx, fileName, userId) {
  * Handle restore from uploaded file
  */
 async function handleRestoreUploadedFile(ctx, fileName, userId) {
-  const filePath = path.join('/backup/bot/uploaded_restore', fileName);
+  const filePath = path.join(UPLOAD_DIR, fileName);
 
   if (!fs.existsSync(filePath)) {
     return ctx.reply(`❌ File tidak ditemukan: ${fileName}`);
@@ -335,7 +327,7 @@ async function handleConfirmDelete(ctx, fileName, userId) {
  * Handle delete uploaded file
  */
 async function handleDeleteUploadedFile(ctx, fileName, userId) {
-  const filePath = path.join('/backup/bot/uploaded_restore', fileName);
+  const filePath = path.join(UPLOAD_DIR, fileName);
 
   if (!fs.existsSync(filePath)) {
     return ctx.reply(`❌ *File tidak ditemukan:* \`${fileName}\``, { parse_mode: 'Markdown' });

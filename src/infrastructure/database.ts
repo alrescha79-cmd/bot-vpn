@@ -151,7 +151,7 @@ export async function initializeTables(): Promise<void> {
       last_trial_date TEXT,
       trial_count_today INTEGER DEFAULT 0
     )`,
-    
+
     // Reseller sales table
     `CREATE TABLE IF NOT EXISTS reseller_sales (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -162,13 +162,13 @@ export async function initializeTables(): Promise<void> {
       komisi INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`,
-    
+
     // Active accounts table
     `CREATE TABLE IF NOT EXISTS akun_aktif (
       username TEXT PRIMARY KEY,
       jenis TEXT
     )`,
-    
+
     // Invoice log table
     `CREATE TABLE IF NOT EXISTS invoice_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -181,7 +181,7 @@ export async function initializeTables(): Promise<void> {
       komisi INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`,
-    
+
     // Pending deposits table
     `CREATE TABLE IF NOT EXISTS pending_deposits (
       unique_code TEXT PRIMARY KEY,
@@ -192,7 +192,7 @@ export async function initializeTables(): Promise<void> {
       status TEXT,
       qr_message_id INTEGER
     )`,
-    
+
     // Trial logs table
     `CREATE TABLE IF NOT EXISTS trial_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -201,7 +201,7 @@ export async function initializeTables(): Promise<void> {
       jenis TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`,
-    
+
     // Server table
     `CREATE TABLE IF NOT EXISTS Server (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -216,7 +216,7 @@ export async function initializeTables(): Promise<void> {
       isp TEXT,
       lokasi TEXT
     )`,
-    
+
     // Transactions table
     `CREATE TABLE IF NOT EXISTS transactions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -225,7 +225,7 @@ export async function initializeTables(): Promise<void> {
       username TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`,
-    
+
     // Saldo transfers table
     `CREATE TABLE IF NOT EXISTS saldo_transfers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -234,7 +234,7 @@ export async function initializeTables(): Promise<void> {
       amount INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`,
-    
+
     // Transfer log table
     `CREATE TABLE IF NOT EXISTS transfer_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -243,7 +243,7 @@ export async function initializeTables(): Promise<void> {
       jumlah INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`,
-    
+
     // Topup log table
     `CREATE TABLE IF NOT EXISTS topup_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -253,7 +253,7 @@ export async function initializeTables(): Promise<void> {
       reference TEXT,
       created_at TEXT
     )`,
-    
+
     // Accounts table
     `CREATE TABLE IF NOT EXISTS akun (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -263,7 +263,7 @@ export async function initializeTables(): Promise<void> {
       server_id INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )`,
-    
+
     // Reseller upgrade log table
     `CREATE TABLE IF NOT EXISTS reseller_upgrade_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -273,7 +273,7 @@ export async function initializeTables(): Promise<void> {
       level TEXT,
       created_at TEXT
     )`,
-    
+
     // Global stats table
     `CREATE TABLE IF NOT EXISTS global_stats (
       id INTEGER PRIMARY KEY,
@@ -295,12 +295,21 @@ export async function initializeTables(): Promise<void> {
 }
 
 /**
+ * Sync admin users from config to database
+ * @returns {Promise<void>}
+ */
+export async function syncAdmins(): Promise<void> {
+  const { syncAdminsFromConfig } = require('../utils/syncAdmins');
+  await syncAdminsFromConfig();
+}
+
+/**
  * Close database connection
  * @returns {Promise<void>}
  */
 export async function closeDatabase(): Promise<void> {
   if (!db) return;
-  
+
   return new Promise((resolve, reject) => {
     db!.close((err) => {
       if (err) {
@@ -323,5 +332,6 @@ module.exports = {
   dbRun,
   dbSerialize,
   initializeTables,
+  syncAdmins,
   closeDatabase
 };
