@@ -14,8 +14,8 @@ import type { BotContext, DatabaseUser, DatabaseServer } from "../../types";
 const fs = require('fs');
 const path = require('path');
 const logger = require('../../utils/logger');
-
-const adminIds = process.env.ADMIN_IDS ? process.env.ADMIN_IDS.split(',').map(id => parseInt(id.trim())) : [];
+const { DB_PATH, BACKUP_DIR } = require('../../config/constants');
+const { dbGetAsync } = require('../../database/connection');
 
 /**
  * Register admin backup database action
@@ -24,31 +24,33 @@ function registerAdminBackupDBAction(bot) {
   bot.action('admin_backup_db', async (ctx) => {
     try {
       const userId = ctx.from.id;
-      
-      // Admin authorization check
-      if (!adminIds.includes(userId)) {
+
+      // Admin authorization check from database
+      const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+      if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
         logger.warn(`⚠️ Unauthorized backup attempt by user ${userId}`);
         return ctx.answerCbQuery('⚠️ Anda tidak memiliki akses untuk melakukan backup database!', { show_alert: true });
       }
 
       await ctx.answerCbQuery();
-      
+
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const backupFileName = `backup_${timestamp}.db`;
-      const backupPath = path.join(__dirname, '../../..', 'backups', backupFileName);
-      const dbPath = path.join(__dirname, '../../..', 'database.db');
+      const backupsDir = BACKUP_DIR;
+      const backupPath = path.join(backupsDir, backupFileName);
+      const dbPath = DB_PATH;
 
       // Create backups directory if not exists
-      const backupsDir = path.join(__dirname, '../../..', 'backups');
       if (!fs.existsSync(backupsDir)) {
         fs.mkdirSync(backupsDir, { recursive: true });
+        logger.info(`✅ Created backup directory: ${backupsDir}`);
       }
 
       // Copy database file to backup
       fs.copyFileSync(dbPath, backupPath);
-      
+
       logger.info(`✅ Database backup created: ${backupFileName}`);
-      
+
       // Send backup file to admin
       await ctx.replyWithDocument({
         source: backupPath,
@@ -73,17 +75,18 @@ function registerAdminRestoreDBAction(bot) {
   bot.action('admin_restore_db', async (ctx) => {
     try {
       const userId = ctx.from.id;
-      
-      // Admin authorization check
-      if (!adminIds.includes(userId)) {
+
+      // Admin authorization check from database
+      const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+      if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
         logger.warn(`⚠️ Unauthorized restore attempt by user ${userId}`);
         return ctx.answerCbQuery('⚠️ Anda tidak memiliki akses untuk restore database!', { show_alert: true });
       }
 
       await ctx.answerCbQuery();
 
-      const backupsDir = path.join(__dirname, '../../..', 'backups');
-      
+      const backupsDir = BACKUP_DIR;
+
       // Check if backups directory exists
       if (!fs.existsSync(backupsDir)) {
         logger.info('⚠️ Backup directory not found');
@@ -103,7 +106,7 @@ function registerAdminRestoreDBAction(bot) {
         const stats = fs.statSync(path.join(backupsDir, file));
         const fileSize = (stats.size / 1024).toFixed(2); // KB
         const fileDate = stats.mtime.toLocaleString('id-ID');
-        
+
         return [
           { text: `📦 ${file} (${fileSize} KB)`, callback_data: `restore_file::${file}` },
           { text: '🗑️ Hapus', callback_data: `delete_file::${file}` }
@@ -130,9 +133,10 @@ function registerRestoreFileAction(bot) {
   bot.action(/^restore_file::(.+)$/, async (ctx) => {
     try {
       const userId = ctx.from.id;
-      
-      // Admin authorization check
-      if (!adminIds.includes(userId)) {
+
+      // Admin authorization check from database
+      const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+      if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
         logger.warn(`⚠️ Unauthorized restore attempt by user ${userId}`);
         return ctx.answerCbQuery('⚠️ Anda tidak memiliki akses!', { show_alert: true });
       }
@@ -163,9 +167,10 @@ function registerConfirmRestoreAction(bot) {
   bot.action(/^confirm_restore::(.+)$/, async (ctx) => {
     try {
       const userId = ctx.from.id;
-      
-      // Admin authorization check
-      if (!adminIds.includes(userId)) {
+
+      // Admin authorization check from database
+      const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+      if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
         logger.warn(`⚠️ Unauthorized restore attempt by user ${userId}`);
         return ctx.answerCbQuery('⚠️ Anda tidak memiliki akses!', { show_alert: true });
       }
@@ -173,8 +178,8 @@ function registerConfirmRestoreAction(bot) {
       const fileName = ctx.match[1];
       await ctx.answerCbQuery();
 
-      const backupPath = path.join(__dirname, '../../..', 'backups', fileName);
-      const dbPath = path.join(__dirname, '../../..', 'database.db');
+      const backupPath = path.join(BACKUP_DIR, fileName);
+      const dbPath = DB_PATH;
 
       // Check if backup file exists
       if (!fs.existsSync(backupPath)) {
@@ -192,7 +197,7 @@ function registerConfirmRestoreAction(bot) {
 
       // Copy backup file to main database
       fs.copyFileSync(backupPath, dbPath);
-      
+
       logger.info(`✅ Database restored from: ${fileName}`);
 
       // Reopen database connection
@@ -228,9 +233,10 @@ function registerDeleteFileAction(bot) {
   bot.action(/^delete_file::(.+)$/, async (ctx) => {
     try {
       const userId = ctx.from.id;
-      
-      // Admin authorization check
-      if (!adminIds.includes(userId)) {
+
+      // Admin authorization check from database
+      const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+      if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
         logger.warn(`⚠️ Unauthorized delete attempt by user ${userId}`);
         return ctx.answerCbQuery('⚠️ Anda tidak memiliki akses!', { show_alert: true });
       }
@@ -261,9 +267,10 @@ function registerConfirmDeleteAction(bot) {
   bot.action(/^confirm_delete::(.+)$/, async (ctx) => {
     try {
       const userId = ctx.from.id;
-      
-      // Admin authorization check
-      if (!adminIds.includes(userId)) {
+
+      // Admin authorization check from database
+      const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+      if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
         logger.warn(`⚠️ Unauthorized delete attempt by user ${userId}`);
         return ctx.answerCbQuery('⚠️ Anda tidak memiliki akses!', { show_alert: true });
       }
@@ -271,7 +278,7 @@ function registerConfirmDeleteAction(bot) {
       const fileName = ctx.match[1];
       await ctx.answerCbQuery();
 
-      const backupPath = path.join(__dirname, '../../..', 'backups', fileName);
+      const backupPath = path.join(BACKUP_DIR, fileName);
 
       // Check if backup file exists
       if (!fs.existsSync(backupPath)) {
@@ -281,7 +288,7 @@ function registerConfirmDeleteAction(bot) {
 
       // Delete backup file
       fs.unlinkSync(backupPath);
-      
+
       logger.info(`✅ Backup file deleted: ${fileName}`);
 
       await ctx.reply(`✅ *File Backup Berhasil Dihapus!*\n\n📦 File: \`${fileName}\`\n📅 Waktu: ${new Date().toLocaleString('id-ID')}`, {
