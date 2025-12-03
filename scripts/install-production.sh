@@ -728,12 +728,12 @@ echo "  Stop app:        pm2 stop bot-vpn"
 echo "  Monitor:         pm2 monit"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo -e "${BLUE}📚 Documentation:${NC}"
+echo -e "${BLUE}Setup Configuration${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  Deployment:  ${INSTALL_PATH}/docs/DEPLOYMENT.md"
-echo "  Quick Start: ${INSTALL_PATH}/docs/QUICKSTART.md"
-echo "  Troubleshooting: ${INSTALL_PATH}/docs/TROUBLESHOOTING.md"
+echo "  pergi ke ${INSTALL_PATH}" cd ${INSTALL_PATH}
+echo "  Edit/Ubah Konfigurasi: ${INSTALL_PATH}/.vars.json" nano ${INSTALL_PATH}/.vars.json
+echo "  Restart App: pm2 restart bot-vpn" pm2 restart bot-vpn
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 

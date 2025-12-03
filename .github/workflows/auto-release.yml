@@ -1,11 +1,12 @@
 name: Auto Release to GitHub
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'package.json'
+  # Disabled auto-run on push - only manual trigger
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'package.json'
   workflow_dispatch:
     inputs:
       force_release:
@@ -97,6 +98,13 @@ jobs:
           cp package.json release-bundle/
           cp package-lock.json release-bundle/
           cp .vars.json.example release-bundle/ 2>/dev/null || echo ".vars.json.example not found, skipping"
+          
+          # Copy .vars.json.example as .vars.json for production setup
+          if [ -f ".vars.json.example" ]; then
+            cp .vars.json.example release-bundle/.vars.json
+            echo "✅ Copied .vars.json.example to .vars.json"
+          fi
+          
           cp LICENSE release-bundle/ 2>/dev/null || echo "LICENSE not found, skipping"
           cp README.md release-bundle/ 2>/dev/null || echo "README.md not found, skipping"
           
