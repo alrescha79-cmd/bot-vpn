@@ -588,44 +588,56 @@ if [ "$SKIP_CONFIG" = false ]; then
     echo "Silakan masukkan informasi berikut:"
     echo ""
     
-    # Required fields with exec to ensure proper stdin
+    # Redirect stdin to terminal for interactive input
     exec < /dev/tty
     
+    # Bot Token - Required
     BOT_TOKEN_INPUT=""
     while [ -z "$BOT_TOKEN_INPUT" ]; do
-        read -p "Bot Token (wajib): " BOT_TOKEN_INPUT
+        echo -n "Bot Token (wajib): "
+        read BOT_TOKEN_INPUT
         if [ -z "$BOT_TOKEN_INPUT" ]; then
             log_error "Bot Token wajib diisi!"
         fi
     done
     
+    # User ID - Required
     USER_ID_INPUT=""
     while [ -z "$USER_ID_INPUT" ]; do
-        read -p "User ID (wajib): " USER_ID_INPUT
+        echo -n "User ID (wajib): "
+        read USER_ID_INPUT
         if [ -z "$USER_ID_INPUT" ]; then
             log_error "User ID wajib diisi!"
         fi
     done
     
+    # Admin Username - Required
     ADMIN_USERNAME_INPUT=""
     while [ -z "$ADMIN_USERNAME_INPUT" ]; do
-        read -p "Username Admin (wajib): " ADMIN_USERNAME_INPUT
+        echo -n "Username Admin (wajib): "
+        read ADMIN_USERNAME_INPUT
         if [ -z "$ADMIN_USERNAME_INPUT" ]; then
             log_error "Username Admin wajib diisi!"
         fi
     done
     
-    read -p "Group ID (opsional): " GROUP_ID_INPUT
+    # Group ID - Optional
+    echo -n "Group ID (opsional): "
+    read GROUP_ID_INPUT
     
+    # Store Name - Required
     NAMA_STORE_INPUT=""
     while [ -z "$NAMA_STORE_INPUT" ]; do
-        read -p "Nama Toko (wajib): " NAMA_STORE_INPUT
+        echo -n "Nama Toko (wajib): "
+        read NAMA_STORE_INPUT
         if [ -z "$NAMA_STORE_INPUT" ]; then
             log_error "Nama Toko wajib diisi!"
         fi
     done
     
-    read -p "Port (default: 50123): " PORT_INPUT
+    # Port - Optional with default
+    echo -n "Port (default: 50123): "
+    read PORT_INPUT
     PORT_INPUT=${PORT_INPUT:-50123}
     
     echo ""
@@ -639,39 +651,42 @@ if [ "$SKIP_CONFIG" = false ]; then
     
     # QRIS Configuration
     echo -e "${BLUE}Konfigurasi QRIS:${NC}"
-    read -p "  Data QRIS (opsional): " DATA_QRIS_INPUT
+    echo -n "  Data QRIS (opsional): "
+    read DATA_QRIS_INPUT
     
     echo ""
     # Midtrans Configuration
     echo -e "${BLUE}Konfigurasi Midtrans:${NC}"
-    read -p "  Merchant ID (opsional): " MERCHANT_ID_INPUT
-    read -p "  Server Key (opsional): " SERVER_KEY_INPUT
+    echo -n "  Merchant ID (opsional): "
+    read MERCHANT_ID_INPUT
+    echo -n "  Server Key (opsional): "
+    read SERVER_KEY_INPUT
     
     echo ""
     # Pakasir Configuration
     echo -e "${BLUE}Konfigurasi Pakasir:${NC}"
-    read -p "  Pakasir Slug (opsional): " PAKASIR_SLUG_INPUT
-    read -p "  Pakasir API Key (opsional): " PAKASIR_API_KEY_INPUT
+    echo -n "  Pakasir Slug (opsional): "
+    read PAKASIR_SLUG_INPUT
+    echo -n "  Pakasir API Key (opsional): "
+    read PAKASIR_API_KEY_INPUT
     
     echo ""
     log_info "Menyimpan konfigurasi ke ${INSTALL_PATH}/.vars.json..."
     
-    # Create .vars.json with user input
-    cat > "${INSTALL_PATH}/.vars.json" <<EOF
-{
-  "BOT_TOKEN": "${BOT_TOKEN_INPUT}",
-  "USER_ID": "${USER_ID_INPUT}",
-  "ADMIN_USERNAME": "${ADMIN_USERNAME_INPUT}",
-  "GROUP_ID": "${GROUP_ID_INPUT}",
-  "NAMA_STORE": "${NAMA_STORE_INPUT}",
-  "PORT": "${PORT_INPUT}",
-  "DATA_QRIS": "${DATA_QRIS_INPUT}",
-  "MERCHANT_ID": "${MERCHANT_ID_INPUT}",
-  "SERVER_KEY": "${SERVER_KEY_INPUT}",
-  "PAKASIR_SLUG": "${PAKASIR_SLUG_INPUT}",
-  "PAKASIR_API_KEY": "${PAKASIR_API_KEY_INPUT}"
-}
-EOF
+    # Create .vars.json with user input using printf for safety
+    printf '{\n' > "${INSTALL_PATH}/.vars.json"
+    printf '  "BOT_TOKEN": "%s",\n' "${BOT_TOKEN_INPUT}" >> "${INSTALL_PATH}/.vars.json"
+    printf '  "USER_ID": "%s",\n' "${USER_ID_INPUT}" >> "${INSTALL_PATH}/.vars.json"
+    printf '  "ADMIN_USERNAME": "%s",\n' "${ADMIN_USERNAME_INPUT}" >> "${INSTALL_PATH}/.vars.json"
+    printf '  "GROUP_ID": "%s",\n' "${GROUP_ID_INPUT}" >> "${INSTALL_PATH}/.vars.json"
+    printf '  "NAMA_STORE": "%s",\n' "${NAMA_STORE_INPUT}" >> "${INSTALL_PATH}/.vars.json"
+    printf '  "PORT": "%s",\n' "${PORT_INPUT}" >> "${INSTALL_PATH}/.vars.json"
+    printf '  "DATA_QRIS": "%s",\n' "${DATA_QRIS_INPUT}" >> "${INSTALL_PATH}/.vars.json"
+    printf '  "MERCHANT_ID": "%s",\n' "${MERCHANT_ID_INPUT}" >> "${INSTALL_PATH}/.vars.json"
+    printf '  "SERVER_KEY": "%s",\n' "${SERVER_KEY_INPUT}" >> "${INSTALL_PATH}/.vars.json"
+    printf '  "PAKASIR_SLUG": "%s",\n' "${PAKASIR_SLUG_INPUT}" >> "${INSTALL_PATH}/.vars.json"
+    printf '  "PAKASIR_API_KEY": "%s"\n' "${PAKASIR_API_KEY_INPUT}" >> "${INSTALL_PATH}/.vars.json"
+    printf '}\n' >> "${INSTALL_PATH}/.vars.json"
     
     # Set proper permissions
     chmod 600 "${INSTALL_PATH}/.vars.json"
