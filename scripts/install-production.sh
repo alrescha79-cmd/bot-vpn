@@ -364,50 +364,6 @@ if [ -d "/tmp/data.preserve" ]; then
     log_success "Database restored"
 fi
 
-###############################################################################
-# Manual Configuration Setup
-###############################################################################
-
-if [ "$MANUAL_CONFIG" = true ] && [ ! -f "${INSTALL_PATH}/.vars.json" ]; then
-    log_info "Starting manual configuration setup..."
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo -e "${GREEN}📝 Manual Configuration Setup${NC}"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    
-    # Prompt for each configuration value
-    read -p "Bot Token (dari @BotFather): " BOT_TOKEN
-    read -p "User ID Admin (Telegram user ID Anda): " USER_ID
-    read -p "Group ID (untuk notifikasi, kosongkan jika tidak ada): " GROUP_ID
-    read -p "Nama Store: " NAMA_STORE
-    read -p "Port (default: 50123): " PORT
-    PORT=${PORT:-50123}
-    read -p "Data QRIS: " DATA_QRIS
-    read -p "Merchant ID: " MERCHANT_ID
-    read -p "API Key: " SERVER_KEY
-    read -p "Admin Username: " ADMIN_USERNAME
-    
-    # Create .vars.json file
-    log_info "Creating configuration file..."
-    cat > "${INSTALL_PATH}/.vars.json" <<EOF
-{
-  "BOT_TOKEN": "${BOT_TOKEN}",
-  "USER_ID": "${USER_ID}",
-  "GROUP_ID": "${GROUP_ID}",
-  "NAMA_STORE": "${NAMA_STORE}",
-  "PORT": "${PORT}",
-  "DATA_QRIS": "${DATA_QRIS}",
-  "MERCHANT_ID": "${MERCHANT_ID}",
-  "SERVER_KEY": "${SERVER_KEY}",
-  "ADMIN_USERNAME": "${ADMIN_USERNAME}"
-}
-EOF
-    
-    chmod 600 "${INSTALL_PATH}/.vars.json"
-    log_success "Configuration file created successfully!"
-    echo ""
-fi
 
 ###############################################################################
 # Install Dependencies
@@ -601,6 +557,120 @@ EOF
 fi
 
 ###############################################################################
+# Configuration Setup
+###############################################################################
+
+log_info "Mengatur konfigurasi..."
+echo ""
+
+# Check if config already exists and was preserved
+if [ -f "${INSTALL_PATH}/.vars.json" ]; then
+    log_success "File konfigurasi sudah ada (dipertahankan dari instalasi sebelumnya)"
+    echo ""
+    read -p "Apakah Anda ingin mengkonfigurasi ulang? (Y/n): " -n 1 -r RECONFIGURE
+    echo ""
+    
+    if [[ ! $RECONFIGURE =~ ^[Yy]$ ]]; then
+        log_info "Mempertahankan konfigurasi yang ada"
+        SKIP_CONFIG=true
+    else
+        SKIP_CONFIG=false
+    fi
+else
+    SKIP_CONFIG=false
+fi
+
+if [ "$SKIP_CONFIG" = false ]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "${BLUE}📝 Pengaturan Konfigurasi${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Silakan masukkan informasi berikut:"
+    echo ""
+    
+    # Required fields
+    read -p "Bot Token (wajib): " BOT_TOKEN_INPUT
+    while [ -z "$BOT_TOKEN_INPUT" ]; do
+        log_error "Bot Token wajib diisi!"
+        read -p "Bot Token (wajib): " BOT_TOKEN_INPUT
+    done
+    
+    read -p "User ID (wajib): " USER_ID_INPUT
+    while [ -z "$USER_ID_INPUT" ]; do
+        log_error "User ID wajib diisi!"
+        read -p "User ID (wajib): " USER_ID_INPUT
+    done
+    
+    read -p "Username Admin (wajib): " ADMIN_USERNAME_INPUT
+    while [ -z "$ADMIN_USERNAME_INPUT" ]; do
+        log_error "Username Admin wajib diisi!"
+        read -p "Username Admin (wajib): " ADMIN_USERNAME_INPUT
+    done
+    
+    read -p "Group ID (opsional): " GROUP_ID_INPUT
+    
+    read -p "Nama Toko (wajib): " NAMA_STORE_INPUT
+    while [ -z "$NAMA_STORE_INPUT" ]; do
+        log_error "Nama Toko wajib diisi!"
+        read -p "Nama Toko (wajib): " NAMA_STORE_INPUT
+    done
+    
+    read -p "Port (default: 50123): " PORT_INPUT
+    PORT_INPUT=${PORT_INPUT:-50123}
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "${YELLOW}Konfigurasi Payment Gateway (Opsional)${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "Catatan: Isi hanya payment gateway yang akan Anda gunakan."
+    echo "         Biarkan kosong jika tidak menggunakannya."
+    echo ""
+    
+    # QRIS Configuration
+    echo -e "${BLUE}Konfigurasi QRIS:${NC}"
+    read -p "  Data QRIS (opsional): " DATA_QRIS_INPUT
+    
+    echo ""
+    # Midtrans Configuration
+    echo -e "${BLUE}Konfigurasi Midtrans:${NC}"
+    read -p "  Merchant ID (opsional): " MERCHANT_ID_INPUT
+    read -p "  Server Key (opsional): " SERVER_KEY_INPUT
+    
+    echo ""
+    # Pakasir Configuration
+    echo -e "${BLUE}Konfigurasi Pakasir:${NC}"
+    read -p "  Pakasir Slug (opsional): " PAKASIR_SLUG_INPUT
+    read -p "  Pakasir API Key (opsional): " PAKASIR_API_KEY_INPUT
+    
+    echo ""
+    log_info "Menyimpan konfigurasi ke ${INSTALL_PATH}/.vars.json..."
+    
+    # Create .vars.json with user input
+    cat > "${INSTALL_PATH}/.vars.json" <<EOF
+{
+  "BOT_TOKEN": "${BOT_TOKEN_INPUT}",
+  "USER_ID": "${USER_ID_INPUT}",
+  "ADMIN_USERNAME": "${ADMIN_USERNAME_INPUT}",
+  "GROUP_ID": "${GROUP_ID_INPUT}",
+  "NAMA_STORE": "${NAMA_STORE_INPUT}",
+  "PORT": "${PORT_INPUT}",
+  "DATA_QRIS": "${DATA_QRIS_INPUT}",
+  "MERCHANT_ID": "${MERCHANT_ID_INPUT}",
+  "SERVER_KEY": "${SERVER_KEY_INPUT}",
+  "PAKASIR_SLUG": "${PAKASIR_SLUG_INPUT}",
+  "PAKASIR_API_KEY": "${PAKASIR_API_KEY_INPUT}"
+}
+EOF
+    
+    # Set proper permissions
+    chmod 600 "${INSTALL_PATH}/.vars.json"
+    
+    log_success "Konfigurasi berhasil disimpan!"
+    echo ""
+fi
+
+###############################################################################
 # Post-Installation Steps
 ###############################################################################
 
@@ -614,126 +684,10 @@ echo ""
 echo "📁 Installation path: ${INSTALL_PATH}"
 echo ""
 
-# Check if configuration exists
-if [ ! -f "${INSTALL_PATH}/.vars.json" ]; then
-    echo -e "${YELLOW}⚠️  Configuration Required${NC}"
-    echo ""
-    
-    # Interactive configuration prompt
-    read -p "Apakah anda ingin konfigurasi sekarang? (y/n): " -n 1 -r CONFIGURE_NOW
-    echo ""
-    
-    if [[ $CONFIGURE_NOW =~ ^[Yy]$ ]]; then
-        echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo -e "${GREEN}📝 Manual Configuration Setup${NC}"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo ""
-        
-        # Prompt for each configuration value
-        read -p "Bot Token (dari @BotFather): " BOT_TOKEN
-        read -p "User ID Admin (Telegram user ID Anda): " USER_ID
-        read -p "Group ID (untuk notifikasi, kosongkan jika tidak ada): " GROUP_ID
-        read -p "Nama Store: " NAMA_STORE
-        read -p "Port (default: 50123): " PORT
-        PORT=${PORT:-50123}
-        read -p "Data QRIS: " DATA_QRIS
-        read -p "Merchant ID: " MERCHANT_ID
-        read -p "API Key: " SERVER_KEY
-        read -p "Admin Username: " ADMIN_USERNAME
-        
-        # Create .vars.json file
-        log_info "Creating configuration file..."
-        cat > "${INSTALL_PATH}/.vars.json" <<EOF
-{
-  "BOT_TOKEN": "${BOT_TOKEN}",
-  "USER_ID": "${USER_ID}",
-  "GROUP_ID": "${GROUP_ID}",
-  "NAMA_STORE": "${NAMA_STORE}",
-  "PORT": "${PORT}",
-  "DATA_QRIS": "${DATA_QRIS}",
-  "MERCHANT_ID": "${MERCHANT_ID}",
-  "SERVER_KEY": "${SERVER_KEY}",
-  "ADMIN_USERNAME": "${ADMIN_USERNAME}"
-}
-EOF
-        
-        chmod 600 "${INSTALL_PATH}/.vars.json"
-        log_success "Configuration file created successfully!"
-        echo ""
-        
-        # Set admin in database
-        log_info "Setting user as admin in database..."
-        if [ -f "${INSTALL_PATH}/data/botvpn.db" ]; then
-            sqlite3 "${INSTALL_PATH}/data/botvpn.db" "UPDATE users SET role = 'admin' WHERE user_id = ${USER_ID};" 2>/dev/null || log_warning "Database update will be applied on first bot run"
-            log_success "Admin role set for user ID: ${USER_ID}"
-        else
-            log_info "Database will be initialized on first bot run"
-        fi
-        echo ""
-        
-        # Restart PM2 to apply configuration
-        log_info "Restarting application to apply configuration..."
-        pm2 restart bot-vpn
-        log_success "Application restarted successfully!"
-        echo ""
-        
-        echo -e "${GREEN}✅ Configuration completed!${NC}"
-    else
-        echo ""
-        echo "This is a fresh installation. You have two options:"
-        echo ""
-        echo "Option 1: Web Interface Setup"
-        echo "  1. Open your browser and navigate to:"
-        
-        if [ "$SETUP_PUBLIC_ACCESS" = true ]; then
-            SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
-            echo -e "     ${BLUE}http://${SERVER_IP}/setup${NC}"
-        else
-            echo -e "     ${BLUE}http://YOUR_SERVER_IP:50123/setup${NC}"
-        fi
-        
-        echo "  2. Fill in the configuration form"
-        echo "  3. After saving, restart the application:"
-        echo -e "     ${GREEN}pm2 restart bot-vpn${NC}"
-        echo ""
-        echo "Option 2: Manual Configuration"
-        echo "  Re-run this script with --manual-config flag:"
-        echo -e "  ${GREEN}$0 --manual-config${NC}"
-        echo ""
-    fi
-else
-    echo -e "${GREEN}✅ Configuration found${NC}"
-    echo ""
-    echo "The application is running with existing configuration."
-    
-    if [ "$SETUP_PUBLIC_ACCESS" = true ]; then
-        SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
-        echo ""
-        echo "🌐 Web Interface:"
-        echo -e "   ${BLUE}http://${SERVER_IP}${NC}"
-        echo -e "   ${BLUE}http://${SERVER_IP}/config/edit${NC} (edit config)"
-    fi
-    echo ""
-fi
 
-# create .vars.json di ${INSTALL_PATH}
-cat << 'EOF' > "${INSTALL_PATH}/.vars.json"
-{
-  "BOT_TOKEN": "ISIDISNI",
-  "USER_ID": "",
-  "ADMIN_USERNAME": "",
-  "GROUP_ID": "",
-  "NAMA_STORE": "",
-  "PORT": "50123",
-  "DATA_QRIS": "",
-  "MERCHANT_ID": "",
-  "SERVER_KEY": "",
-  "PAKASIR_SLUG": "",
-  "PAKASIR_API_KEY": ""
-}
-EOF
-
+# restart PM2 process to apply any config changes
+log_info "Restarting PM2 process to apply configuration..."
+pm2 restart bot-vpn
 
 # Check application status
 sleep 2
@@ -745,8 +699,29 @@ echo ""
 log_success "Installation script completed! 🚀"
 echo ""
 
+# Get server IP and port for frontend link
+SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+if [ -f "${INSTALL_PATH}/.vars.json" ]; then
+    APP_PORT=$(grep -oP '"PORT":\s*"?\K[^",}]+' "${INSTALL_PATH}/.vars.json" 2>/dev/null || echo "50123")
+else
+    APP_PORT="50123"
+fi
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo -e "${BLUE}📝 Useful Commands:${NC}"
+echo -e "${GREEN}🌐 Akses Web Interface${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "  Setup Konfigurasi:  http://${SERVER_IP}:${APP_PORT}/setup"
+echo "  Atau via localhost: http://localhost:${APP_PORT}/setup"
+echo "  Edit Konfigurasi:   http://${SERVER_IP}:${APP_PORT}/config/edit"
+echo "  Atau via localhost: http://localhost:${APP_PORT}/config/edit"
+echo "  Status :            http://${SERVER_IP}:${APP_PORT}/health"
+echo "  Atau via localhost: http://localhost:${APP_PORT}/health"
+echo ""
+echo "  💡 Tip: Buka link di atas untuk konfigurasi via web interface"
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo -e "${BLUE}📝 Useful Commands${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 echo "  Check status:    pm2 status bot-vpn"

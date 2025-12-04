@@ -112,40 +112,6 @@ curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts
 
 ---
 
-## 🏗️ Arsitektur Aplikasi
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                  TELEGRAM USERS                         │
-│          (Admin, Reseller, Regular Users)               │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     │ Telegram API
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│                 TELEGRAM BOT                            │
-│  (All VPN Management, Commands, Menus, Notifications)   │
-│     • Create/Renew/Trial Accounts                       │
-│     • Payment Processing (QRIS)                         │
-│     • Server Management                                 │
-│     • User Management                                   │
-└────────────────────┬────────────────────────────────────┘
-                     │
-                     │ SSH Connection
-                     │
-┌────────────────────▼────────────────────────────────────┐
-│              VPS SERVERS (VPN)                          │
-│   SSH/VMess/VLess/Trojan/Shadowsocks Servers            │
-└─────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────┐
-│           WEB INTERFACE (Admin Only)                    │
-│    http://localhost:50123/setup atau /config/edit       │
-│    • Hanya untuk setup/edit konfigurasi sistem         │
-│    • Bukan untuk end-user / user management            │
-└─────────────────────────────────────────────────────────┘
-```
-
 **Key Points:**
 - 💬 **User Interface = Telegram Bot** (semua fitur ada di bot)
 - 🌐 **Web Interface = Config Only** (admin setup saja, bukan untuk user)
@@ -322,7 +288,7 @@ npm start
 **One-line installation** untuk production server:
 
 ```bash
-curl -s https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | bash
+curl -s https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | sudo bash
 ```
 
 Script ini akan otomatis:
@@ -335,7 +301,7 @@ Script ini akan otomatis:
 **Install versi spesifik:**
 
 ```bash
-curl -s https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | bash -s -- --version v1.0.0
+curl -s https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | sudo bash -s -- --version v3.1.1
 ```
 
 **Custom installation path:**
