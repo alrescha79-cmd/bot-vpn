@@ -17,8 +17,11 @@ curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts
 > 📖 **Informasi lengkap**: Lihat [Production Installation Guide](docs/PRODUCTION_INSTALL.md) untuk detail setup dan konfigurasi.
 
 ---
+> **🆕 What's New in v3.1.25:**
+> - ✅ **Perbaikan Bug** - Perbaikan bug minor
 
-> **🆕 What's New in v3.1.22:**
+
+> **Previous Updates (v3.1.22):**
 > - ✅ **Pakasir Payment Gateway** - Payment gateway alternatif dengan QRIS & Virtual Account
 > - ✅ **Auto-fallback Payment** - Otomatis gunakan Pakasir jika Midtrans/QRIS tidak dikonfigurasi
 > - ✅ **Pakasir Webhook** - Auto-verification pembayaran via webhook
