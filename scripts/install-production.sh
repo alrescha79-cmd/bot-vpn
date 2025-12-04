@@ -567,14 +567,19 @@ echo ""
 if [ -f "${INSTALL_PATH}/.vars.json" ]; then
     log_success "File konfigurasi sudah ada (dipertahankan dari instalasi sebelumnya)"
     echo ""
-    read -p "Apakah Anda ingin mengkonfigurasi ulang? (Y/n): " -n 1 -r RECONFIGURE
-    echo ""
     
-    if [[ ! $RECONFIGURE =~ ^[Yy]$ ]]; then
+    # Redirect stdin for interactive input
+    exec < /dev/tty
+    
+    echo -n "Apakah Anda ingin mengkonfigurasi ulang? (Y/n): "
+    read RECONFIGURE
+    
+    if [[ $RECONFIGURE =~ ^[Yy]$ ]]; then
+        log_info "Akan mengkonfigurasi ulang..."
+        SKIP_CONFIG=false
+    else
         log_info "Mempertahankan konfigurasi yang ada"
         SKIP_CONFIG=true
-    else
-        SKIP_CONFIG=false
     fi
 else
     SKIP_CONFIG=false
@@ -585,16 +590,18 @@ if [ "$SKIP_CONFIG" = false ]; then
     echo -e "${BLUE}📝 Pengaturan Konfigurasi${NC}"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    echo "Silakan masukkan informasi berikut:"
+    echo "Silakan masukkan untuk Bot Anda:"
     echo ""
     
-    # Redirect stdin to terminal for interactive input
-    exec < /dev/tty
+    # Ensure stdin is from terminal (if not already done above)
+    if [ ! -t 0 ]; then
+        exec < /dev/tty
+    fi
     
     # Bot Token - Required
     BOT_TOKEN_INPUT=""
     while [ -z "$BOT_TOKEN_INPUT" ]; do
-        echo -n "Bot Token (wajib): "
+        echo -n "Silakan masukkan Bot Token Anda (wajib): "
         read BOT_TOKEN_INPUT
         if [ -z "$BOT_TOKEN_INPUT" ]; then
             log_error "Bot Token wajib diisi!"
@@ -604,7 +611,7 @@ if [ "$SKIP_CONFIG" = false ]; then
     # User ID - Required
     USER_ID_INPUT=""
     while [ -z "$USER_ID_INPUT" ]; do
-        echo -n "User ID (wajib): "
+        echo -n "Silakan masukkan User ID Anda (wajib): "
         read USER_ID_INPUT
         if [ -z "$USER_ID_INPUT" ]; then
             log_error "User ID wajib diisi!"
@@ -614,7 +621,7 @@ if [ "$SKIP_CONFIG" = false ]; then
     # Admin Username - Required
     ADMIN_USERNAME_INPUT=""
     while [ -z "$ADMIN_USERNAME_INPUT" ]; do
-        echo -n "Username Admin (wajib): "
+        echo -n "Silakan masukkan Username Admin Anda (wajib): "
         read ADMIN_USERNAME_INPUT
         if [ -z "$ADMIN_USERNAME_INPUT" ]; then
             log_error "Username Admin wajib diisi!"
@@ -622,13 +629,13 @@ if [ "$SKIP_CONFIG" = false ]; then
     done
     
     # Group ID - Optional
-    echo -n "Group ID (opsional): "
+    echo -n "Silakan masukkan Group ID Anda (opsional): "
     read GROUP_ID_INPUT
     
     # Store Name - Required
     NAMA_STORE_INPUT=""
     while [ -z "$NAMA_STORE_INPUT" ]; do
-        echo -n "Nama Toko (wajib): "
+        echo -n "Silakan masukkan Nama Toko Anda (wajib): "
         read NAMA_STORE_INPUT
         if [ -z "$NAMA_STORE_INPUT" ]; then
             log_error "Nama Toko wajib diisi!"
@@ -694,6 +701,10 @@ if [ "$SKIP_CONFIG" = false ]; then
     log_success "Konfigurasi berhasil disimpan!"
     echo ""
 fi
+
+# Reset stdin back to default after configuration
+exec 0<&-
+exec 0</dev/stdin 2>/dev/null || true
 
 ###############################################################################
 # Post-Installation Steps
