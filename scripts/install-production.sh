@@ -588,31 +588,41 @@ if [ "$SKIP_CONFIG" = false ]; then
     echo "Silakan masukkan informasi berikut:"
     echo ""
     
-    # Required fields
-    read -p "Bot Token (wajib): " BOT_TOKEN_INPUT
+    # Required fields with exec to ensure proper stdin
+    exec < /dev/tty
+    
+    BOT_TOKEN_INPUT=""
     while [ -z "$BOT_TOKEN_INPUT" ]; do
-        log_error "Bot Token wajib diisi!"
         read -p "Bot Token (wajib): " BOT_TOKEN_INPUT
+        if [ -z "$BOT_TOKEN_INPUT" ]; then
+            log_error "Bot Token wajib diisi!"
+        fi
     done
     
-    read -p "User ID (wajib): " USER_ID_INPUT
+    USER_ID_INPUT=""
     while [ -z "$USER_ID_INPUT" ]; do
-        log_error "User ID wajib diisi!"
         read -p "User ID (wajib): " USER_ID_INPUT
+        if [ -z "$USER_ID_INPUT" ]; then
+            log_error "User ID wajib diisi!"
+        fi
     done
     
-    read -p "Username Admin (wajib): " ADMIN_USERNAME_INPUT
+    ADMIN_USERNAME_INPUT=""
     while [ -z "$ADMIN_USERNAME_INPUT" ]; do
-        log_error "Username Admin wajib diisi!"
         read -p "Username Admin (wajib): " ADMIN_USERNAME_INPUT
+        if [ -z "$ADMIN_USERNAME_INPUT" ]; then
+            log_error "Username Admin wajib diisi!"
+        fi
     done
     
     read -p "Group ID (opsional): " GROUP_ID_INPUT
     
-    read -p "Nama Toko (wajib): " NAMA_STORE_INPUT
+    NAMA_STORE_INPUT=""
     while [ -z "$NAMA_STORE_INPUT" ]; do
-        log_error "Nama Toko wajib diisi!"
         read -p "Nama Toko (wajib): " NAMA_STORE_INPUT
+        if [ -z "$NAMA_STORE_INPUT" ]; then
+            log_error "Nama Toko wajib diisi!"
+        fi
     done
     
     read -p "Port (default: 50123): " PORT_INPUT
@@ -701,8 +711,14 @@ echo ""
 
 # Get server IP and port for frontend link
 SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
+
+# Get port from .vars.json with better parsing
 if [ -f "${INSTALL_PATH}/.vars.json" ]; then
-    APP_PORT=$(grep -oP '"PORT":\s*"?\K[^",}]+' "${INSTALL_PATH}/.vars.json" 2>/dev/null || echo "50123")
+    # Try multiple methods to extract port
+    APP_PORT=$(grep '"PORT"' "${INSTALL_PATH}/.vars.json" | grep -oE '[0-9]+' | head -1)
+    if [ -z "$APP_PORT" ]; then
+        APP_PORT="50123"
+    fi
 else
     APP_PORT="50123"
 fi
