@@ -175,13 +175,22 @@ async function initializeSchema() {
       owner_user_id INTEGER NOT NULL,
       status TEXT DEFAULT 'active',
       raw_response TEXT,
+      expiry_warning_3d_sent INTEGER DEFAULT 0,
+      expiry_warning_1d_sent INTEGER DEFAULT 0,
+      expired_notified INTEGER DEFAULT 0,
       UNIQUE(username, server, protocol)
     )`);
+
+    // Migrate accounts table - add notification tracking columns
+    await addColumnSafely('accounts', 'expiry_warning_3d_sent', 'INTEGER DEFAULT 0');
+    await addColumnSafely('accounts', 'expiry_warning_1d_sent', 'INTEGER DEFAULT 0');
+    await addColumnSafely('accounts', 'expired_notified', 'INTEGER DEFAULT 0');
 
     // Add indexes for accounts table
     await dbRunAsync(`CREATE INDEX IF NOT EXISTS idx_accounts_username ON accounts(username)`);
     await dbRunAsync(`CREATE INDEX IF NOT EXISTS idx_accounts_owner ON accounts(owner_user_id)`);
     await dbRunAsync(`CREATE INDEX IF NOT EXISTS idx_accounts_status ON accounts(status)`);
+    await dbRunAsync(`CREATE INDEX IF NOT EXISTS idx_accounts_expired_at ON accounts(expired_at)`);
 
     if (isNew) {
       logger.info('✅ New database schema initialized successfully');
