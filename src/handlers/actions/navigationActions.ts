@@ -40,34 +40,69 @@ function registerAkunkuAction(bot) {
       }
 
       // Get user's accounts
-      const { getAccountsByOwner, getAllAccounts } = require('../../repositories/accountRepository');
-      let accounts = [];
-      
+      const { getAccountsGroupedByServer, getAllAccounts } = require('../../repositories/accountRepository');
+      let accountsGrouped = {};
+
       try {
         if (user.role === 'admin' || user.role === 'owner') {
-          accounts = await getAllAccounts('active');
+          // Admin sees all accounts, but we still need to group them
+          const allAccounts = await getAllAccounts('active');
+          // Group manually
+          allAccounts.forEach(acc => {
+            const serverName = acc.server || 'Unknown Server';
+            if (!accountsGrouped[serverName]) {
+              accountsGrouped[serverName] = [];
+            }
+            accountsGrouped[serverName].push(acc);
+          });
         } else {
-          accounts = await getAccountsByOwner(userId, 'active');
+          accountsGrouped = await getAccountsGroupedByServer(userId, 'active');
         }
       } catch (accountErr) {
-        // Tabel accounts mungkin belum ada - tampilkan pesan fallback
+        // Table accounts might not exist yet - show fallback
         logger.warn('⚠️ Could not fetch accounts (table may not exist yet):', accountErr);
-        accounts = [];
+        accountsGrouped = {};
       }
 
       const saldoFormatted = `Rp${user.saldo.toLocaleString('id-ID')}`;
       const roleEmoji = user.role === 'admin' ? '👑' : user.role === 'reseller' ? '💼' : '👤';
 
+      // Count total accounts
+      let totalAccounts = 0;
+      Object.values(accountsGrouped).forEach((accounts: any[]) => {
+        totalAccounts += accounts.length;
+      });
+
       let accountList = '';
-      if (accounts.length > 0) {
+      if (totalAccounts > 0) {
         accountList = '\n\n📋 *Akun Aktif:*\n';
-        accounts.slice(0, 10).forEach((acc, idx) => {
-          const expDate = acc.expired_at ? new Date(acc.expired_at).toLocaleDateString('id-ID') : 'N/A';
-          accountList += `${idx + 1}. \`${acc.username}\` - ${acc.protocol} - Exp: ${expDate}\n`;
-        });
-        
-        if (accounts.length > 10) {
-          accountList += `\n_...dan ${accounts.length - 10} akun lainnya_`;
+
+        const serverNames = Object.keys(accountsGrouped).sort();
+        let displayedCount = 0;
+        const maxDisplay = 10;
+
+        for (const serverName of serverNames) {
+          const accounts = accountsGrouped[serverName];
+          if (displayedCount >= maxDisplay) break;
+
+          accountList += `\n🌐 *${serverName}*\n`;
+
+          for (const acc of accounts) {
+            if (displayedCount >= maxDisplay) break;
+
+            const expDate = acc.expired_at ? new Date(acc.expired_at) : null;
+            const now = new Date();
+            const isExpired = expDate && expDate < now;
+            const statusIcon = isExpired ? '⚠️ Expired' : '✅ Aktif';
+            const expDateStr = expDate ? expDate.toLocaleDateString('id-ID') : 'N/A';
+
+            accountList += `  • \`${acc.username}\` (${acc.protocol}) - ${statusIcon}\n    Exp: ${expDateStr}\n`;
+            displayedCount++;
+          }
+        }
+
+        if (totalAccounts > maxDisplay) {
+          accountList += `\n_...dan ${totalAccounts - maxDisplay} akun lainnya_`;
         }
       } else {
         accountList = '\n\n📭 Belum ada akun aktif.';
@@ -108,21 +143,35 @@ function registerAkunkuDetailAction(bot) {
       }
 
       // Get user's accounts
-      const { getAccountsByOwner, getAllAccounts } = require('../../repositories/accountRepository');
-      let accounts = [];
-      
+      const { getAccountsGroupedByServer, getAllAccounts } = require('../../repositories/accountRepository');
+      let accountsGrouped: any = {};
+
       try {
         if (user.role === 'admin' || user.role === 'owner') {
-          accounts = await getAllAccounts('active');
+          // Admin sees all accounts, group them
+          const allAccounts = await getAllAccounts('active');
+          allAccounts.forEach((acc: any) => {
+            const serverName = acc.server || 'Unknown Server';
+            if (!accountsGrouped[serverName]) {
+              accountsGrouped[serverName] = [];
+            }
+            accountsGrouped[serverName].push(acc);
+          });
         } else {
-          accounts = await getAccountsByOwner(userId, 'active');
+          accountsGrouped = await getAccountsGroupedByServer(userId, 'active');
         }
       } catch (accountErr) {
         logger.warn('⚠️ Failed to fetch accounts (table might not exist yet):', accountErr);
-        accounts = [];
+        accountsGrouped = {};
       }
 
-      if (accounts.length === 0) {
+      // Count total accounts
+      let totalAccounts = 0;
+      Object.values(accountsGrouped).forEach((accounts: any[]) => {
+        totalAccounts += accounts.length;
+      });
+
+      if (totalAccounts === 0) {
         return ctx.editMessageText(
           '📭 Tidak ada akun untuk ditampilkan.',
           {
@@ -134,15 +183,35 @@ function registerAkunkuDetailAction(bot) {
         );
       }
 
-      // Create buttons for each account
-      const buttons = accounts.slice(0, 20).map(acc => {
-        return [Markup.button.callback(`${acc.username} (${acc.protocol})`, `akunku_view_${acc.id}`)];
-      });
-      
+      // Create buttons grouped by server
+      const buttons: any[] = [];
+      const serverNames = Object.keys(accountsGrouped).sort();
+      let addedCount = 0;
+      const maxButtons = 20;
+
+      for (const serverName of serverNames) {
+        const accounts = accountsGrouped[serverName];
+
+        // Add server header as a disabled button (using callback that does nothing)
+        buttons.push([
+          Markup.button.callback(`🌐 ${serverName}`, `server_header_${serverName.replace(/\s+/g, '_')}`)
+        ]);
+
+        for (const acc of accounts) {
+          if (addedCount >= maxButtons) break;
+
+          buttons.push([Markup.button.callback(`  ${acc.username} (${acc.protocol})`, `akunku_view_${acc.id}`)]);
+          addedCount++;
+        }
+
+        if (addedCount >= maxButtons) break;
+      }
+
       buttons.push([Markup.button.callback('🔙 Kembali', 'akunku')]);
 
       await ctx.editMessageText(
-        '📋 *Pilih akun untuk melihat detail:*',
+        '📋 *Pilih akun untuk melihat detail:*\n\n' +
+        '_(Akun dikelompokkan per server)_',
         {
           parse_mode: 'Markdown',
           ...Markup.inlineKeyboard(buttons)
@@ -179,27 +248,55 @@ function registerAkunkuViewAccountAction(bot) {
 
       const expDate = account.expired_at ? new Date(account.expired_at).toLocaleString('id-ID') : 'N/A';
       const createdDate = account.created_at ? new Date(account.created_at).toLocaleString('id-ID') : 'N/A';
-      
+
+      // Escape markdown special characters in raw_response to prevent parse errors
+      // Also truncate if too long (Telegram has limits)
+      let rawResponse = 'N/A';
+      if (account.raw_response) {
+        // First, escape any unbalanced backticks and special markdown chars
+        let response = account.raw_response;
+
+        // For very long responses (like 3IN1), truncate and provide summary
+        const maxLength = 1500;
+        if (response.length > maxLength) {
+          // Count the number of links in the response
+          const vmessLinks = (response.match(/vmess:\/\//g) || []).length;
+          const vlessLinks = (response.match(/vless:\/\//g) || []).length;
+          const trojanLinks = (response.match(/trojan:\/\//g) || []).length;
+
+          rawResponse = `[Respons terlalu panjang - ${response.length} karakter]\n\n`;
+          rawResponse += `📊 Ringkasan:\n`;
+          if (vmessLinks > 0) rawResponse += `• VMESS Links: ${vmessLinks}\n`;
+          if (vlessLinks > 0) rawResponse += `• VLESS Links: ${vlessLinks}\n`;
+          if (trojanLinks > 0) rawResponse += `• TROJAN Links: ${trojanLinks}\n`;
+          rawResponse += `\nGunakan link "Save" di pesan create untuk melihat detail lengkap.`;
+        } else {
+          rawResponse = response;
+        }
+      }
+
+      // Build detail text without code block wrapper for raw_response
+      // to avoid nested backtick issues
       const detailText = `
 ✅ *Detail Akun*
 
 📌 *Username:* \`${account.username}\`
-🔐 *Protokol:* ${account.protocol}
+🔐 *Protokol:* ${account.protocol.toUpperCase()}
 🌐 *Server:* ${account.server}
 ⏳ *Dibuat:* ${createdDate}
 📅 *Expired:* ${expDate}
 📊 *Status:* ${account.status === 'active' ? '✅ Aktif' : '❌ Expired'}
 
-━━━━━━━━━━━━━━━━━
-*Raw Response:*
-\`\`\`
-${account.raw_response ? account.raw_response.substring(0, 2000) : 'N/A'}
-\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━
+📋 *Raw Response:*
+
+${rawResponse}
       `.trim();
 
       await ctx.editMessageText(detailText, {
         parse_mode: 'Markdown',
         ...Markup.inlineKeyboard([
+          [Markup.button.callback('🔄 Perpanjang Akun', `renew_account_${account.id}`)],
           [Markup.button.callback('🔙 Kembali', 'akunku_detail')]
         ])
       });
@@ -224,21 +321,34 @@ function registerAkunkuDeleteAction(bot) {
       }
 
       // Get user's accounts
-      const { getAccountsByOwner, getAllAccounts } = require('../../repositories/accountRepository');
-      let accounts = [];
-      
+      const { getAccountsGroupedByServer, getAllAccounts } = require('../../repositories/accountRepository');
+      let accountsGrouped: any = {};
+
       try {
         if (user.role === 'admin' || user.role === 'owner') {
-          accounts = await getAllAccounts();
+          const allAccounts = await getAllAccounts('active');
+          allAccounts.forEach((acc: any) => {
+            const serverName = acc.server || 'Unknown Server';
+            if (!accountsGrouped[serverName]) {
+              accountsGrouped[serverName] = [];
+            }
+            accountsGrouped[serverName].push(acc);
+          });
         } else {
-          accounts = await getAccountsByOwner(userId);
+          accountsGrouped = await getAccountsGroupedByServer(userId, 'active');
         }
       } catch (accountErr) {
-        logger.warn('⚠️ Failed to fetch accounts (table might not exist yet):', accountErr);
-        accounts = [];
+        logger.warn('⚠️ Failed to fetch accounts:', accountErr);
+        accountsGrouped = {};
       }
 
-      if (accounts.length === 0) {
+      // Count total accounts
+      let totalAccounts = 0;
+      Object.values(accountsGrouped).forEach((accounts: any[]) => {
+        totalAccounts += accounts.length;
+      });
+
+      if (totalAccounts === 0) {
         return ctx.editMessageText(
           '📭 Tidak ada akun untuk dihapus.',
           {
@@ -250,20 +360,51 @@ function registerAkunkuDeleteAction(bot) {
         );
       }
 
-      // Create buttons for each account
-      const buttons = accounts.slice(0, 20).map(acc => {
-        return [Markup.button.callback(`❌ ${acc.username} (${acc.protocol})`, `akunku_confirm_delete_${acc.id}`)];
-      });
-      
+      // Create message with grouped accounts
+      let message = '🗑 *Hapus Akun*\n\n';
+      message += '⚠️ Pilih akun yang ingin dihapus:\n\n';
+
+      const buttons: any[] = [];
+      const serverNames = Object.keys(accountsGrouped).sort();
+      let addedCount = 0;
+      const maxButtons = 20;
+
+      for (const serverName of serverNames) {
+        const accounts = accountsGrouped[serverName];
+
+        // Add server header
+        message += `🌐 *${serverName}*\n`;
+
+        for (const acc of accounts) {
+          if (addedCount >= maxButtons) break;
+
+          const expDate = acc.expired_at ? new Date(acc.expired_at) : null;
+          const now = new Date();
+          const isExpired = expDate && expDate < now;
+          const statusIcon = isExpired ? '⚠️ Expired' : '✅ Aktif';
+          const expDateStr = expDate ? expDate.toLocaleDateString('id-ID') : 'N/A';
+
+          message += `  • \`${acc.username}\` (${acc.protocol}) - ${statusIcon}\n    Exp: ${expDateStr}\n`;
+
+          buttons.push([
+            Markup.button.callback(
+              `  ${acc.username} (${acc.protocol}) - ${statusIcon}`,
+              `delete_confirm_${acc.id}`
+            )
+          ]);
+          addedCount++;
+        }
+
+        message += '\n';
+        if (addedCount >= maxButtons) break;
+      }
+
       buttons.push([Markup.button.callback('🔙 Kembali', 'akunku')]);
 
-      await ctx.editMessageText(
-        '🗑 *Pilih akun yang ingin dihapus:*\n\n⚠️ _Hanya akan menghapus dari database, tidak dari server._',
-        {
-          parse_mode: 'Markdown',
-          ...Markup.inlineKeyboard(buttons)
-        }
-      );
+      await ctx.editMessageText(message, {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard(buttons)
+      });
     } catch (err) {
       logger.error('❌ Error in akunku delete:', err);
       await ctx.reply('❌ Gagal menampilkan daftar akun. ' + (err?.message || 'Unknown error'));
@@ -275,7 +416,7 @@ function registerAkunkuDeleteAction(bot) {
  * Handle confirm delete account
  */
 function registerAkunkuConfirmDeleteAction(bot) {
-  bot.action(/^akunku_confirm_delete_(.+)$/, async (ctx) => {
+  bot.action(/^delete_confirm_(.+)$/, async (ctx) => {
     const accountId = ctx.match[1];
     const userId = ctx.from.id;
 
@@ -288,13 +429,73 @@ function registerAkunkuConfirmDeleteAction(bot) {
         return ctx.reply('❌ Akun tidak ditemukan.');
       }
 
-      // Delete account
+      await ctx.answerCbQuery();
+      await ctx.editMessageText('⏳ *Sedang menghapus akun dari server...* Mohon tunggu.', { parse_mode: 'Markdown' });
+
+      // Get server ID from domain
+      const server = await dbGetAsync('SELECT id FROM Server WHERE domain = ?', [account.server]);
+      let vpsDeleteResult = 'SKIPPED';
+
+      if (server) {
+        // Import delete modules
+        const deleteVMESS = require('../../modules/protocols/vmess/deleteVMESS');
+        const deleteVLESS = require('../../modules/protocols/vless/deleteVLESS');
+        const deleteTROJAN = require('../../modules/protocols/trojan/deleteTROJAN');
+        const deleteSSH = require('../../modules/protocols/ssh/deleteSSH');
+        const deleteSHADOWSOCKS = require('../../modules/protocols/shadowsocks/deleteSHADOWSOCKS');
+
+        // Delete from VPS based on protocol
+        const protocol = account.protocol.toUpperCase();
+        logger.info(`🗑️ Deleting ${account.username} (${protocol}) from VPS...`);
+
+        try {
+          if (protocol === 'VMESS') {
+            vpsDeleteResult = await deleteVMESS.deleteVmess(account.username, server.id);
+          } else if (protocol === 'VLESS') {
+            vpsDeleteResult = await deleteVLESS.deleteVless(account.username, server.id);
+          } else if (protocol === 'TROJAN') {
+            vpsDeleteResult = await deleteTROJAN.deleteTrojan(account.username, server.id);
+          } else if (protocol === 'SSH') {
+            vpsDeleteResult = await deleteSSH.deleteSsh(account.username, server.id);
+          } else if (protocol === 'SHADOWSOCKS') {
+            vpsDeleteResult = await deleteSHADOWSOCKS.deleteShadowsocks(account.username, server.id);
+          } else if (protocol === '3IN1') {
+            // Delete from all 3 protocols
+            const vmessResult = await deleteVMESS.deleteVmess(account.username, server.id);
+            const vlessResult = await deleteVLESS.deleteVless(account.username, server.id);
+            const trojanResult = await deleteTROJAN.deleteTrojan(account.username, server.id);
+            vpsDeleteResult = (vmessResult === 'SUCCESS' || vlessResult === 'SUCCESS' || trojanResult === 'SUCCESS') ? 'SUCCESS' : 'PARTIAL';
+          }
+          logger.info(`🗑️ VPS delete result: ${vpsDeleteResult}`);
+        } catch (vpsErr) {
+          logger.error('❌ VPS delete error:', vpsErr);
+          vpsDeleteResult = `ERROR: ${vpsErr.message}`;
+        }
+      } else {
+        logger.warn(`⚠️ Server not found for domain: ${account.server}`);
+      }
+
+      // Delete from local database
       await deleteAccountById(accountId, userId, user.role);
 
+      // Also delete from akun_aktif table
+      const { dbRunAsync } = require('../../database/connection');
+      await dbRunAsync('DELETE FROM akun_aktif WHERE username = ? AND UPPER(jenis) = UPPER(?)', [account.username, account.protocol]);
+
+      const vpsStatus = vpsDeleteResult === 'SUCCESS'
+        ? '✅ Berhasil dihapus dari server VPS'
+        : vpsDeleteResult.startsWith('⚠️')
+          ? vpsDeleteResult
+          : vpsDeleteResult === 'SKIPPED'
+            ? '⚠️ Server tidak ditemukan, hanya dihapus dari database'
+            : `⚠️ ${vpsDeleteResult}`;
+
       await ctx.editMessageText(
-        `✅ *Akun berhasil dihapus dari database*\n\n` +
+        `🗑️ *AKUN BERHASIL DIHAPUS*\n\n` +
         `Username: \`${account.username}\`\n` +
-        `Protokol: ${account.protocol}`,
+        `Protokol: ${account.protocol}\n\n` +
+        `📡 *Status VPS:*\n${vpsStatus}\n` +
+        `📂 *Database:* ✅ Terhapus`,
         {
           parse_mode: 'Markdown',
           ...Markup.inlineKeyboard([
@@ -378,7 +579,7 @@ function registerTopupAmountActions(bot) {
     bot.action(action, async (ctx) => {
       try {
         const userId = String(ctx.from.id);
-        
+
         // Initialize deposit state with the selected amount
         initializeDepositState(userId);
         global.depositState[userId].amount = String(amount);
@@ -414,7 +615,7 @@ Silakan konfirmasi jumlah top up Anda.
   bot.action('topup_manual', async (ctx) => {
     try {
       const userId = String(ctx.from.id);
-      
+
       // Initialize deposit state for manual input
       initializeDepositState(userId);
 
@@ -447,7 +648,7 @@ Silakan konfirmasi jumlah top up Anda.
       const { processDeposit } = require('../../services/depositService');
 
       await processDeposit(ctx, amount);
-      
+
       logger.info(`User ${userId} confirmed topup: ${amount}`);
     } catch (error) {
       logger.error('Error confirming topup:', error);
@@ -463,8 +664,8 @@ Silakan konfirmasi jumlah top up Anda.
 function registerPaginationActions(bot) {
   bot.action(/navigate_(next|prev)_(\w+)_(\d+)/, async (ctx) => {
     const [, direction, context, offset] = ctx.match;
-    const newOffset = direction === 'next' 
-      ? parseInt(offset) + 10 
+    const newOffset = direction === 'next'
+      ? parseInt(offset) + 10
       : Math.max(0, parseInt(offset) - 10);
 
     logger.info(`Pagination: ${context} ${direction} to offset ${newOffset}`);
@@ -503,9 +704,9 @@ function registerCancelActions(bot) {
   // Exclude cancel_payment_* because it's handled in callbackRouter
   bot.action(/cancel_(?!payment_)(.+)/, async (ctx) => {
     const [, operation] = ctx.match;
-    
+
     await ctx.answerCbQuery('❌ Dibatalkan');
-    
+
     try {
       // Try editMessageText first (for text messages)
       await ctx.editMessageText(
@@ -554,12 +755,21 @@ function registerConfirmActions(bot) {
   // Specific handlers like confirm_delete_server_* should be registered in serverEditActions
   bot.action(/confirm_(?!delete_server_|resetdb)(.+)/, async (ctx) => {
     const operation = ctx.match[0].replace('confirm_', '');
-    
+
     await ctx.answerCbQuery('⏳ Memproses...');
     logger.info(`Generic confirm action triggered: ${operation} by user ${ctx.from.id}`);
-    
+
     // This is a fallback - specific confirmations should be handled in their respective action files
     await ctx.reply('⚠️ Konfirmasi tidak dikenali. Silakan coba lagi.');
+  });
+}
+
+/**
+ * Handle server header clicks (no-op, just answer callback)
+ */
+function registerServerHeaderAction(bot) {
+  bot.action(/^server_header_(.+)$/, async (ctx) => {
+    await ctx.answerCbQuery('ℹ️ Ini adalah header server');
   });
 }
 
@@ -581,6 +791,7 @@ function registerNavigationActions(bot) {
   registerBackActions(bot);
   registerCancelActions(bot);
   registerConfirmActions(bot);
+  registerServerHeaderAction(bot);
 
   logger.info('✅ Navigation actions registered');
 }

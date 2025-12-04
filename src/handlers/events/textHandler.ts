@@ -19,6 +19,8 @@ import type { BotContext, DatabaseUser, DatabaseServer } from "../../types";
 const { dbGetAsync, dbRunAsync, dbAllAsync } = require('../../database/connection');
 const { escapeMarkdown, escapeMarkdownV2 } = require('../../utils/markdown');
 const logger = require('../../utils/logger');
+const { Markup } = require('telegraf');
+const { transferStates } = require('../actions/resellerActions');
 
 // Import service creation modules
 const { createssh } = require('../../modules/protocols/ssh/createSSH');
@@ -392,6 +394,132 @@ function registerTextHandler(bot) {
     const state = global.userState?.[chatId];
     const text = ctx.message.text.trim();
 
+    // Handle reseller transfer flow (uses separate transferStates)
+    const transferState = transferStates.get(userId);
+    if (transferState) {
+      try {
+        if (transferState.step === 'waiting_user_id') {
+          // Validate user ID
+          const targetUserId = parseInt(text);
+          
+          if (isNaN(targetUserId) || targetUserId <= 0) {
+            return ctx.reply('❌ User ID tidak valid. Harap masukkan angka yang benar.\n\nContoh: `123456789`', {
+              parse_mode: 'Markdown',
+              ...Markup.inlineKeyboard([
+                [Markup.button.callback('❌ Batal', 'reseller_cancel_transfer')]
+              ])
+            });
+          }
+          
+          // Check if target user exists
+          const targetUser = await dbGetAsync('SELECT user_id, username, first_name FROM users WHERE user_id = ?', [targetUserId]);
+          
+          if (!targetUser) {
+            return ctx.reply('❌ User tidak ditemukan dalam database.\n\nPastikan User ID sudah terdaftar di bot.', {
+              ...Markup.inlineKeyboard([
+                [Markup.button.callback('🔄 Coba Lagi', 'reseller_transfer')],
+                [Markup.button.callback('❌ Batal', 'reseller_cancel_transfer')]
+              ])
+            });
+          }
+          
+          // Can't transfer to self
+          if (targetUserId === userId) {
+            return ctx.reply('❌ Tidak dapat transfer ke diri sendiri!', {
+              ...Markup.inlineKeyboard([
+                [Markup.button.callback('🔄 Coba Lagi', 'reseller_transfer')],
+                [Markup.button.callback('❌ Batal', 'reseller_cancel_transfer')]
+              ])
+            });
+          }
+          
+          // Update state
+          transferStates.set(userId, {
+            ...transferState,
+            step: 'waiting_amount',
+            targetUserId: targetUserId,
+            targetUserName: targetUser.username || targetUser.first_name || `User ${targetUserId}`
+          });
+          
+          return ctx.reply(
+            `✅ User ditemukan: ${targetUser.username || targetUser.first_name || 'Unknown'}\n\n` +
+            `📝 Langkah 2: Masukkan jumlah transfer\n` +
+            `💰 Saldo Anda: Rp${transferState.saldo.toLocaleString('id-ID')}\n\n` +
+            `Ketik jumlah yang ingin ditransfer (tanpa titik/koma)\n` +
+            `Contoh: \`50000\``,
+            {
+              parse_mode: 'Markdown',
+              ...Markup.inlineKeyboard([
+                [Markup.button.callback('❌ Batal', 'reseller_cancel_transfer')]
+              ])
+            }
+          );
+          
+        } else if (transferState.step === 'waiting_amount') {
+          // Validate amount
+          const amount = parseInt(text.replace(/[.,]/g, ''));
+          
+          if (isNaN(amount) || amount <= 0) {
+            return ctx.reply('❌ Jumlah tidak valid. Harap masukkan angka yang benar.\n\nContoh: `50000`', {
+              parse_mode: 'Markdown',
+              ...Markup.inlineKeyboard([
+                [Markup.button.callback('❌ Batal', 'reseller_cancel_transfer')]
+              ])
+            });
+          }
+          
+          if (amount < 10000) {
+            return ctx.reply('❌ Minimal transfer adalah Rp10.000', {
+              ...Markup.inlineKeyboard([
+                [Markup.button.callback('❌ Batal', 'reseller_cancel_transfer')]
+              ])
+            });
+          }
+          
+          if (amount > transferState.saldo) {
+            return ctx.reply(
+              `❌ Saldo tidak cukup!\n\n` +
+              `💰 Saldo Anda: Rp${transferState.saldo.toLocaleString('id-ID')}\n` +
+              `💸 Transfer: Rp${amount.toLocaleString('id-ID')}`,
+              {
+                ...Markup.inlineKeyboard([
+                  [Markup.button.callback('🔄 Coba Lagi', 'reseller_transfer')],
+                  [Markup.button.callback('❌ Batal', 'reseller_cancel_transfer')]
+                ])
+              }
+            );
+          }
+          
+          // Update state with amount
+          transferStates.set(userId, {
+            ...transferState,
+            amount: amount
+          });
+          
+          // Show confirmation
+          return ctx.reply(
+            `📋 *Konfirmasi Transfer*\n\n` +
+            `👤 Penerima: ${transferState.targetUserName}\n` +
+            `🆔 User ID: \`${transferState.targetUserId}\`\n` +
+            `💸 Jumlah: Rp${amount.toLocaleString('id-ID')}\n` +
+            `💰 Sisa Saldo: Rp${(transferState.saldo - amount).toLocaleString('id-ID')}\n\n` +
+            `⚠️ Pastikan data sudah benar sebelum melanjutkan!`,
+            {
+              parse_mode: 'Markdown',
+              ...Markup.inlineKeyboard([
+                [Markup.button.callback('✅ Konfirmasi Transfer', `confirm_transfer_${transferState.targetUserId}`)],
+                [Markup.button.callback('❌ Batal', 'reseller_cancel_transfer')]
+              ])
+            }
+          );
+        }
+      } catch (err) {
+        logger.error('❌ Error in transfer text handler:', err);
+        transferStates.delete(userId);
+        return ctx.reply('❌ Terjadi kesalahan. Silakan mulai lagi.');
+      }
+    }
+
     if (!state || typeof state !== 'object') return;
 
     try {
@@ -607,7 +735,7 @@ function registerTextHandler(bot) {
         if (!nama_server) return ctx.reply('⚠️ *Nama server tidak boleh kosong.*', { parse_mode: 'Markdown' });
         state.nama_server = nama_server;
         state.step = 'addserver_quota';
-        return ctx.reply('*📊Silakan masukkan batas kuota (GB),* _cth: 100 (maks 100 GB)_ *:*', { parse_mode: 'Markdown' });
+        return ctx.reply('*📊Silakan masukkan batas kuota (GB),* _cth: 100 (maks 100GB/user)_ *:*', { parse_mode: 'Markdown' });
       }
 
       if (state.step === 'addserver_quota') {
@@ -615,7 +743,7 @@ function registerTextHandler(bot) {
         if (isNaN(quota)) return ctx.reply('⚠️ *Quota tidak valid.*', { parse_mode: 'Markdown' });
         state.quota = quota;
         state.step = 'addserver_iplimit';
-        return ctx.reply('*🔢 Silakan masukkan limit IP server,* _cth: 5 (maks 5 IP)_ *:*', { parse_mode: 'Markdown' });
+        return ctx.reply('*🔢 Silakan masukkan limit IP server,* _cth: 2 (maks 2 IP/user)_ *:*', { parse_mode: 'Markdown' });
       }
 
       if (state.step === 'addserver_iplimit') {
@@ -623,7 +751,7 @@ function registerTextHandler(bot) {
         if (isNaN(iplimit)) return ctx.reply('⚠️ *Limit IP tidak valid.*', { parse_mode: 'Markdown' });
         state.iplimit = iplimit;
         state.step = 'addserver_batas_create_akun';
-        return ctx.reply('*🔢 Silakan masukkan batas create akun server,* _cth: 25 (maks 25 akun)_ *:*', { parse_mode: 'Markdown' });
+        return ctx.reply('*🔢 Silakan masukkan batas create akun server,* _cth: 25 (maks 25 akun/server)_ *:*', { parse_mode: 'Markdown' });
       }
 
       if (state.step === 'addserver_batas_create_akun') {
@@ -631,7 +759,7 @@ function registerTextHandler(bot) {
         if (isNaN(batas)) return ctx.reply('⚠️ *Batas create akun tidak valid.*', { parse_mode: 'Markdown' });
         state.batas_create_akun = batas;
         state.step = 'addserver_harga';
-        return ctx.reply('*💰 Silakan masukkan harga/hari,* _cth: 500 (Rp500 per hari)_ *:*', { parse_mode: 'Markdown' });
+        return ctx.reply('*💰 Silakan masukkan harga/hari,* _cth: 500 (Rp500/hari atau Rp15000/bulan)_ *:*', { parse_mode: 'Markdown' });
       }
 
       if (state.step === 'addserver_harga') {

@@ -177,6 +177,10 @@ async function initializeTables() {
  * Setup cron jobs
  */
 function setupCronJobs() {
+  // Import expiration service
+  const expirationService = require(`${srcPath}/services/expirationService`);
+  const config = require(`${srcPath}/config`);
+
   // Reset trial count daily at 00:00
   cron.schedule('0 0 * * *', async () => {
     try {
@@ -184,6 +188,49 @@ function setupCronJobs() {
       logger.info('✅ Daily trial count reset completed');
     } catch (err) {
       logger.error('❌ Failed to reset daily trial count:', err.message);
+    }
+  });
+
+  // Daily expiration check at 09:00
+  cron.schedule('0 9 * * *', async () => {
+    try {
+      logger.info('🔔 Running daily expiration check (3-day and 1-day warnings)...');
+
+      // Check accounts expiring in 3 days
+      const count3d = await expirationService.checkExpiringAccounts(bot, 3);
+
+      // Check accounts expiring in 1 day
+      const count1d = await expirationService.checkExpiringAccounts(bot, 1);
+
+      logger.info(`✅ Expiration check completed: ${count3d} 3-day warnings, ${count1d} 1-day warnings sent`);
+    } catch (err) {
+      logger.error('❌ Failed to run expiration check:', err.message);
+    }
+  });
+
+  // Daily expired account check at 10:00
+  cron.schedule('0 10 * * *', async () => {
+    try {
+      logger.info('🔔 Running daily expired account check...');
+
+      const count = await expirationService.checkExpiredAccounts(bot);
+
+      logger.info(`✅ Expired account check completed: ${count} notifications sent`);
+    } catch (err) {
+      logger.error('❌ Failed to run expired account check:', err.message);
+    }
+  });
+
+  // Daily auto-deletion at 02:00
+  cron.schedule('0 2 * * *', async () => {
+    try {
+      logger.info('🗑️  Running daily auto-deletion of expired accounts...');
+
+      const deletedCount = await expirationService.deleteExpiredAccounts(bot, config.adminIds);
+
+      logger.info(`✅ Auto-deletion completed: ${deletedCount} accounts removed`);
+    } catch (err) {
+      logger.error('❌ Failed to run auto-deletion:', err.message);
     }
   });
 
@@ -225,7 +272,13 @@ function setupCronJobs() {
     }
   });
 
-  logger.info('✅ Cron jobs configured (trial reset, daily restart, monthly commission)');
+  logger.info('✅ Cron jobs configured:');
+  logger.info('   - 00:00: Trial count reset');
+  logger.info('   - 02:00: Auto-delete expired accounts (3+ days)');
+  logger.info('   - 04:00: Daily bot restart');
+  logger.info('   - 09:00: Expiration warnings (3-day & 1-day)');
+  logger.info('   - 10:00: Expired account notifications');
+  logger.info('   - 01:00 (monthly): Commission reset');
 }
 
 /**

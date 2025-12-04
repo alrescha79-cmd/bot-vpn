@@ -98,15 +98,35 @@ async function showServerSelection(ctx, protocol, action) {
       return ctx.reply('❌ Tidak ada server tersedia.');
     }
 
-    const buttons = servers.map(server => {
+    // Build server details list
+    let serverDetails = '';
+    servers.forEach((server, index) => {
       const flag = getFlagEmoji(server.lokasi || '');
       const harga = server.harga || 0;
-      
-      // For trial, show only server name without price
-      const label = action === 'trial'
-        ? `${flag} ${server.nama_server}`
-        : `${flag} ${server.nama_server} (Rp ${harga.toLocaleString('id-ID')}/Hari)`;
-      
+      const quota = server.quota || 0;
+      const iplimit = server.iplimit || 0;
+      const totalCreate = server.total_create_akun || 0;
+      const batasCreate = server.batas_create_akun || 0;
+
+      // Format quota and iplimit - show "Unlimited" if 0
+      const quotaText = quota === 0 ? 'Unlimited' : `${quota} GB`;
+      const iplimitText = iplimit === 0 ? 'Unlimited' : `${iplimit} IP`;
+
+      serverDetails += `\n${index + 1}. ${flag} *${server.nama_server}*\n`;
+
+      if (action !== 'trial') {
+        serverDetails += `   💰 Harga: Rp${harga.toLocaleString('id-ID')}/hari\n`;
+      }
+
+      serverDetails += `   📊 Kuota: ${quotaText}\n`;
+      serverDetails += `   📶 Limit IP: ${iplimitText}\n`;
+      serverDetails += `   📈 Total Akun: ${totalCreate}/${batasCreate}\n`;
+    });
+
+    const buttons = servers.map((server, index) => {
+      const flag = getFlagEmoji(server.lokasi || '');
+      const label = `${index + 1}. ${flag} ${server.nama_server}`;
+
       return [Markup.button.callback(label, `${action}_server_${protocol}_${server.id}`)];
     });
 
@@ -122,9 +142,12 @@ async function showServerSelection(ctx, protocol, action) {
     };
 
     const message = `
-${protocolLabels[protocol] || protocol.toUpperCase()}
+${protocolLabels[protocol] || protocol.toUpperCase()} Premium
 
-Pilih server yang tersedia:
+📋 *Daftar Server Tersedia:*
+${serverDetails}
+
+👇 *Pilih server:*
     `.trim();
 
     await ctx.editMessageText(message, {
@@ -204,6 +227,104 @@ function registerServiceCreateAction(bot) {
 }
 
 /**
+ * Show account selection for renewal, grouped by server
+ * @param {Object} ctx - Telegraf context
+ */
+async function showAccountSelectionForRenewal(ctx) {
+  const userId = ctx.from.id;
+
+  try {
+    const { getAccountsForRenewal } = require('../../repositories/accountRepository');
+    const { dbGetAsync } = require('../../database/connection');
+
+    // Get user to check role
+    const user = await dbGetAsync('SELECT role FROM users WHERE user_id = ?', [userId]);
+    let accounts = [];
+
+    if (user && (user.role === 'admin' || user.role === 'owner')) {
+      // Admin sees all active accounts
+      const { getAllAccounts } = require('../../repositories/accountRepository');
+      accounts = await getAllAccounts('active');
+    } else {
+      // Regular users see only their accounts
+      accounts = await getAccountsForRenewal(userId);
+    }
+
+    if (!accounts || accounts.length === 0) {
+      return ctx.editMessageText(
+        '📭 *Tidak ada akun aktif untuk diperpanjang.*\n\n' +
+        'Silakan buat akun baru terlebih dahulu.',
+        {
+          parse_mode: 'Markdown',
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback('🛒 Buat Akun', 'service_create')],
+            [Markup.button.callback('🔙 Menu Utama', 'send_main_menu')]
+          ])
+        }
+      );
+    }
+
+    // Group accounts by server
+    const grouped = {};
+    accounts.forEach(account => {
+      const serverName = account.server || 'Unknown Server';
+      if (!grouped[serverName]) {
+        grouped[serverName] = [];
+      }
+      grouped[serverName].push(account);
+    });
+
+    // Build message with server groups
+    let message = '🔄 *Perpanjang Akun*\n\n';
+    message += '📋 Pilih akun yang ingin diperpanjang:\n\n';
+
+    const buttons = [];
+
+    Object.keys(grouped).sort().forEach(serverName => {
+      const serverAccounts = grouped[serverName];
+
+      // Add server header to message
+      message += `🌐 *${serverName}*\n`;
+
+      serverAccounts.forEach(account => {
+        const expDate = account.expired_at
+          ? new Date(account.expired_at)
+          : null;
+        const now = new Date();
+        const isExpired = expDate && expDate < now;
+        const statusIcon = isExpired ? '⚠️ Expired' : '✅ Aktif';
+        const expDateStr = expDate
+          ? expDate.toLocaleDateString('id-ID')
+          : 'N/A';
+
+        message += `  • \`${account.username}\` (${account.protocol}) - ${statusIcon}\n    Exp: ${expDateStr}\n`;
+
+        buttons.push([
+          Markup.button.callback(
+            `  ${account.username} (${account.protocol}) - ${statusIcon} Exp: ${expDateStr}`,
+            `renew_account_${account.id}`
+          )
+        ]);
+      });
+
+      message += '\n';
+    });
+
+    // Add back button
+    buttons.push([Markup.button.callback('🔙 Menu Utama', 'send_main_menu')]);
+
+    await ctx.editMessageText(message, {
+      parse_mode: 'Markdown',
+      ...Markup.inlineKeyboard(buttons)
+    });
+
+  } catch (error) {
+    logger.error('❌ Error showing account selection for renewal:', error);
+    await ctx.reply('❌ Gagal menampilkan daftar akun. ' + (error?.message || 'Unknown error'));
+  }
+}
+
+/**
  * Register service action: service_renew
  */
 function registerServiceRenewAction(bot) {
@@ -211,7 +332,8 @@ function registerServiceRenewAction(bot) {
     if (!ctx || !ctx.match) {
       return ctx.reply('❌ Terjadi kesalahan saat memproses permintaan Anda.');
     }
-    await handleServiceAction(ctx, 'renew');
+    // Show account selection instead of protocol selection
+    await showAccountSelectionForRenewal(ctx);
   });
 }
 
@@ -273,5 +395,6 @@ module.exports = {
   registerServiceCreateAction,
   registerServiceRenewAction,
   registerServiceTrialAction,
-  registerProtocolActions
+  registerProtocolActions,
+  showAccountSelectionForRenewal
 };

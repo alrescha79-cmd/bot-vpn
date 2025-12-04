@@ -1,4 +1,4 @@
-# 🤖 Bot VPN Telegram - Production Ready v3.1.21
+# 🤖 Bot VPN Telegram - Production Ready v3.1.25
 
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-blue.svg)](https://www.typescriptlang.org/)
@@ -8,7 +8,7 @@
 
 ---
 
-## 🚀 One-Line Installation (Production)
+## 🚀 One-Line Installation/Update (Production)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | sudo bash
