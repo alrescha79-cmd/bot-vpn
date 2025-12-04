@@ -593,11 +593,6 @@ if [ "$SKIP_CONFIG" = false ]; then
     echo "Silakan masukkan untuk Bot Anda:"
     echo ""
     
-    # Ensure stdin is from terminal (if not already done above)
-    if [ ! -t 0 ]; then
-        exec < /dev/tty
-    fi
-    
     # Bot Token - Required
     BOT_TOKEN_INPUT=""
     while [ -z "$BOT_TOKEN_INPUT" ]; do
