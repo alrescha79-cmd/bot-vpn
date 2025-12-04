@@ -98,14 +98,34 @@ async function showServerSelection(ctx, protocol, action) {
       return ctx.reply('❌ Tidak ada server tersedia.');
     }
 
-    const buttons = servers.map(server => {
+    // Build server details list
+    let serverDetails = '';
+    servers.forEach((server, index) => {
       const flag = getFlagEmoji(server.lokasi || '');
       const harga = server.harga || 0;
+      const quota = server.quota || 0;
+      const iplimit = server.iplimit || 0;
+      const totalCreate = server.total_create_akun || 0;
+      const batasCreate = server.batas_create_akun || 0;
       
-      // For trial, show only server name without price
-      const label = action === 'trial'
-        ? `${flag} ${server.nama_server}`
-        : `${flag} ${server.nama_server} (Rp ${harga.toLocaleString('id-ID')}/Hari)`;
+      // Format quota and iplimit - show "Unlimited" if 0
+      const quotaText = quota === 0 ? 'Unlimited' : `${quota} GB`;
+      const iplimitText = iplimit === 0 ? 'Unlimited' : `${iplimit} IP`;
+      
+      serverDetails += `\n${index + 1}. ${flag} *${server.nama_server}*\n`;
+      
+      if (action !== 'trial') {
+        serverDetails += `   💰 Harga: Rp${harga.toLocaleString('id-ID')}/hari\n`;
+      }
+      
+      serverDetails += `   📊 Kuota: ${quotaText}\n`;
+      serverDetails += `   📶 Limit IP: ${iplimitText}\n`;
+      serverDetails += `   📈 Total Akun: ${totalCreate}/${batasCreate}\n`;
+    });
+
+    const buttons = servers.map((server, index) => {
+      const flag = getFlagEmoji(server.lokasi || '');
+      const label = `${index + 1}. ${flag} ${server.nama_server}`;
       
       return [Markup.button.callback(label, `${action}_server_${protocol}_${server.id}`)];
     });
@@ -122,9 +142,12 @@ async function showServerSelection(ctx, protocol, action) {
     };
 
     const message = `
-${protocolLabels[protocol] || protocol.toUpperCase()}
+${protocolLabels[protocol] || protocol.toUpperCase()} Premium
 
-Pilih server yang tersedia:
+📋 *Daftar Server Tersedia:*
+${serverDetails}
+
+👇 *Pilih server:*
     `.trim();
 
     await ctx.editMessageText(message, {
