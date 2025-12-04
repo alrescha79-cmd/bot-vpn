@@ -36,64 +36,62 @@ async function renewtrojan(username, exp, quota, limitip, serverId, harga = 0, h
       conn.on('ready', () => {
         console.log('✅ SSH Connection established');
 
+        // Using exact same format as VPS script: renewtrojan
         const cmd = `
 user="${username}"
 exp_days=${exp}
 quota=${quota}
 ip_limit=${limitip}
 
-# Check if user exists and get current expiry
-if ! grep -q "^### \$user " /etc/xray/trojan/config.json 2>/dev/null; then
+echo "DEBUG:Starting renewal for user=$user, exp_days=$exp_days"
+
+# Check if user exists
+if ! grep -q "^### $user " /etc/xray/trojan/config.json 2>/dev/null; then
   echo "ERROR:User not found"
   exit 1
 fi
 
-# Get current expiry date from config
-current_exp=\$(grep "^### \$user " /etc/xray/trojan/config.json | awk '{print \$3}')
-echo "DEBUG:Current expiry: \$current_exp"
+# Read expiration date from database (same as VPS script)
+old_exp=$(grep -E "^### $user " /etc/xray/trojan/.trojan.db | cut -d ' ' -f 3)
+echo "DEBUG:Old expiry from db: $old_exp"
 
-# Calculate new expiry: current_exp + exp_days
-if [ -z "\$current_exp" ]; then
-  exp_date=\$(date -d "+\${exp_days} days" +%Y-%m-%d)
-else
-  current_timestamp=\$(date -d "\$current_exp" +%s 2>/dev/null || echo 0)
-  today_timestamp=\$(date +%s)
-  
-  if [ \$current_timestamp -lt \$today_timestamp ]; then
-    exp_date=\$(date -d "+\${exp_days} days" +%Y-%m-%d)
-  else
-    exp_date=\$(date -d "\$current_exp +\${exp_days} days" +%Y-%m-%d)
-  fi
+if [ -z "$old_exp" ]; then
+  echo "DEBUG:No expiry in db, trying config"
+  old_exp=$(grep "^### $user " /etc/xray/trojan/config.json | awk '{print $3}')
+  echo "DEBUG:Old expiry from config: $old_exp"
 fi
 
-echo "DEBUG:New expiry will be: \$exp_date"
+# Calculate new expiration date (EXACT same format as VPS script)
+new_exp=$(date -d "$old_exp +\${exp_days} days" +"%Y-%m-%d")
+echo "DEBUG:Calculated new_exp: $new_exp"
 
-# Update expiry date in config
-sed -i "/^### \$user /c\### \$user \$exp_date" /etc/xray/trojan/config.json
+# Get UUID from database
+uuid=$(grep -E "^### $user " /etc/xray/trojan/.trojan.db | cut -d ' ' -f 4)
+echo "DEBUG:UUID: $uuid"
 
 # Update quota and IP limit
-if [ "\$quota" != "0" ]; then
-  quota_bytes=\$((quota * 1024 * 1024 * 1024))
-  echo "\$quota_bytes" > /etc/xray/trojan/\${user}
-  echo "\$ip_limit" > /etc/xray/trojan/\${user}IP
+if [ "$quota" != "0" ]; then
+  quota_bytes=$((quota * 1024 * 1024 * 1024))
+  echo "$quota_bytes" > /etc/xray/trojan/\${user}
+  echo "$ip_limit" > /etc/xray/trojan/\${user}IP
+else
+  rm -f /etc/xray/trojan/\${user} /etc/xray/trojan/\${user}IP
 fi
 
-# Update database file
-db_file="/etc/xray/trojan/.trojan.db"
-if [ -f "\$db_file" ]; then
-  grep -v "^### \${user} " "\$db_file" > "\$db_file.tmp" 2>/dev/null || true
-  mv "\$db_file.tmp" "\$db_file" 2>/dev/null || true
-  uuid=\$(grep "^###  \$user " /etc/xray/trojan/config.json | awk '{print \$NF}')
-  echo "### \${user} \${exp_date} \${uuid}" >> "\$db_file"
-fi
+# Update config.json (same as VPS script)
+sed -i "/^### $user/c\\### $user $new_exp" /etc/xray/trojan/config.json
+
+# Update database (same as VPS script)
+sed -i "/^### $user/c\\### $user $new_exp $uuid" /etc/xray/trojan/.trojan.db
 
 # Restart service
 systemctl restart trojan@config 2>/dev/null || systemctl restart xray@trojan 2>/dev/null
 
 echo "SUCCESS"
-echo "Expired: \$exp_date"
-echo "Quota: \${quota} GB"
-echo "IP Limit: \$ip_limit"
+echo "Old Expiry: $old_exp"
+echo "New Expiry: $new_exp"
+echo "Quota: $quota GB"
+echo "IP Limit: $ip_limit"
 `;
 
         console.log('🔨 Executing TROJAN renewal command...');
@@ -120,6 +118,7 @@ echo "IP Limit: \$ip_limit"
             resolved = true;
 
             console.log(`📝 Command finished with code: ${code}`);
+            console.log(`📄 Output: ${output.trim()}`);
 
             if (code !== 0) {
               console.error('❌ Command failed with exit code:', code);
@@ -133,11 +132,23 @@ echo "IP Limit: \$ip_limit"
               return resolve('❌ Gagal memperpanjang akun TROJAN.');
             }
 
-            const expMatch = output.match(/Expired: ([^\n]+)/);
+            const oldExpMatch = output.match(/Old Expiry: ([^\n]+)/);
+            const expMatch = output.match(/New Expiry: ([^\n]+)/);
             const quotaMatch = output.match(/Quota: ([^\n]+)/);
             const ipMatch = output.match(/IP Limit: ([^\n]+)/);
 
-            const expiredStr = expMatch ? new Date(expMatch[1]).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A';
+            const oldExpiry = oldExpMatch ? oldExpMatch[1].trim() : 'N/A';
+            const newExpiry = expMatch ? expMatch[1].trim() : 'N/A';
+
+            console.log('📅 ========== RENEWAL DATE DEBUG ==========');
+            console.log(`📅 Username: ${username}`);
+            console.log(`📅 OLD Expiry: ${oldExpiry}`);
+            console.log(`📅 NEW Expiry: ${newExpiry}`);
+            console.log(`📅 Duration added: ${hari} days`);
+            console.log('📅 ==========================================');
+
+            const expiredStr = newExpiry !== 'N/A' ? new Date(newExpiry).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A';
+            const oldExpiredStr = oldExpiry !== 'N/A' && oldExpiry !== '' ? new Date(oldExpiry).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A';
             const quotaStr = quotaMatch ? quotaMatch[1] : `${quota} GB`;
             const ipStr = ipMatch ? ipMatch[1] : limitip;
 
@@ -151,9 +162,11 @@ echo "IP Limit: \$ip_limit"
 │👤 *Username   :* \`${username}\`
 │📦 *Kuota           :* \`${quotaStr}\`
 │📱 *Batas IP       :* \`${ipStr}\`
-│🕒 *Expired        :* \`${expiredStr}\`
+│📆 *Exp Lama    :* \`${oldExpiredStr}\`
+│🕒 *Exp Baru     :* \`${expiredStr}\`
 └─────────────────────
 ✅ Akun berhasil diperpanjang.
+[RAW_EXPIRY:${newExpiry}]
 `.trim();
 
             console.log('✅ TROJAN renewed for', username);

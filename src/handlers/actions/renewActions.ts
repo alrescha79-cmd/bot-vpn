@@ -389,6 +389,79 @@ async function handlePaymentConfirmation(ctx, action) {
       return ctx.reply(msg, { parse_mode: 'Markdown' });
     }
 
+    // Parse new expiry from response and update accounts table
+    try {
+      // Try RAW_EXPIRY first (most reliable)
+      const rawExpiryMatch = msg.match(/\[RAW_EXPIRY:(\d{4}-\d{2}-\d{2})\]/);
+      const newExpMatch = msg.match(/Exp Baru.*?`(\d{1,2} \w+ \d{4})/);
+      const newExpRawMatch = msg.match(/New Expiry: (\d{4}-\d{2}-\d{2})/);
+
+      let newExpiredAt = null;
+      if (rawExpiryMatch) {
+        // Format: [RAW_EXPIRY:2025-12-18]
+        newExpiredAt = rawExpiryMatch[1];
+        logger.info(`📅 Parsed expiry from RAW_EXPIRY: ${newExpiredAt}`);
+      } else if (newExpRawMatch) {
+        // Format: 2025-12-18
+        newExpiredAt = newExpRawMatch[1];
+      } else if (newExpMatch) {
+        // Format: 18 Des 2024 - parse Indonesian date
+        const dateStr = newExpMatch[1];
+        const monthMap = {
+          'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+          'Mei': '05', 'Jun': '06', 'Jul': '07', 'Agu': '08',
+          'Sep': '09', 'Okt': '10', 'Nov': '11', 'Des': '12'
+        };
+        const parts = dateStr.split(' ');
+        if (parts.length === 3) {
+          const day = parts[0].padStart(2, '0');
+          const month = monthMap[parts[1]] || '01';
+          const year = parts[2];
+          newExpiredAt = `${year}-${month}-${day}`;
+        }
+      }
+
+      if (newExpiredAt) {
+        logger.info(`📅 Updating expired_at in database: ${newExpiredAt} for ${username} (${protocolLower})`);
+
+        // Get server domain for matching
+        const serverDomain = server?.domain || '';
+        logger.info(`📅 Server domain: ${serverDomain}`);
+
+        // Debug: Check if account exists in database
+        const existingAccount = await dbGetAsync(
+          `SELECT id, username, protocol, server, expired_at FROM accounts WHERE username = ? AND protocol = ?`,
+          [username, protocolLower]
+        );
+        logger.info(`📅 Existing account in DB: ${JSON.stringify(existingAccount)}`);
+
+        // Update or Insert accounts table
+        // Note: Database stores protocol in UPPERCASE, so we use UPPER() for comparison
+        if (protocolLower === '3in1') {
+          // For 3in1, update vmess, vless, trojan
+          await dbRunAsync(
+            `UPDATE accounts SET expired_at = ?, status = 'active', expiry_warning_3d_sent = 0, expiry_warning_1d_sent = 0, expired_notified = 0
+             WHERE username = ? AND UPPER(protocol) IN ('VMESS', 'VLESS', 'TROJAN')`,
+            [newExpiredAt, username]
+          );
+          logger.info(`✅ Updated expired_at for 3in1 account (vmess, vless, trojan)`);
+        } else {
+          // Update using case-insensitive protocol match
+          const result = await dbRunAsync(
+            `UPDATE accounts SET expired_at = ?, status = 'active', expiry_warning_3d_sent = 0, expiry_warning_1d_sent = 0, expired_notified = 0
+             WHERE username = ? AND UPPER(protocol) = UPPER(?)`,
+            [newExpiredAt, username, protocolLower]
+          );
+          logger.info(`✅ Updated expired_at for ${protocolLower} account - changes: ${result?.changes || 0}`);
+        }
+      } else {
+        logger.warn(`⚠️ Could not parse new expiry date from response`);
+      }
+    } catch (updateError) {
+      logger.error(`❌ Failed to update expired_at in database:`, updateError);
+      // Don't fail the whole process, just log the error
+    }
+
     // Log invoice
     const komisi = user.role === 'reseller' ? Math.floor(server.harga * duration * 0.1) : 0;
     await dbRunAsync(`
@@ -405,8 +478,9 @@ async function handlePaymentConfirmation(ctx, action) {
       `, [userId, userId, protocolLower, username, komisi]);
     }
 
-    // Send success message
-    await ctx.reply(msg, { parse_mode: 'Markdown' });
+    // Send success message (remove RAW_EXPIRY tag first)
+    const cleanMsg = msg.replace(/\[RAW_EXPIRY:\d{4}-\d{2}-\d{2}\]/g, '').trim();
+    await ctx.reply(cleanMsg, { parse_mode: 'Markdown' });
 
     // Clean up state
     delete global.userState[chatId];

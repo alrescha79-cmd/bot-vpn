@@ -75,7 +75,7 @@ function registerAkunkuAction(bot) {
 
       let accountList = '';
       if (totalAccounts > 0) {
-        accountList = '\n\n📋 *Akun Aktif (Dikelompokkan per Server):*\n';
+        accountList = '\n\n📋 *Akun Aktif:*\n';
 
         const serverNames = Object.keys(accountsGrouped).sort();
         let displayedCount = 0;
@@ -249,21 +249,48 @@ function registerAkunkuViewAccountAction(bot) {
       const expDate = account.expired_at ? new Date(account.expired_at).toLocaleString('id-ID') : 'N/A';
       const createdDate = account.created_at ? new Date(account.created_at).toLocaleString('id-ID') : 'N/A';
 
+      // Escape markdown special characters in raw_response to prevent parse errors
+      // Also truncate if too long (Telegram has limits)
+      let rawResponse = 'N/A';
+      if (account.raw_response) {
+        // First, escape any unbalanced backticks and special markdown chars
+        let response = account.raw_response;
+
+        // For very long responses (like 3IN1), truncate and provide summary
+        const maxLength = 1500;
+        if (response.length > maxLength) {
+          // Count the number of links in the response
+          const vmessLinks = (response.match(/vmess:\/\//g) || []).length;
+          const vlessLinks = (response.match(/vless:\/\//g) || []).length;
+          const trojanLinks = (response.match(/trojan:\/\//g) || []).length;
+
+          rawResponse = `[Respons terlalu panjang - ${response.length} karakter]\n\n`;
+          rawResponse += `📊 Ringkasan:\n`;
+          if (vmessLinks > 0) rawResponse += `• VMESS Links: ${vmessLinks}\n`;
+          if (vlessLinks > 0) rawResponse += `• VLESS Links: ${vlessLinks}\n`;
+          if (trojanLinks > 0) rawResponse += `• TROJAN Links: ${trojanLinks}\n`;
+          rawResponse += `\nGunakan link "Save" di pesan create untuk melihat detail lengkap.`;
+        } else {
+          rawResponse = response;
+        }
+      }
+
+      // Build detail text without code block wrapper for raw_response
+      // to avoid nested backtick issues
       const detailText = `
 ✅ *Detail Akun*
 
 📌 *Username:* \`${account.username}\`
-🔐 *Protokol:* ${account.protocol}
+🔐 *Protokol:* ${account.protocol.toUpperCase()}
 🌐 *Server:* ${account.server}
 ⏳ *Dibuat:* ${createdDate}
 📅 *Expired:* ${expDate}
 📊 *Status:* ${account.status === 'active' ? '✅ Aktif' : '❌ Expired'}
 
-━━━━━━━━━━━━━━━━━
-*Raw Response:*
-\`\`\`
-${account.raw_response ? account.raw_response.substring(0, 2000) : 'N/A'}
-\`\`\`
+━━━━━━━━━━━━━━━━━━━━━━
+📋 *Raw Response:*
+
+${rawResponse}
       `.trim();
 
       await ctx.editMessageText(detailText, {
@@ -402,13 +429,73 @@ function registerAkunkuConfirmDeleteAction(bot) {
         return ctx.reply('❌ Akun tidak ditemukan.');
       }
 
-      // Delete account
+      await ctx.answerCbQuery();
+      await ctx.editMessageText('⏳ *Sedang menghapus akun dari server...* Mohon tunggu.', { parse_mode: 'Markdown' });
+
+      // Get server ID from domain
+      const server = await dbGetAsync('SELECT id FROM Server WHERE domain = ?', [account.server]);
+      let vpsDeleteResult = 'SKIPPED';
+
+      if (server) {
+        // Import delete modules
+        const deleteVMESS = require('../../modules/protocols/vmess/deleteVMESS');
+        const deleteVLESS = require('../../modules/protocols/vless/deleteVLESS');
+        const deleteTROJAN = require('../../modules/protocols/trojan/deleteTROJAN');
+        const deleteSSH = require('../../modules/protocols/ssh/deleteSSH');
+        const deleteSHADOWSOCKS = require('../../modules/protocols/shadowsocks/deleteSHADOWSOCKS');
+
+        // Delete from VPS based on protocol
+        const protocol = account.protocol.toUpperCase();
+        logger.info(`🗑️ Deleting ${account.username} (${protocol}) from VPS...`);
+
+        try {
+          if (protocol === 'VMESS') {
+            vpsDeleteResult = await deleteVMESS.deleteVmess(account.username, server.id);
+          } else if (protocol === 'VLESS') {
+            vpsDeleteResult = await deleteVLESS.deleteVless(account.username, server.id);
+          } else if (protocol === 'TROJAN') {
+            vpsDeleteResult = await deleteTROJAN.deleteTrojan(account.username, server.id);
+          } else if (protocol === 'SSH') {
+            vpsDeleteResult = await deleteSSH.deleteSsh(account.username, server.id);
+          } else if (protocol === 'SHADOWSOCKS') {
+            vpsDeleteResult = await deleteSHADOWSOCKS.deleteShadowsocks(account.username, server.id);
+          } else if (protocol === '3IN1') {
+            // Delete from all 3 protocols
+            const vmessResult = await deleteVMESS.deleteVmess(account.username, server.id);
+            const vlessResult = await deleteVLESS.deleteVless(account.username, server.id);
+            const trojanResult = await deleteTROJAN.deleteTrojan(account.username, server.id);
+            vpsDeleteResult = (vmessResult === 'SUCCESS' || vlessResult === 'SUCCESS' || trojanResult === 'SUCCESS') ? 'SUCCESS' : 'PARTIAL';
+          }
+          logger.info(`🗑️ VPS delete result: ${vpsDeleteResult}`);
+        } catch (vpsErr) {
+          logger.error('❌ VPS delete error:', vpsErr);
+          vpsDeleteResult = `ERROR: ${vpsErr.message}`;
+        }
+      } else {
+        logger.warn(`⚠️ Server not found for domain: ${account.server}`);
+      }
+
+      // Delete from local database
       await deleteAccountById(accountId, userId, user.role);
 
+      // Also delete from akun_aktif table
+      const { dbRunAsync } = require('../../database/connection');
+      await dbRunAsync('DELETE FROM akun_aktif WHERE username = ? AND UPPER(jenis) = UPPER(?)', [account.username, account.protocol]);
+
+      const vpsStatus = vpsDeleteResult === 'SUCCESS'
+        ? '✅ Berhasil dihapus dari server VPS'
+        : vpsDeleteResult.startsWith('⚠️')
+          ? vpsDeleteResult
+          : vpsDeleteResult === 'SKIPPED'
+            ? '⚠️ Server tidak ditemukan, hanya dihapus dari database'
+            : `⚠️ ${vpsDeleteResult}`;
+
       await ctx.editMessageText(
-        `✅ *Akun berhasil dihapus dari database*\n\n` +
+        `🗑️ *AKUN BERHASIL DIHAPUS*\n\n` +
         `Username: \`${account.username}\`\n` +
-        `Protokol: ${account.protocol}`,
+        `Protokol: ${account.protocol}\n\n` +
+        `📡 *Status VPS:*\n${vpsStatus}\n` +
+        `📂 *Database:* ✅ Terhapus`,
         {
           parse_mode: 'Markdown',
           ...Markup.inlineKeyboard([

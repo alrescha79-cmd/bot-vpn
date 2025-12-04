@@ -1,5 +1,114 @@
 # 📝 Changelog & Implementation Summary
 
+## Version 3.1.25 - Installation & Bug Fixes (Desember 2025)
+
+### 🎯 Fitur Utama
+
+#### ✅ Instalasi/Update Lebih Mudah
+- **One-liner Installation** - Install dan update hanya dengan satu baris command
+- **Auto Backup & Restore** - Database otomatis di-backup sebelum update dan di-restore setelahnya
+- **Interactive Setup** - Konfigurasi bot langsung saat proses instalasi berlangsung
+- **Seamless Upgrade** - Update tanpa kehilangan data atau konfigurasi
+
+
+### 🐛 Bug Fixes
+
+#### 1. Perpanjang Akun (Renew)
+- **Root cause:** Format date calculation menggunakan syntax yang tidak kompatibel dengan VPS
+- **Fix:** Menggunakan format `date -d "$old_exp +${exp_days} days"` sesuai script VPS
+- **Result:** Tanggal expired sekarang dihitung dengan benar (tambah hari dari tanggal lama, bukan dari hari ini)
+- **Tambahan:** Sync otomatis ke tabel `accounts` setelah renewal berhasil
+
+#### 2. Backup/Restore (Admin)
+- **Root cause:** Callback handler tidak terdaftar dengan benar
+- **Fix:** Perbaikan routing callback untuk delete backup
+- **Result:** Admin dapat backup, restore, dan hapus backup dengan lancar
+
+#### 3. Detail Akun
+- **Root cause:** Query menggunakan case-sensitive protocol matching
+- **Fix:** Menggunakan `UPPER()` untuk case-insensitive comparison
+- **Result:** Detail akun tampil dengan benar untuk semua protokol
+
+#### 4. Hapus Akun
+- **Root cause:** Hanya menghapus dari database lokal, tidak dari VPS
+- **Fix:** Menambahkan SSH deletion ke VPS sebelum hapus dari database
+- **Result:** Akun terhapus dari VPS dan database secara sinkron
+
+Protokol yang didukung:
+- VMESS, VLESS, TROJAN, SSH, SHADOWSOCKS, 3IN1
+
+#### 5. Transfer Saldo (Admin & Reseller)
+- **Root cause:** Handler transfer tidak memproses amount dengan benar
+- **Fix:** Validasi dan parsing amount yang lebih robust
+- **Result:** Transfer saldo berfungsi untuk admin dan reseller
+
+### 📦 File Baru
+
+#### Delete Modules
+- `src/modules/protocols/vmess/deleteVMESS.ts` - Hapus akun VMESS via SSH
+- `src/modules/protocols/vless/deleteVLESS.ts` - Hapus akun VLESS via SSH
+- `src/modules/protocols/trojan/deleteTROJAN.ts` - Hapus akun TROJAN via SSH
+- `src/modules/protocols/ssh/deleteSSH.ts` - Hapus akun SSH via SSH
+- `src/modules/protocols/shadowsocks/deleteSHADOWSOCKS.ts` - Hapus akun SHADOWSOCKS via SSH
+
+### 🔧 File yang Dimodifikasi
+
+#### Renewal Modules
+- `src/modules/protocols/vmess/renewVMESS.ts` - Fixed date calculation
+- `src/modules/protocols/vless/renewVLESS.ts` - Fixed date calculation
+- `src/modules/protocols/trojan/renewTROJAN.ts` - Fixed date calculation
+- `src/modules/protocols/ssh/renewSSH.ts` - Fixed date calculation
+- `src/modules/protocols/shadowsocks/renewSHADOWSOCKS.ts` - Fixed date calculation
+- `src/modules/protocols/3in1/renew3IN1.ts` - Fixed date calculation
+
+#### Handlers
+- `src/handlers/actions/renewActions.ts` - Added database sync after renewal
+- `src/handlers/actions/navigationActions.ts` - Added VPS deletion before database removal
+
+### 🚀 Upgrade Notes
+
+**Dari v3.1.22 ke v3.1.25:**
+
+1. **Pull kode terbaru**
+   ```bash
+   git pull origin main
+   ```
+
+2. **Build ulang**
+   ```bash
+   npm run build
+   ```
+
+3. **Restart bot**
+   ```bash
+   pm2 restart bot-vpn
+   # atau
+   systemctl restart bot-vpn
+   ```
+
+4. **Verifikasi**
+   - Test perpanjang akun → cek tanggal expired lama vs baru
+   - Test hapus akun → cek akun terhapus dari VPS
+   - Test backup/restore → cek file backup
+   - Test transfer saldo
+
+### 📝 Migration Notes
+
+#### Database Migration
+Tidak ada perubahan schema. Database tetap kompatibel.
+
+#### Breaking Changes
+**Tidak ada breaking changes.** Update ini backward compatible.
+
+---
+
+**Version:** 3.1.25  
+**Release Date:** 4 Desember 2025  
+**Status:** ✅ Production Ready  
+**Major Updates:** One-liner Install, Renewal Fix, Delete VPS Sync, Transfer Saldo Fix
+
+---
+
 ## Version 3.1.22 - Pakasir Payment Gateway Integration (November 2025)
 
 ### 🎯 Fitur Utama
