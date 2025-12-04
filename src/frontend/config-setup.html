@@ -251,44 +251,76 @@
             </div>
 
             <div class="form-group">
-                <label for="GROUP_ID">Group ID *</label>
-                <input type="text" id="GROUP_ID" name="GROUP_ID" required 
+                <label for="GROUP_ID">Group ID</label>
+                <input type="text" id="GROUP_ID" name="GROUP_ID" 
                        placeholder="-1001234567890">
-                <small>Group ID untuk notifikasi</small>
+                <small>Group ID untuk notifikasi (opsional)</small>
             </div>
 
             <!-- Store Configuration -->
             <div class="section-title">🏪 Konfigurasi Toko</div>
 
             <div class="form-group">
-                <label for="NAMA_STORE">Nama Store</label>
-                <input type="text" id="NAMA_STORE" name="NAMA_STORE" 
+                <label for="NAMA_STORE">Nama Store *</label>
+                <input type="text" id="NAMA_STORE" name="NAMA_STORE" required
                        placeholder="Alrescha79 Store">
-                <small>Nama toko Anda (opsional)</small>
+                <small>Nama toko Anda</small>
             </div>
 
             <!-- Payment Configuration -->
-            <div class="section-title">💳 Konfigurasi Pembayaran QRIS</div>
+            <div class="section-title">💳 Konfigurasi Pembayaran (Opsional)</div>
+            <p style="color: #666; font-size: 13px; margin-bottom: 15px;">
+                Isi hanya payment gateway yang akan Anda gunakan. Biarkan kosong jika tidak menggunakannya.
+            </p>
 
-            <div class="form-group">
-                <label for="DATA_QRIS">Data QRIS *</label>
-                <input type="text" id="DATA_QRIS" name="DATA_QRIS" required 
-                       placeholder="00020101021126...">
-                <small>String data QRIS dari penyedia pembayaran</small>
+            <!-- QRIS Configuration -->
+            <div style="margin-bottom: 20px;">
+                <h4 style="color: #667eea; font-size: 14px; margin-bottom: 10px;">QRIS</h4>
+                
+                <div class="form-group">
+                    <label for="DATA_QRIS">Data QRIS</label>
+                    <input type="text" id="DATA_QRIS" name="DATA_QRIS" 
+                           placeholder="00020101021126...">
+                    <small>String data QRIS dari penyedia pembayaran</small>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="MERCHANT_ID">Merchant ID *</label>
-                <input type="text" id="MERCHANT_ID" name="MERCHANT_ID" required 
-                       placeholder="MERCHANT123">
-                <small>ID merchant dari penyedia pembayaran</small>
+            <!-- Midtrans Configuration -->
+            <div style="margin-bottom: 20px;">
+                <h4 style="color: #667eea; font-size: 14px; margin-bottom: 10px;">Midtrans</h4>
+                
+                <div class="form-group">
+                    <label for="MERCHANT_ID">Merchant ID</label>
+                    <input type="text" id="MERCHANT_ID" name="MERCHANT_ID" 
+                           placeholder="G123456789">
+                    <small>ID merchant dari Midtrans</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="SERVER_KEY">Server Key</label>
+                    <input type="password" id="SERVER_KEY" name="SERVER_KEY" 
+                           placeholder="Mid-server-xxxxx">
+                    <small>Server Key dari Midtrans</small>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="SERVER_KEY">API Key *</label>
-                <input type="password" id="SERVER_KEY" name="SERVER_KEY" required 
-                       placeholder="your-api-key-here">
-                <small>API key dari penyedia pembayaran</small>
+            <!-- Pakasir Configuration -->
+            <div style="margin-bottom: 20px;">
+                <h4 style="color: #667eea; font-size: 14px; margin-bottom: 10px;">Pakasir</h4>
+                
+                <div class="form-group">
+                    <label for="PAKASIR_SLUG">Pakasir Slug</label>
+                    <input type="text" id="PAKASIR_SLUG" name="PAKASIR_SLUG" 
+                           placeholder="bot-telegram-son">
+                    <small>Slug proyek dari Pakasir</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="PAKASIR_API_KEY">Pakasir API Key</label>
+                    <input type="password" id="PAKASIR_API_KEY" name="PAKASIR_API_KEY" 
+                           placeholder="FfsUGahVoajEZHywVTBMGJ5S...">
+                    <small>API Key dari proyek Pakasir</small>
+                </div>
             </div>
 
             <!-- Server Configuration -->
@@ -395,6 +427,9 @@
                         else {
                             config[key] = value.trim();
                         }
+                    } else {
+                        // Include empty values for optional fields
+                        config[key] = "";
                     }
                 }
 
