@@ -18,7 +18,7 @@ curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts
 
 ---
 > **🆕 What's New in v3.1.25:**
-> - ✅ **Perbaikan Bug** - Perbaikan bug minor
+> - ✅ **Perbaikan Bug** - Lihat [Release](https://github.com/alrescha79-cmd/bot-vpn/releases/tag/v3.1.25) untuk detail
 
 
 > **Previous Updates (v3.1.22):**
