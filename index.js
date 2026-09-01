@@ -307,6 +307,8 @@ function setupExpressRoutes() {
     logger.info(`   ⚙️  Edit Config (Local):   http://localhost:${PORT}/config/edit`);
     logger.info(`   ⚙️  Edit Config (Network): http://${localIP}:${PORT}/config/edit`);
     logger.info(`   ❤️  Health Check:          http://localhost:${PORT}/health`);
+    logger.info(`   💳 Tripay Webhook:         http://${localIP}:${PORT}/api/tripay/notification`);
+    logger.info(`   💳 Duitku Webhook:         http://${localIP}:${PORT}/api/duitku/notification`);
     logger.info(`   💳 Midtrans Webhook:       http://${localIP}:${PORT}/api/midtrans/notification`);
     logger.info(`   💳 Pakasir Webhook:        http://${localIP}:${PORT}/api/pakasir/notification`);
     logger.info('');
@@ -407,6 +409,8 @@ async function main() {
     logger.info(`   ❤️  Health Check:          http://localhost:${PORT}/health`);
     logger.info('');
     logger.info('💳 Payment Gateway Webhooks:');
+    logger.info(`   🔵 Tripay:    http://${localIP}:${PORT}/api/tripay/notification`);
+    logger.info(`   🟢 Duitku:    http://${localIP}:${PORT}/api/duitku/notification`);
     logger.info(`   🔶 Midtrans:  http://${localIP}:${PORT}/api/midtrans/notification`);
     logger.info(`   🟢 Pakasir:   http://${localIP}:${PORT}/api/pakasir/notification`);
     logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

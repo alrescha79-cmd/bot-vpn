@@ -1,12 +1,14 @@
 /**
  * Configuration API Routes
- * Provides REST API for configuration management
+ * Provides REST API for configuration management and payment webhooks
  */
 
 import { Router, Request, Response } from 'express';
 const { configService } = require('../services/config.service');
 const { handleMidtransNotification } = require('./midtrans.webhook');
 const { handlePakasirNotification } = require('./pakasir.webhook');
+const { handleTripayNotification } = require('./tripay.webhook');
+const { handleDuitkuNotification } = require('./duitku.webhook');
 
 const router = Router();
 
@@ -58,11 +60,28 @@ router.post('/config', (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/tripay/notification
+ * Handle payment notification from Tripay webhook
+ */
+router.post('/tripay/notification', (req: Request, res: Response) => {
+  const bot = (req as any).app.get('bot');
+  handleTripayNotification(req, res, bot);
+});
+
+/**
+ * POST /api/duitku/notification
+ * Handle payment notification from Duitku webhook
+ */
+router.post('/duitku/notification', (req: Request, res: Response) => {
+  const bot = (req as any).app.get('bot');
+  handleDuitkuNotification(req, res, bot);
+});
+
+/**
  * POST /api/midtrans/notification
  * Handle payment notification from Midtrans webhook
  */
 router.post('/midtrans/notification', (req: Request, res: Response) => {
-  // Get bot instance from app
   const bot = (req as any).app.get('bot');
   handleMidtransNotification(req, res, bot);
 });
@@ -72,7 +91,6 @@ router.post('/midtrans/notification', (req: Request, res: Response) => {
  * Handle payment notification from Pakasir webhook
  */
 router.post('/pakasir/notification', (req: Request, res: Response) => {
-  // Get bot instance from app
   const bot = (req as any).app.get('bot');
   handlePakasirNotification(req, res, bot);
 });

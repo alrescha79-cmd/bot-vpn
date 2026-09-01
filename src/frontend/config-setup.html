@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Setup Konfigurasi - Bot VPN</title>
+    <title>Setup & Konfigurasi - Bot VPN</title>
     <style>
         * {
             margin: 0;
@@ -13,105 +13,197 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 24px;
         }
 
         .container {
-            background: white;
+            background: #ffffff;
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+            max-width: 680px;
             width: 100%;
-            padding: 40px;
-            animation: slideUp 0.5s ease-out;
+            padding: 36px;
+            animation: slideUp 0.4s ease-out;
         }
 
         @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 24px;
         }
 
         .header h1 {
-            color: #333;
-            font-size: 28px;
-            margin-bottom: 10px;
+            color: #1a202c;
+            font-size: 26px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .header p {
-            color: #666;
+            color: #718096;
             font-size: 14px;
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
 
         .form-group label {
             display: block;
-            color: #333;
-            font-weight: 500;
-            margin-bottom: 8px;
-            font-size: 14px;
+            color: #2d3748;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 13px;
         }
 
-        .form-group input {
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-group input, .form-group select {
             width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e0e0e0;
+            padding: 11px 14px;
+            border: 2px solid #e2e8f0;
             border-radius: 10px;
             font-size: 14px;
-            transition: all 0.3s ease;
-            background: #f9f9f9;
+            transition: all 0.2s ease;
+            background: #f8fafc;
+            color: #2d3748;
         }
 
-        .form-group input:focus {
+        .form-group input:focus, .form-group select:focus {
             outline: none;
-            border-color: #667eea;
-            background: white;
+            border-color: #3182ce;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.15);
         }
 
-        .form-group input::placeholder {
-            color: #999;
+        .toggle-secret-btn {
+            position: absolute;
+            right: 12px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: #718096;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
         }
 
         .form-group small {
             display: block;
-            color: #999;
-            font-size: 12px;
-            margin-top: 5px;
+            color: #a0aec0;
+            font-size: 11px;
+            margin-top: 4px;
         }
+
+        .tabs-container {
+            margin-top: 15px;
+            margin-bottom: 20px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 14px;
+            background: #edf2f7;
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            min-width: 85px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4a5568;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        .tab-btn.active {
+            background: #ffffff;
+            color: #3182ce;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+
+        .tab-content {
+            display: none;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 18px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #2b6cb0;
+            margin: 20px 0 12px 0;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #edf2f7;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .mode-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .mode-setup { background: #feebc8; color: #c05621; }
+        .mode-edit { background: #bee3f8; color: #2b6cb0; }
 
         .button-group {
             display: flex;
             gap: 12px;
-            margin-top: 30px;
+            margin-top: 24px;
         }
 
         .btn {
             flex: 1;
-            padding: 14px 24px;
+            padding: 13px 20px;
             border: none;
             border-radius: 10px;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -119,66 +211,39 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #3182ce 0%, #2b6cb0 100%);
             color: white;
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 8px 18px rgba(49, 130, 206, 0.35);
+            transform: translateY(-1px);
         }
 
         .btn-secondary {
-            background: #f0f0f0;
-            color: #666;
+            background: #edf2f7;
+            color: #4a5568;
         }
 
-        .btn-secondary:hover {
-            background: #e0e0e0;
-        }
-
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
+        .btn-secondary:hover { background: #e2e8f0; }
 
         .alert {
             padding: 12px 16px;
             border-radius: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             display: none;
-            animation: slideDown 0.3s ease-out;
+            font-size: 13px;
         }
 
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
+        .alert-success { background: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
+        .alert-error { background: #fed7d7; color: #742a2a; border: 1px solid #feb2b2; }
 
         .spinner {
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-top: 3px solid white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
             border-radius: 50%;
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
             animation: spin 0.8s linear infinite;
         }
 
@@ -186,159 +251,178 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
-        .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #667eea;
-            margin: 25px 0 15px 0;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-
-        .mode-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-left: 10px;
-        }
-
-        .mode-setup {
-            background: #ffeaa7;
-            color: #d63031;
-        }
-
-        .mode-edit {
-            background: #74b9ff;
-            color: #0984e3;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1 id="pageTitle">Setup Konfigurasi</h1>
-            <p id="pageDescription">Lengkapi konfigurasi awal untuk menjalankan aplikasi</p>
+            <h1 id="pageTitle">Konfigurasi Bot VPN</h1>
+            <p id="pageDescription">Atur token Telegram, admin ID, dan gateway pembayaran</p>
         </div>
 
         <div id="alertBox" class="alert"></div>
 
         <form id="configForm">
             <!-- Bot Configuration -->
-            <div class="section-title">🤖 Konfigurasi Bot</div>
+            <div class="section-title">🤖 Utama & Admin</div>
             
             <div class="form-group">
-                <label for="BOT_TOKEN">Bot Token *</label>
-                <input type="text" id="BOT_TOKEN" name="BOT_TOKEN" required 
-                       placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz">
-                <small>Token bot Telegram dari @BotFather</small>
+                <label for="BOT_TOKEN">Bot Token Telegram *</label>
+                <div class="input-wrapper">
+                    <input type="password" id="BOT_TOKEN" name="BOT_TOKEN" required 
+                           placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz">
+                    <button type="button" class="toggle-secret-btn" onclick="toggleSecret('BOT_TOKEN')">👁️</button>
+                </div>
+                <small>Dapatkan token dari @BotFather di Telegram</small>
             </div>
 
-            <div class="form-group">
-                <label for="USER_ID">User ID Admin *</label>
-                <input type="text" id="USER_ID" name="USER_ID" required 
-                       placeholder="123456789 atau 123456789,987654321">
-                <small>Chat ID admin (bisa lebih dari satu, pisahkan dengan koma)</small>
+            <div style="display: flex; gap: 12px;">
+                <div class="form-group" style="flex: 1;">
+                    <label for="USER_ID">User ID Admin *</label>
+                    <input type="text" id="USER_ID" name="USER_ID" required 
+                           placeholder="123456789 (bisa pisah koma)">
+                    <small>Chat ID Telegram Anda</small>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="ADMIN_USERNAME">Username Admin</label>
+                    <input type="text" id="ADMIN_USERNAME" name="ADMIN_USERNAME" 
+                           placeholder="UsernameAdmin">
+                    <small>Tanpa tanda @</small>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="ADMIN_USERNAME">Username Admin</label>
-                <input type="text" id="ADMIN_USERNAME" name="ADMIN_USERNAME" 
-                       placeholder="Alrescha79">
-                <small>Username admin (opsional)</small>
+            <div style="display: flex; gap: 12px;">
+                <div class="form-group" style="flex: 1;">
+                    <label for="NAMA_STORE">Nama Store / Toko</label>
+                    <input type="text" id="NAMA_STORE" name="NAMA_STORE" 
+                           placeholder="My VPN Store">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="GROUP_ID">Group ID Notifikasi</label>
+                    <input type="text" id="GROUP_ID" name="GROUP_ID" 
+                           placeholder="-1001234567890">
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="GROUP_ID">Group ID</label>
-                <input type="text" id="GROUP_ID" name="GROUP_ID" 
-                       placeholder="-1001234567890">
-                <small>Group ID untuk notifikasi (opsional)</small>
-            </div>
-
-            <!-- Store Configuration -->
-            <div class="section-title">🏪 Konfigurasi Toko</div>
-
-            <div class="form-group">
-                <label for="NAMA_STORE">Nama Store *</label>
-                <input type="text" id="NAMA_STORE" name="NAMA_STORE" required
-                       placeholder="Alrescha79 Store">
-                <small>Nama toko Anda</small>
-            </div>
-
-            <!-- Payment Configuration -->
-            <div class="section-title">💳 Konfigurasi Pembayaran (Opsional)</div>
-            <p style="color: #666; font-size: 13px; margin-bottom: 15px;">
-                Isi hanya payment gateway yang akan Anda gunakan. Biarkan kosong jika tidak menggunakannya.
+            <!-- Payment Configuration Tabs -->
+            <div class="section-title">💳 Payment Gateway (Pilih yang Digunakan)</div>
+            <p style="color: #718096; font-size: 12px; margin-bottom: 10px;">
+                Aktifkan minimal 1 payment gateway untuk deposit otomatis atau manual.
             </p>
 
-            <!-- QRIS Configuration -->
-            <div style="margin-bottom: 20px;">
-                <h4 style="color: #667eea; font-size: 14px; margin-bottom: 10px;">QRIS</h4>
-                
-                <div class="form-group">
-                    <label for="DATA_QRIS">Data QRIS</label>
-                    <input type="text" id="DATA_QRIS" name="DATA_QRIS" 
-                           placeholder="00020101021126...">
-                    <small>String data QRIS dari penyedia pembayaran</small>
+            <div class="tabs-container">
+                <div class="tab-buttons">
+                    <button type="button" class="tab-btn active" onclick="switchTab('tab-tripay')">🔵 Tripay</button>
+                    <button type="button" class="tab-btn" onclick="switchTab('tab-duitku')">🟢 Duitku</button>
+                    <button type="button" class="tab-btn" onclick="switchTab('tab-pakasir')">🟢 Pakasir</button>
+                    <button type="button" class="tab-btn" onclick="switchTab('tab-midtrans')">🔶 Midtrans</button>
+                    <button type="button" class="tab-btn" onclick="switchTab('tab-qris')">📱 Static QRIS</button>
+                </div>
+
+                <!-- Tripay Tab -->
+                <div id="tab-tripay" class="tab-content active">
+                    <div class="form-group">
+                        <label for="TRIPAY_API_KEY">Tripay API Key</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="TRIPAY_API_KEY" name="TRIPAY_API_KEY" placeholder="DEV-xxx atau PROD-xxx">
+                            <button type="button" class="toggle-secret-btn" onclick="toggleSecret('TRIPAY_API_KEY')">👁️</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="TRIPAY_PRIVATE_KEY">Tripay Private Key</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="TRIPAY_PRIVATE_KEY" name="TRIPAY_PRIVATE_KEY" placeholder="Private key Tripay">
+                            <button type="button" class="toggle-secret-btn" onclick="toggleSecret('TRIPAY_PRIVATE_KEY')">👁️</button>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <div class="form-group" style="flex: 2;">
+                            <label for="TRIPAY_MERCHANT_CODE">Kode Merchant</label>
+                            <input type="text" id="TRIPAY_MERCHANT_CODE" name="TRIPAY_MERCHANT_CODE" placeholder="T12345">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="TRIPAY_ENV">Environment</label>
+                            <select id="TRIPAY_ENV" name="TRIPAY_ENV">
+                                <option value="production">Production</option>
+                                <option value="sandbox">Sandbox</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Duitku Tab -->
+                <div id="tab-duitku" class="tab-content">
+                    <div class="form-group">
+                        <label for="DUITKU_MERCHANT_CODE">Merchant Code</label>
+                        <input type="text" id="DUITKU_MERCHANT_CODE" name="DUITKU_MERCHANT_CODE" placeholder="D1234">
+                    </div>
+                    <div class="form-group">
+                        <label for="DUITKU_API_KEY">Duitku API Key</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="DUITKU_API_KEY" name="DUITKU_API_KEY" placeholder="API Key Duitku">
+                            <button type="button" class="toggle-secret-btn" onclick="toggleSecret('DUITKU_API_KEY')">👁️</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="DUITKU_ENV">Environment</label>
+                        <select id="DUITKU_ENV" name="DUITKU_ENV">
+                            <option value="production">Production</option>
+                            <option value="sandbox">Sandbox</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Pakasir Tab -->
+                <div id="tab-pakasir" class="tab-content">
+                    <div class="form-group">
+                        <label for="PAKASIR_PROJECT">Pakasir Project Slug</label>
+                        <input type="text" id="PAKASIR_PROJECT" name="PAKASIR_PROJECT" placeholder="slug-project-anda">
+                    </div>
+                    <div class="form-group">
+                        <label for="PAKASIR_API_KEY">Pakasir API Key</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="PAKASIR_API_KEY" name="PAKASIR_API_KEY" placeholder="API Key Pakasir">
+                            <button type="button" class="toggle-secret-btn" onclick="toggleSecret('PAKASIR_API_KEY')">👁️</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Midtrans Tab -->
+                <div id="tab-midtrans" class="tab-content">
+                    <div class="form-group">
+                        <label for="MERCHANT_ID">Merchant ID</label>
+                        <input type="text" id="MERCHANT_ID" name="MERCHANT_ID" placeholder="G123456789">
+                    </div>
+                    <div class="form-group">
+                        <label for="SERVER_KEY">Server Key</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="SERVER_KEY" name="SERVER_KEY" placeholder="Mid-server-xxxx">
+                            <button type="button" class="toggle-secret-btn" onclick="toggleSecret('SERVER_KEY')">👁️</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Static QRIS Tab -->
+                <div id="tab-qris" class="tab-content">
+                    <div class="form-group">
+                        <label for="DATA_QRIS">String Data QRIS</label>
+                        <input type="text" id="DATA_QRIS" name="DATA_QRIS" placeholder="00020101021126...">
+                        <small>String QRIS dari Dana Bisnis, ShopeePay, GoPay, BCA, dll.</small>
+                    </div>
                 </div>
             </div>
 
-            <!-- Midtrans Configuration -->
-            <div style="margin-bottom: 20px;">
-                <h4 style="color: #667eea; font-size: 14px; margin-bottom: 10px;">Midtrans</h4>
-                
-                <div class="form-group">
-                    <label for="MERCHANT_ID">Merchant ID</label>
-                    <input type="text" id="MERCHANT_ID" name="MERCHANT_ID" 
-                           placeholder="G123456789">
-                    <small>ID merchant dari Midtrans</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="SERVER_KEY">Server Key</label>
-                    <input type="password" id="SERVER_KEY" name="SERVER_KEY" 
-                           placeholder="Mid-server-xxxxx">
-                    <small>Server Key dari Midtrans</small>
-                </div>
-            </div>
-
-            <!-- Pakasir Configuration -->
-            <div style="margin-bottom: 20px;">
-                <h4 style="color: #667eea; font-size: 14px; margin-bottom: 10px;">Pakasir</h4>
-                
-                <div class="form-group">
-                    <label for="PAKASIR_SLUG">Pakasir Slug</label>
-                    <input type="text" id="PAKASIR_SLUG" name="PAKASIR_SLUG" 
-                           placeholder="bot-telegram-son">
-                    <small>Slug proyek dari Pakasir</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="PAKASIR_API_KEY">Pakasir API Key</label>
-                    <input type="password" id="PAKASIR_API_KEY" name="PAKASIR_API_KEY" 
-                           placeholder="FfsUGahVoajEZHywVTBMGJ5S...">
-                    <small>API Key dari proyek Pakasir</small>
-                </div>
-            </div>
-
-            <!-- Server Configuration -->
-            <div class="section-title">⚙️ Konfigurasi Server</div>
-
+            <!-- Server Port -->
+            <div class="section-title">⚙️ Server & Port</div>
             <div class="form-group">
-                <label for="PORT">Port</label>
-                <input type="number" id="PORT" name="PORT" 
-                       placeholder="50123">
-                <small>Port server web (default: 50123)</small>
+                <label for="PORT">Port Webhook / Web Config</label>
+                <input type="number" id="PORT" name="PORT" placeholder="50123" value="50123">
             </div>
 
             <div class="button-group">
-                <button type="button" class="btn btn-secondary" id="resetBtn">
-                    Reset ke Default
-                </button>
+                <button type="button" class="btn btn-secondary" id="resetBtn">Reset</button>
                 <button type="submit" class="btn btn-primary" id="submitBtn">
-                    <span id="btnText">Simpan & Lanjutkan</span>
+                    <span id="btnText">Simpan & Mulai Bot</span>
                 </button>
             </div>
         </form>
@@ -346,151 +430,109 @@
 
     <script>
         const API_BASE = '/api/config';
-        let isEditMode = false;
 
-        // Initialize page
+        function toggleSecret(id) {
+            const input = document.getElementById(id);
+            if (!input) return;
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            const target = document.getElementById(tabId);
+            if (target) target.classList.add('active');
+            event.target.classList.add('active');
+        }
+
         async function init() {
             try {
-                const response = await fetch(API_BASE);
-                const data = await response.json();
+                const res = await fetch(API_BASE);
+                const data = await res.json();
 
-                if (data.configured) {
-                    // Edit mode
-                    isEditMode = true;
-                    document.getElementById('pageTitle').innerHTML = 
-                        'Edit Konfigurasi <span class="mode-badge mode-edit">EDIT</span>';
-                    document.getElementById('pageDescription').textContent = 
-                        'Edit konfigurasi aplikasi Anda';
+                if (data.configured && data.config) {
+                    document.getElementById('pageTitle').innerHTML = 'Edit Konfigurasi <span class="mode-badge mode-edit">EDIT</span>';
                     document.getElementById('btnText').textContent = 'Simpan Perubahan';
-                    
-                    // Populate form
                     populateForm(data.config);
-                } else {
-                    // Setup mode
-                    document.getElementById('pageTitle').innerHTML = 
-                        'Setup Konfigurasi <span class="mode-badge mode-setup">SETUP</span>';
-                    
-                    // Load defaults from example
-                    if (data.example) {
-                        populateForm(data.example);
-                    }
+                } else if (data.example) {
+                    document.getElementById('pageTitle').innerHTML = 'Setup Konfigurasi <span class="mode-badge mode-setup">SETUP</span>';
+                    populateForm(data.example);
                 }
-            } catch (error) {
-                showAlert('Gagal memuat konfigurasi: ' + error.message, 'error');
+            } catch (err) {
+                showAlert('Gagal memuat konfigurasi: ' + err.message, 'error');
             }
         }
 
-        function populateForm(config) {
-            for (const [key, value] of Object.entries(config)) {
-                const input = document.getElementById(key);
-                if (input && value) {
-                    // Handle USER_ID (array or single value)
-                    if (key === 'USER_ID' && Array.isArray(value)) {
-                        input.value = value.join(',');
+        function populateForm(cfg) {
+            for (const [k, v] of Object.entries(cfg)) {
+                const el = document.getElementById(k);
+                if (el && v !== undefined && v !== null) {
+                    if (k === 'USER_ID' && Array.isArray(v)) {
+                        el.value = v.join(',');
                     } else {
-                        input.value = value;
+                        el.value = v;
                     }
                 }
             }
         }
 
-        // Form submission
         document.getElementById('configForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const submitBtn = document.getElementById('submitBtn');
             const btnText = document.getElementById('btnText');
-            const originalText = btnText.textContent;
-            
-            // Disable button and show loading
+            const orig = btnText.textContent;
+
             submitBtn.disabled = true;
             btnText.innerHTML = '<div class="spinner"></div> Menyimpan...';
 
             try {
                 const formData = new FormData(e.target);
-                const config = {};
-                
-                for (const [key, value] of formData.entries()) {
-                    if (value.trim()) {
-                        // Handle USER_ID (convert to array if comma-separated)
-                        if (key === 'USER_ID') {
-                            if (value.includes(',')) {
-                                config[key] = value.split(',').map(id => parseInt(id.trim()));
-                            } else {
-                                config[key] = parseInt(value.trim());
-                            }
-                        } 
-                        // Handle PORT (convert to number)
-                        else if (key === 'PORT') {
-                            config[key] = parseInt(value) || 50123;
-                        }
-                        else {
-                            config[key] = value.trim();
-                        }
+                const payload = {};
+
+                for (const [k, v] of formData.entries()) {
+                    const trimmed = v.trim();
+                    if (k === 'USER_ID') {
+                        payload[k] = trimmed.includes(',')
+                            ? trimmed.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x))
+                            : (parseInt(trimmed) || trimmed);
+                    } else if (k === 'PORT') {
+                        payload[k] = parseInt(trimmed) || 50123;
                     } else {
-                        // Include empty values for optional fields
-                        config[key] = "";
+                        payload[k] = trimmed;
                     }
                 }
 
-                const response = await fetch(API_BASE, {
+                const res = await fetch(API_BASE, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(config)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
+                const result = await res.json();
 
-                const result = await response.json();
-
-                if (response.ok) {
-                    showAlert(result.message || 'Konfigurasi berhasil disimpan!', 'success');
-                    
-                    // Redirect after 2 seconds
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 2000);
+                if (res.ok) {
+                    showAlert('Konfigurasi berhasil disimpan! Bot siap digunakan.', 'success');
+                    setTimeout(() => { window.location.href = '/health'; }, 2000);
                 } else {
-                    showAlert(result.error || 'Gagal menyimpan konfigurasi', 'error');
+                    showAlert(result.error || result.message || 'Gagal menyimpan konfigurasi', 'error');
                     submitBtn.disabled = false;
-                    btnText.textContent = originalText;
+                    btnText.textContent = orig;
                 }
-            } catch (error) {
-                showAlert('Terjadi kesalahan: ' + error.message, 'error');
+            } catch (err) {
+                showAlert('Terjadi kesalahan: ' + err.message, 'error');
                 submitBtn.disabled = false;
-                btnText.textContent = originalText;
+                btnText.textContent = orig;
             }
         });
 
-        // Reset button
-        document.getElementById('resetBtn').addEventListener('click', async () => {
-            if (confirm('Reset ke nilai default?')) {
-                try {
-                    const response = await fetch(API_BASE);
-                    const data = await response.json();
-                    
-                    if (data.example) {
-                        populateForm(data.example);
-                        showAlert('Form direset ke nilai default', 'success');
-                    }
-                } catch (error) {
-                    showAlert('Gagal mereset form: ' + error.message, 'error');
-                }
-            }
-        });
-
-        function showAlert(message, type) {
-            const alertBox = document.getElementById('alertBox');
-            alertBox.textContent = message;
-            alertBox.className = `alert alert-${type}`;
-            alertBox.style.display = 'block';
-            
-            setTimeout(() => {
-                alertBox.style.display = 'none';
-            }, 5000);
+        function showAlert(msg, type) {
+            const box = document.getElementById('alertBox');
+            box.textContent = msg;
+            box.className = `alert alert-${type}`;
+            box.style.display = 'block';
+            setTimeout(() => { box.style.display = 'none'; }, 6000);
         }
 
-        // Initialize on page load
         init();
     </script>
 </body>

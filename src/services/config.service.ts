@@ -11,14 +11,27 @@ const VARS_EXAMPLE_FILE = path.resolve('./.vars.json.example');
 
 export interface ConfigData {
   BOT_TOKEN: string;
-  USER_ID: number | number[];
-  GROUP_ID: string;
+  USER_ID: number | number[] | string;
+  GROUP_ID?: string;
   NAMA_STORE?: string;
   PORT?: number | string;
-  DATA_QRIS: string;
-  MERCHANT_ID: string;
-  SERVER_KEY: string;
+  DATA_QRIS?: string;
+  MERCHANT_ID?: string;
+  SERVER_KEY?: string;
   ADMIN_USERNAME?: string;
+  // Pakasir
+  PAKASIR_PROJECT?: string;
+  PAKASIR_SLUG?: string;
+  PAKASIR_API_KEY?: string;
+  // Tripay
+  TRIPAY_API_KEY?: string;
+  TRIPAY_PRIVATE_KEY?: string;
+  TRIPAY_MERCHANT_CODE?: string;
+  TRIPAY_ENV?: string;
+  // Duitku
+  DUITKU_MERCHANT_CODE?: string;
+  DUITKU_API_KEY?: string;
+  DUITKU_ENV?: string;
 }
 
 class ConfigService {
@@ -82,15 +95,7 @@ class ConfigService {
    * Validate configuration data
    */
   private validateConfig(config: ConfigData): void {
-    const requiredFields = [
-      'BOT_TOKEN',
-      'USER_ID',
-      'GROUP_ID',
-      'DATA_QRIS',
-      'MERCHANT_ID',
-      'SERVER_KEY'
-    ];
-
+    const requiredFields = ['BOT_TOKEN', 'USER_ID'];
     const missing: string[] = [];
 
     for (const field of requiredFields) {
@@ -100,7 +105,7 @@ class ConfigService {
     }
 
     if (missing.length > 0) {
-      throw new Error(`Missing required fields: ${missing.join(', ')}`);
+      throw new Error(`Field wajib diisi: ${missing.join(', ')}`);
     }
 
     // Validate USER_ID format

@@ -1,12 +1,11 @@
 name: Auto Release to GitHub
 
 on:
-  # Disabled auto-run on push - only manual trigger
-  # push:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - 'package.json'
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json'
   workflow_dispatch:
     inputs:
       force_release:

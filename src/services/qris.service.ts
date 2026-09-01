@@ -1,16 +1,16 @@
 import type { BotContext } from "../types";
 /**
- * @fileoverview QRIS Payment Service
- * Handles QRIS payment generation and verification
- * 
- * API Documentation: https://docs.qris.id (adjust based on your provider)
+ * @fileoverview QRIS & Multi-Gateway Payment Service
+ * Handles QRIS payment generation and verification across Tripay, Duitku, Pakasir, Midtrans, and Static QRIS
  */
 
 const axios = require('axios');
 const logger = require('../utils/logger');
 const qrisDinamis = require('@agungjsp/qris-dinamis');
 
-// Import Pakasir service
+// Import Payment Gateway Services
+const { isTripayConfigured, generateTripayPayment, checkTripayPaymentStatus } = require('./tripay.service');
+const { isDuitkuConfigured, generateDuitkuPayment, checkDuitkuPaymentStatus } = require('./duitku.service');
 const { isPakasirConfigured, generatePakasirPayment, checkPakasirPaymentStatus } = require('./pakasir.service');
 
 // Import config properly
@@ -21,7 +21,9 @@ try {
   config = require('../config');
 }
 
-interface QRISResponse {
+export type PaymentGatewayType = 'tripay' | 'duitku' | 'pakasir' | 'midtrans' | 'static_qris';
+
+export interface QRISResponse {
   success: boolean;
   data?: {
     qr_string: string;
@@ -29,14 +31,15 @@ interface QRISResponse {
     invoice_id: string;
     amount: number;
     expired_at: string;
-    payment_method?: 'midtrans' | 'static_qris' | 'pakasir';
+    payment_method?: PaymentGatewayType;
     fee?: number;
     total_payment?: number;
+    checkout_url?: string;
   };
   error?: string;
 }
 
-interface PaymentStatus {
+export interface PaymentStatus {
   success: boolean;
   status: 'pending' | 'paid' | 'expired' | 'failed';
   invoice_id?: string;
@@ -46,33 +49,98 @@ interface PaymentStatus {
 }
 
 /**
- * Generate QRIS payment
+ * Generate QRIS / Payment through active gateway
+ * Priority: Tripay -> Duitku -> Pakasir -> Midtrans -> Static QRIS
  * @param amount - Payment amount in IDR
  * @param userId - User ID for reference
- * @returns QRIS response with QR code data
  */
 async function generateQRIS(amount: number, userId: string): Promise<QRISResponse> {
   try {
-    logger.info(`Generating QRIS for amount: ${amount}, user: ${userId}`);
-
-    // Generate unique order ID
+    logger.info(`Generating QRIS/Payment for amount: ${amount}, user: ${userId}`);
     const orderId = `ORDER-${Date.now()}-${userId}`;
 
-    // Check if Midtrans credentials are configured (priority)
+    // 1. Tripay (Priority 1)
+    if (isTripayConfigured()) {
+      logger.info('Using Tripay payment gateway');
+      const tripayRes = await generateTripayPayment(amount, userId, 'QRIS2');
+      if (tripayRes.success && tripayRes.data) {
+        const d = tripayRes.data;
+        const qrString = d.qr_string || d.pay_code || '';
+        const qrImg = d.qr_url || (qrString ? generateQRImageURL(qrString) : undefined);
+        const expDate = d.expired_time ? new Date(d.expired_time * 1000).toISOString() : new Date(Date.now() + 30 * 60000).toISOString();
+
+        return {
+          success: true,
+          data: {
+            qr_string: qrString,
+            qr_image_url: qrImg,
+            invoice_id: d.merchant_ref,
+            amount: d.amount,
+            fee: d.fee,
+            total_payment: d.total_amount,
+            expired_at: expDate,
+            payment_method: 'tripay',
+            checkout_url: d.checkout_url
+          }
+        };
+      }
+      logger.warn('Tripay generation failed, attempting next configured gateway:', tripayRes.error);
+    }
+
+    // 2. Duitku (Priority 2)
+    if (isDuitkuConfigured()) {
+      logger.info('Using Duitku payment gateway');
+      const duitkuRes = await generateDuitkuPayment(amount, userId, 'SP');
+      if (duitkuRes.success && duitkuRes.data) {
+        const d = duitkuRes.data;
+        const qrString = d.qr_string || d.payment_url;
+        return {
+          success: true,
+          data: {
+            qr_string: qrString,
+            qr_image_url: generateQRImageURL(qrString),
+            invoice_id: d.invoice_id,
+            amount: d.amount,
+            expired_at: new Date(Date.now() + 30 * 60000).toISOString(),
+            payment_method: 'duitku',
+            checkout_url: d.payment_url
+          }
+        };
+      }
+      logger.warn('Duitku generation failed, attempting next configured gateway:', duitkuRes.error);
+    }
+
+    // 3. Pakasir (Priority 3)
+    if (isPakasirConfigured()) {
+      logger.info('Using Pakasir payment gateway');
+      const pakasirRes = await generatePakasirPayment(amount, userId, 'qris');
+      if (pakasirRes.success && pakasirRes.data) {
+        return {
+          success: true,
+          data: {
+            qr_string: pakasirRes.data.qr_string,
+            qr_image_url: pakasirRes.data.qr_image_url,
+            invoice_id: pakasirRes.data.invoice_id,
+            amount: pakasirRes.data.amount,
+            fee: pakasirRes.data.fee,
+            total_payment: pakasirRes.data.total_payment,
+            expired_at: pakasirRes.data.expired_at,
+            payment_method: 'pakasir'
+          }
+        };
+      }
+      logger.warn('Pakasir generation failed, attempting next configured gateway:', pakasirRes.error);
+    }
+
+    // 4. Midtrans (Priority 4)
     if (config.MERCHANT_ID && config.SERVER_KEY) {
       logger.info('Using Midtrans payment gateway');
-
-      // Midtrans API Configuration
       const isProduction = process.env.MIDTRANS_ENV === 'production';
       const apiUrl = isProduction
         ? 'https://api.midtrans.com/v2/charge'
         : 'https://api.sandbox.midtrans.com/v2/charge';
 
-      // Create server key authorization (Base64 encoded)
-      const serverKey = config.SERVER_KEY; // Midtrans Server Key
-      const authString = Buffer.from(serverKey + ':').toString('base64');
-
-      // Midtrans Charge Request
+      const authString = Buffer.from(config.SERVER_KEY + ':').toString('base64');
       const requestBody = {
         payment_type: 'gopay',
         transaction_details: {
@@ -81,102 +149,71 @@ async function generateQRIS(amount: number, userId: string): Promise<QRISRespons
         },
         gopay: {
           enable_callback: true,
-          callback_url: `http://localhost:${config.PORT}/api/payment/callback`
+          callback_url: `http://localhost:${config.PORT || 50123}/api/payment/callback`
         },
         customer_details: {
-          first_name: `User`,
+          first_name: 'User',
           last_name: userId,
-          email: `user${userId}@telegram.local`,
-          phone: '08123456789'
+          email: `user${userId}@telegram.vpn`,
+          phone: '081234567890'
         }
       };
-
-      logger.info(`Calling Midtrans API (Merchant: ${config.MERCHANT_ID}):`, apiUrl);
 
       try {
         const response = await axios.post(apiUrl, requestBody, {
           headers: {
-            'Accept': 'application/json',
+            Accept: 'application/json',
             'Content-Type': 'application/json',
-            'Authorization': `Basic ${authString}`
+            Authorization: `Basic ${authString}`
           },
           timeout: 15000
         });
 
         if (response.data && response.data.status_code === '201') {
-          logger.info(`QRIS generated successfully via Midtrans: ${orderId}`);
-
-          // Extract QR code string and actions
           const qrString = response.data.actions?.find((a: any) => a.name === 'generate-qr-code')?.url || '';
-          const deeplink = response.data.actions?.find((a: any) => a.name === 'deeplink-redirect')?.url || '';
-
           return {
             success: true,
             data: {
               qr_string: qrString,
-              qr_image_url: qrString, // Midtrans provides QR image URL directly
+              qr_image_url: qrString,
               invoice_id: orderId,
               amount: amount,
-              expired_at: response.data.transaction_time,
+              expired_at: response.data.transaction_time || new Date(Date.now() + 30 * 60000).toISOString(),
               payment_method: 'midtrans'
             }
           };
-        } else {
-          throw new Error(response.data?.status_message || 'Failed to generate QRIS via Midtrans');
         }
-      } catch (midtransError: any) {
-        logger.error('Midtrans API error:', midtransError.response?.data || midtransError.message);
-
-        // Fallback to static QRIS if Midtrans fails and DATA_QRIS is available
-        if (config.DATA_QRIS) {
-          logger.warn('Midtrans failed, falling back to static QRIS');
-          return {
-            success: true,
-            data: {
-              qr_string: config.DATA_QRIS,
-              invoice_id: orderId,
-              amount: amount,
-              expired_at: new Date(Date.now() + 24 * 60 * 60000).toISOString(), // 24 hours for static
-              payment_method: 'static_qris'
-            }
-          };
-        }
-
-        throw midtransError;
+      } catch (midtransErr: any) {
+        logger.warn('Midtrans API failed:', midtransErr.response?.data || midtransErr.message);
       }
     }
 
-    // Use static QRIS if Midtrans credentials not available
+    // 5. Static QRIS Dinamis (Fallback)
     if (config.DATA_QRIS) {
-      logger.info('Using static QRIS payment (no Midtrans credentials)');
-
+      logger.info('Using dynamic/static QRIS fallback');
       try {
-        // Generate dynamic QRIS with amount embedded using @agungjsp/qris-dinamis
-        // API: makeString(qris, { nominal: 'amount' })
         const dynamicQRIS = qrisDinamis.makeString(config.DATA_QRIS, {
           nominal: amount.toString()
         });
-
-        logger.info(`Generated dynamic QRIS with amount: ${amount}`);
 
         return {
           success: true,
           data: {
             qr_string: dynamicQRIS,
+            qr_image_url: generateQRImageURL(dynamicQRIS),
             invoice_id: orderId,
             amount: amount,
-            expired_at: new Date(Date.now() + 24 * 60 * 60000).toISOString(), // 24 hours for manual verification
+            expired_at: new Date(Date.now() + 24 * 60 * 60000).toISOString(),
             payment_method: 'static_qris'
           }
         };
       } catch (qrisError: any) {
-        logger.error('Error generating dynamic QRIS:', qrisError.message);
-        // Fallback to original static QRIS if dynamic generation fails
-        logger.warn('Falling back to original static QRIS (user must input amount manually)');
+        logger.warn('Error generating dynamic QRIS string, using raw QRIS:', qrisError.message);
         return {
           success: true,
           data: {
             qr_string: config.DATA_QRIS,
+            qr_image_url: generateQRImageURL(config.DATA_QRIS),
             invoice_id: orderId,
             amount: amount,
             expired_at: new Date(Date.now() + 24 * 60 * 60000).toISOString(),
@@ -186,216 +223,144 @@ async function generateQRIS(amount: number, userId: string): Promise<QRISRespons
       }
     }
 
-    // Try Pakasir if configured (as fallback when Midtrans and static QRIS not available)
-    if (isPakasirConfigured()) {
-      logger.info('Using Pakasir payment gateway (no Midtrans/static QRIS configured)');
-      
-      const pakasirResult = await generatePakasirPayment(amount, userId, 'qris');
-      
-      if (pakasirResult.success && pakasirResult.data) {
-        logger.info(`Pakasir QRIS generated successfully: ${pakasirResult.data.invoice_id}`);
-        return {
-          success: true,
-          data: {
-            qr_string: pakasirResult.data.qr_string,
-            qr_image_url: pakasirResult.data.qr_image_url,
-            invoice_id: pakasirResult.data.invoice_id,
-            amount: pakasirResult.data.amount,
-            expired_at: pakasirResult.data.expired_at,
-            payment_method: 'pakasir',
-            fee: pakasirResult.data.fee,
-            total_payment: pakasirResult.data.total_payment
-          }
-        };
-      } else {
-        logger.error('Pakasir payment generation failed:', pakasirResult.error);
-      }
-    }
-
-    // No payment method available
-    logger.error('No payment method configured (Midtrans, static QRIS, or Pakasir)');
     return {
       success: false,
-      error: 'Payment system not configured. Please contact administrator.'
+      error: 'Tidak ada metode pembayaran yang dikonfigurasi. Hubungi Admin.'
     };
   } catch (error: any) {
     logger.error('Error generating QRIS:', error.response?.data || error.message);
     return {
       success: false,
-      error: error.response?.data?.status_message || error.message || 'Failed to generate QRIS code'
+      error: error.message || 'Gagal membuat QRIS pembayaran'
     };
   }
 }
 
 /**
- * Check payment status
- * @param invoiceId - Invoice ID to check
- * @returns Payment status
+ * Check payment status across gateways
  */
 async function checkPaymentStatus(invoiceId: string, paymentMethod?: string): Promise<PaymentStatus> {
   try {
-    logger.info(`Checking payment status for order: ${invoiceId}, method: ${paymentMethod || 'unknown'}`);
+    logger.info(`Checking status for ${invoiceId} (method: ${paymentMethod || 'auto'})`);
 
-    // For Pakasir, use Pakasir API to check status
-    if (paymentMethod === 'pakasir') {
-      // Get deposit to retrieve amount for Pakasir API
-      const { getPendingDeposit } = require('../repositories/depositRepository');
-      const deposit = await getPendingDeposit(invoiceId);
-      
-      if (!deposit) {
-        return {
-          success: false,
-          status: 'failed',
-          error: 'Deposit not found'
-        };
-      }
-
-      const pakasirStatus = await checkPakasirPaymentStatus(invoiceId, deposit.amount);
-      return pakasirStatus;
+    if (paymentMethod === 'tripay' || (!paymentMethod && isTripayConfigured())) {
+      const res = await checkTripayPaymentStatus(invoiceId);
+      if (res.success) return res;
     }
 
-    // For static QRIS, check database status (manual verification)
-    if (paymentMethod === 'static_qris' || (!config.SERVER_KEY && !isPakasirConfigured())) {
-      // Static QRIS requires manual verification, return pending until admin approves
-      const { getPendingDeposit } = require('../repositories/depositRepository');
-      const deposit = await getPendingDeposit(invoiceId);
-
-      if (!deposit) {
-        return {
-          success: false,
-          status: 'failed',
-          error: 'Deposit not found'
-        };
-      }
-
-      // Map database status to payment status
-      let status: 'pending' | 'paid' | 'expired' | 'failed' = 'pending';
-      if (deposit.status === 'paid') {
-        status = 'paid';
-      } else if (deposit.status === 'awaiting_verification') {
-        status = 'pending'; // Show as pending to user
-      } else if (deposit.status === 'rejected') {
-        status = 'failed';
-      } else if (deposit.status === 'expired') {
-        status = 'expired';
-      }
-
-      return {
-        success: true,
-        status: status,
-        invoice_id: invoiceId,
-        amount: deposit.amount
-      };
+    if (paymentMethod === 'duitku' || (!paymentMethod && isDuitkuConfigured())) {
+      const res = await checkDuitkuPaymentStatus(invoiceId);
+      if (res.success) return res;
     }
 
-    // For Midtrans, check via API
-    const isProduction = process.env.MIDTRANS_ENV === 'production';
-    const apiUrl = isProduction
-      ? `https://api.midtrans.com/v2/${invoiceId}/status`
-      : `https://api.sandbox.midtrans.com/v2/${invoiceId}/status`;
+    if (paymentMethod === 'pakasir' || (!paymentMethod && isPakasirConfigured())) {
+      const { getPendingDeposit } = require('../repositories/depositRepository');
+      const deposit = await getPendingDeposit(invoiceId);
+      if (deposit) {
+        return await checkPakasirPaymentStatus(invoiceId, deposit.amount);
+      }
+    }
 
-    const serverKey = config.SERVER_KEY;
-    const authString = Buffer.from(serverKey + ':').toString('base64');
-
-    const response = await axios.get(apiUrl, {
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${authString}`
-      },
-      timeout: 10000
-    });
-
-    if (response.data) {
-      // Midtrans transaction status mapping
-      const transactionStatus = response.data.transaction_status;
-      const fraudStatus = response.data.fraud_status;
+    if (paymentMethod === 'static_qris') {
+      const { getPendingDeposit } = require('../repositories/depositRepository');
+      const deposit = await getPendingDeposit(invoiceId);
+      if (!deposit) return { success: false, status: 'failed', error: 'Deposit not found' };
 
       let status: 'pending' | 'paid' | 'expired' | 'failed' = 'pending';
+      if (deposit.status === 'paid') status = 'paid';
+      else if (deposit.status === 'rejected') status = 'failed';
+      else if (deposit.status === 'expired') status = 'expired';
 
-      if (transactionStatus === 'capture' || transactionStatus === 'settlement') {
-        if (fraudStatus === 'accept') {
-          status = 'paid';
+      return { success: true, status: status, invoice_id: invoiceId, amount: deposit.amount };
+    }
+
+    if (paymentMethod === 'midtrans' || (config.MERCHANT_ID && config.SERVER_KEY)) {
+      const isProduction = process.env.MIDTRANS_ENV === 'production';
+      const apiUrl = isProduction
+        ? `https://api.midtrans.com/v2/${invoiceId}/status`
+        : `https://api.sandbox.midtrans.com/v2/${invoiceId}/status`;
+
+      const authString = Buffer.from(config.SERVER_KEY + ':').toString('base64');
+      const response = await axios.get(apiUrl, {
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          Authorization: `Basic ${authString}`
+        },
+        timeout: 10000
+      });
+
+      if (response.data) {
+        const txStatus = response.data.transaction_status;
+        const fraudStatus = response.data.fraud_status;
+        let status: 'pending' | 'paid' | 'expired' | 'failed' = 'pending';
+
+        if (txStatus === 'capture' || txStatus === 'settlement') {
+          if (fraudStatus === 'accept' || !fraudStatus) status = 'paid';
+        } else if (txStatus === 'pending') {
+          status = 'pending';
+        } else if (txStatus === 'deny' || txStatus === 'cancel' || txStatus === 'expire') {
+          status = txStatus === 'expire' ? 'expired' : 'failed';
         }
-      } else if (transactionStatus === 'pending') {
-        status = 'pending';
-      } else if (transactionStatus === 'deny' || transactionStatus === 'cancel' || transactionStatus === 'expire') {
-        status = transactionStatus === 'expire' ? 'expired' : 'failed';
+
+        return {
+          success: true,
+          status: status,
+          invoice_id: invoiceId,
+          amount: parseInt(response.data.gross_amount),
+          paid_at: response.data.settlement_time || response.data.transaction_time
+        };
       }
-
-      logger.info(`Midtrans status for ${invoiceId}: ${transactionStatus} -> ${status}`);
-
-      return {
-        success: true,
-        status: status,
-        invoice_id: invoiceId,
-        amount: parseInt(response.data.gross_amount),
-        paid_at: response.data.settlement_time || response.data.transaction_time
-      };
-    } else {
-      throw new Error('Invalid response from Midtrans');
     }
+
+    return {
+      success: true,
+      status: 'pending',
+      invoice_id: invoiceId
+    };
   } catch (error: any) {
-    // If order not found, it might be pending
     if (error.response?.status === 404) {
-      logger.warn(`Order ${invoiceId} not found in Midtrans (might still be pending)`);
-      return {
-        success: true,
-        status: 'pending',
-        invoice_id: invoiceId
-      };
+      return { success: true, status: 'pending', invoice_id: invoiceId };
     }
-
     logger.error('Error checking payment status:', error.response?.data || error.message);
     return {
       success: false,
       status: 'failed',
-      error: error.response?.data?.status_message || error.message
+      error: error.message
     };
   }
 }
 
 /**
- * Generate QR code image from string
- * Uses a free QR code generator API
- * @param qrString - QRIS string
- * @returns QR code image URL
+ * Generate QR code image from string via fast CDN
  */
 function generateQRImageURL(qrString: string): string {
-  // Use free QR code generator API
   const encodedQR = encodeURIComponent(qrString);
   return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodedQR}`;
 }
 
 /**
- * Validate QRIS configuration
- * @returns true if any QRIS payment method is properly configured
+ * Check if any payment gateway is configured
  */
 function isQRISConfigured(): boolean {
-  // Return true if Midtrans, static QRIS, or Pakasir is configured
-  return !!((config.MERCHANT_ID && config.SERVER_KEY) || config.DATA_QRIS || isPakasirConfigured());
-}
-
-/**
- * Check if static QRIS is configured
- * @returns true if static QRIS is available (with or without Midtrans)
- */
-function isStaticQRISConfigured(): boolean {
-  return !!(config.DATA_QRIS && !config.MERCHANT_ID && !config.SERVER_KEY && !isPakasirConfigured());
+  return !!(
+    isTripayConfigured() ||
+    isDuitkuConfigured() ||
+    isPakasirConfigured() ||
+    (config.MERCHANT_ID && config.SERVER_KEY) ||
+    config.DATA_QRIS
+  );
 }
 
 /**
  * Get active payment method name
- * @returns Name of the active payment method
  */
 function getActivePaymentMethod(): string {
-  if (config.MERCHANT_ID && config.SERVER_KEY) {
-    return 'Midtrans';
-  } else if (config.DATA_QRIS) {
-    return 'Static QRIS';
-  } else if (isPakasirConfigured()) {
-    return 'Pakasir';
-  }
+  if (isTripayConfigured()) return 'Tripay';
+  if (isDuitkuConfigured()) return 'Duitku';
+  if (isPakasirConfigured()) return 'Pakasir';
+  if (config.MERCHANT_ID && config.SERVER_KEY) return 'Midtrans';
+  if (config.DATA_QRIS) return 'Static QRIS';
   return 'Not configured';
 }
 
@@ -404,6 +369,5 @@ module.exports = {
   checkPaymentStatus,
   generateQRImageURL,
   isQRISConfigured,
-  isStaticQRISConfigured,
   getActivePaymentMethod
 };

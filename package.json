@@ -1,7 +1,7 @@
 {
   "name": "bot-telegram-vpn-qris",
-  "version": "3.1.25",
-  "description": "Telegram Bot untuk otomatisasi pembuatan akun VPN (SSH, Vmess, Vless, Trojan dan Shadowsocks) serta pembayaran QRIS/Pakasir.",
+  "version": "3.2.0",
+  "description": "Telegram Bot untuk otomatisasi pembuatan akun VPN (SSH, Vmess, Vless, Trojan dan Shadowsocks) serta pembayaran Tripay, Duitku, Pakasir, Midtrans, dan QRIS Dinamis.",
   "main": "index.js",
   "author": "Anggun Caksono",
   "license": "MIT",
@@ -12,7 +12,11 @@
     "start:prod": "NODE_ENV=production node index.js",
     "dev": "nodemon",
     "dev:build": "npm run build && npm start",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "docker:build": "docker build -t bot-telegram-vpn:latest .",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   },
   "dependencies": {
     "@agungjsp/qris-dinamis": "^1.0.7",

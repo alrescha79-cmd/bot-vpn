@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  bot-vpn:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: bot-telegram-vpn:latest
+    container_name: bot-vpn
+    restart: unless-stopped
+    ports:
+      - "50123:50123"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=50123
+      - DB_DIR=/app/data
+      - DB_PATH=/app/data/botvpn.db
+    volumes:
+      # Persistent SQLite database and backups
+      - ./data:/app/data
+      # Optional: mount .vars.json if not using .env
+      - ./.vars.json:/app/.vars.json:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 512M

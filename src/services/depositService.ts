@@ -145,7 +145,7 @@ async function processDeposit(ctx, amount) {
       }
     }
 
-    // Different UI for static QRIS vs Midtrans/Pakasir
+    // Different UI for static QRIS vs Midtrans/Pakasir/Tripay/Duitku
     let caption = '';
     let buttons = [];
 
@@ -171,6 +171,49 @@ _Status: Menunggu bukti pembayaran..._
 
       buttons = [
         [{ text: '📤 Upload Bukti Bayar', callback_data: `upload_proof_${invoice_id}` }],
+        [{ text: '🔄 Cek Status', callback_data: `check_payment_${invoice_id}` }],
+        [{ text: '❌ Batalkan', callback_data: `cancel_payment_${invoice_id}` }],
+        [{ text: '🔙 Menu Utama', callback_data: 'send_main_menu' }]
+      ];
+    } else if (paymentMethod === 'tripay') {
+      const fee = qrisResult.data.fee || 0;
+      const totalPayment = qrisResult.data.total_payment || numAmount;
+
+      caption = `
+💳 *QRIS Payment - Deposit (Tripay)*
+
+💰 *Nominal:* Rp ${numAmount.toLocaleString('id-ID')}
+${fee > 0 ? `💸 *Biaya Layanan:* Rp ${fee.toLocaleString('id-ID')}\n💵 *Total Bayar:* Rp ${totalPayment.toLocaleString('id-ID')}\n` : ''}🆔 *Invoice:* \`${invoice_id}\`
+⏰ *Expired:* ${new Date(expired_at).toLocaleString('id-ID')}
+
+📱 Scan QR code di atas menggunakan E-Wallet atau Mobile Banking
+⚡ *Otomatis Terverifikasi 1-5 Detik*
+
+_Status: Menunggu pembayaran..._
+      `.trim();
+
+      buttons = [
+        ...(qrisResult.data.checkout_url ? [[{ text: '🌐 Buka Halaman Bayar', url: qrisResult.data.checkout_url }]] : []),
+        [{ text: '🔄 Cek Status', callback_data: `check_payment_${invoice_id}` }],
+        [{ text: '❌ Batalkan', callback_data: `cancel_payment_${invoice_id}` }],
+        [{ text: '🔙 Menu Utama', callback_data: 'send_main_menu' }]
+      ];
+    } else if (paymentMethod === 'duitku') {
+      caption = `
+💳 *QRIS Payment - Deposit (Duitku)*
+
+💰 *Nominal:* Rp ${numAmount.toLocaleString('id-ID')}
+🆔 *Invoice:* \`${invoice_id}\`
+⏰ *Expired:* ${new Date(expired_at).toLocaleString('id-ID')}
+
+📱 Scan QR code untuk bayar dengan ShopeePay / QRIS
+⚡ *Otomatis Terverifikasi*
+
+_Status: Menunggu pembayaran..._
+      `.trim();
+
+      buttons = [
+        ...(qrisResult.data.checkout_url ? [[{ text: '🌐 Buka Link Pembayaran', url: qrisResult.data.checkout_url }]] : []),
         [{ text: '🔄 Cek Status', callback_data: `check_payment_${invoice_id}` }],
         [{ text: '❌ Batalkan', callback_data: `cancel_payment_${invoice_id}` }],
         [{ text: '🔙 Menu Utama', callback_data: 'send_main_menu' }]
@@ -268,8 +311,8 @@ _Status: Menunggu pembayaran..._
       payment_method: paymentMethod
     });
 
-    // Start auto-check payment status for Midtrans and Pakasir
-    if (paymentMethod === 'midtrans' || paymentMethod === 'pakasir') {
+    // Start auto-check payment status for automatic gateways (Tripay, Duitku, Pakasir, Midtrans)
+    if (paymentMethod !== 'static_qris') {
       startPaymentStatusCheck(ctx, invoice_id, userId, numAmount, qrMessage.message_id, paymentMethod);
     } else {
       logger.info(`Static QRIS deposit created: ${invoice_id}, awaiting manual upload`);

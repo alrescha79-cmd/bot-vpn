@@ -1,14 +1,33 @@
-# 🤖 Bot VPN Telegram - Production Ready v3.1.25
+# 🤖 Bot VPN Telegram - Production Ready v3.2.0
 
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-blue.svg)](https://www.typescriptlang.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](docs/DOCKER_SETUP.md)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Bot Telegram** untuk manajemen akun VPN multi-protocol dengan arsitektur production-ready. **Semua fitur & manajemen dilakukan via Telegram Bot** - web interface hanya untuk setup/edit konfigurasi awal.
+**Bot Telegram** untuk manajemen akun VPN multi-protocol dengan arsitektur production-ready. **Semua fitur & manajemen dilakukan via Telegram Bot** - web interface hanya untuk setup/edit konfigurasi awal serta webhook payment gateway.
 
 ---
 
-## 🚀 One-Line Installation/Update (Production)
+## 🐳 Quick Start dengan Docker (Sangat Direkomendasikan)
+
+```bash
+# 1. Clone repo
+git clone https://github.com/alrescha79-cmd/bot-vpn.git /opt/bot-vpn
+cd /opt/bot-vpn
+
+# 2. Setup environment / secret keys
+cp .env.example .env
+nano .env
+
+# 3. Jalankan bot di background
+docker compose up -d --build
+```
+> 📖 **Panduan Lengkap Docker**: Lihat [Docker Setup Guide](docs/DOCKER_SETUP.md)
+
+---
+
+## 🚀 One-Line Installation/Update (PM2 / Host Linux)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | sudo bash
@@ -17,31 +36,17 @@ curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts
 > 📖 **Informasi lengkap**: Lihat [Production Installation Guide](docs/PRODUCTION_INSTALL.md) untuk detail setup dan konfigurasi.
 
 ---
-> **🆕 What's New in v3.1.25:**
-> - ✅ **Perbaikan Bug** - Lihat [Release](https://github.com/alrescha79-cmd/bot-vpn/releases/tag/v3.1.25) untuk detail
+> **🆕 What's New in v3.2.0:**
+> - ✅ **Tripay Payment Gateway** - Integrasi Tripay QRIS Dinamis & VA dengan HMAC-SHA256 auto-verification webhook
+> - ✅ **Duitku Payment Gateway** - Integrasi Duitku QRIS & VA dengan MD5 callback verification
+> - ✅ **Docker & Docker Compose** - Multi-stage build siap deploy VPS dengan persistent SQLite storage
+> - ✅ **Dual Config Source** - Support `.env` & `.vars.json` dengan fallback otomatis
+> - ✅ **Secret Keys Masking & UI Modern** - Web Setup UI kini mendukung toggle show/hide key & tab per gateway
+> - ✅ **Interactive Terminal Wizard** - Setup secrets mudah via `node scripts/setup-config.js`
 
-
-> **Previous Updates (v3.1.22):**
+> **Previous Updates (v3.1.25):**
 > - ✅ **Pakasir Payment Gateway** - Payment gateway alternatif dengan QRIS & Virtual Account
-> - ✅ **Auto-fallback Payment** - Otomatis gunakan Pakasir jika Midtrans/QRIS tidak dikonfigurasi
-> - ✅ **Pakasir Webhook** - Auto-verification pembayaran via webhook
-> - ✅ **Multi Payment Support** - Midtrans, Static QRIS, dan Pakasir dalam satu sistem
-> - 📖 **[Pakasir Setup Guide](docs/PAKASIR_SETUP.md)** - Dokumentasi lengkap setup Pakasir
-
-> **Previous Updates (v3.1.21):**
-> - ✅ **Static QRIS Payment** - Support QRIS statis (Dana Bisnis, ShopeePay, GoPay) dengan verifikasi manual admin
-> - ✅ **Dynamic QRIS** - Library `@agungjsp/qris-dinamis` untuk embed nominal otomatis di QR code
-> - ✅ **Admin Verification System** - Admin panel untuk approve/reject deposit manual dengan inline buttons
-> - ✅ **Payment Proof Upload** - User upload bukti pembayaran, admin langsung dapat notifikasi real-time
-> - ✅ **Dual Payment Mode** - Midtrans (auto-verify) atau QRIS Statis (manual) dengan fallback otomatis
-
-> **Previous Updates (v3.1.2):**
-> - ✅ **Midtrans Payment Gateway** - Integrasi lengkap dengan Midtrans untuk pembayaran otomatis
-> - ✅ **3-in-1 Protocol** - VMESS + VLESS + TROJAN dalam satu paket (harga 1.5x)
-> - ✅ **Trial System Fixed** - Perbaikan bug SSH trial timeout & loading messages
-> - ✅ **CLI Setup** - Setup konfigurasi manual via terminal untuk production
-> - ✅ **Account Persistence** - Semua akun premium disimpan ke database SQLite
-> - ✅ **Akunku Menu** - Lihat, detail, dan kelola akun yang telah dibuat
+> - ✅ **Midtrans & Static QRIS** - Multi payment support & auto verification
 
 ---
 
@@ -53,24 +58,20 @@ curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts
 - **VLess** - V2Ray protocol (lightweight)
 - **Trojan** - Trojan protocol
 - **Shadowsocks** - Shadowsocks protocol
+- **3-in-1** - VMess + VLess + Trojan paket hemat
 
 ### 🔐 Role-Based Access Control
-- **Admin** - Full akses manajemen sistem
-- **Reseller** - Manajemen akun & transaksi
-- **User** - Akses basic & pembelian
+- **Admin** - Full akses manajemen sistem & VPS server
+- **Reseller** - Manajemen akun, custom pricing & komisi
+- **User** - Akses basic, trial & pembelian mandiri
 
-### 💰 Payment Integration
-- **QRIS Dinamis** - QRIS dengan nominal otomatis (manual verification)
-- **Midtrans** - Payment Gateway terintegrasi (Sandbox & Production) - Auto-verification
-- **Pakasir** - Payment Gateway alternatif dengan QRIS & Virtual Account - Auto-verification
-- **Auto-Verification** - Verifikasi pembayaran otomatis setiap 10 detik (Midtrans/Pakasir)
-- **Manual Verification** - Admin approve manual untuk QRIS statis
-- **Instant Webhook** - Webhook untuk verifikasi instant (Midtrans & Pakasir)
-- **Deposit System** - Top-up saldo otomatis/manual
-- **Transaction History** - Riwayat lengkap transaksi
-- 📖 **[Setup QRIS Statis](docs/QRIS_SETUP.md)** - Panduan setup Dana Bisnis, ShopeePay, GoPay
-- 📖 **[Setup Pakasir](docs/PAKASIR_SETUP.md)** - Panduan setup Pakasir Payment Gateway
-- ⏳ **Payment Gateway Lainnya** - Xendit, Duitku, dll (Coming Soon)
+### 💰 Multi Payment Gateway
+- **Tripay** - Closed payment QRIS & VA (Instant Webhook)
+- **Duitku** - QRIS ShopeePay/Nobu/LinkAja & VA (Instant Webhook)
+- **Pakasir** - QRIS & Virtual Account (Instant Webhook)
+- **Midtrans** - GoPay & Dynamic QRIS (Instant Webhook)
+- **Static QRIS** - QRIS statis + auto dynamic nominal + verifikasi manual/bukti bayar
+- **Smart Gateway Router** - Auto fallback ke gateway aktif yang tersedia
 
 ### 🌐 Web Interface (Config Only)
 - **Setup Mode** - Konfigurasi awal via web browser (satu kali setup)
@@ -238,16 +239,15 @@ bot-vpn/
 
 | Dokumen | Deskripsi |
 |---------|-----------|
+| **[DOCKER_SETUP.md](docs/DOCKER_SETUP.md)** | **Panduan Lengkap Setup & Deploy Docker di VPS** |
 | **[QUICKSTART.md](docs/QUICKSTART.md)** | Panduan setup cepat & deployment |
-| **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Deployment detail untuk VPS |
+| **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** | Deployment detail untuk VPS (PM2 / systemd) |
 | **[QRIS_SETUP.md](docs/QRIS_SETUP.md)** | Setup QRIS Statis (Dana, ShopeePay, GoPay) |
 | **[PAKASIR_SETUP.md](docs/PAKASIR_SETUP.md)** | Setup Pakasir Payment Gateway |
 | **[CHANGELOG_V3.md](docs/CHANGELOG_V3.md)** | Changelog & implementation summary |
 | **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** | Troubleshooting common issues |
-| **[MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)** | Upgrade dari v2.0 ke v3.0 |
 | **[TESTING.md](docs/TESTING.md)** | Testing guide untuk account persistence |
 | **[DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)** | Index semua dokumentasi |
-| **[UPDATE_V3.1_SUMMARY.md](docs/UPDATE_V3.1_SUMMARY.md)** | Summary update v3.1 |
 
 ---
 
