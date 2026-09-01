@@ -14,6 +14,11 @@ const SETUP_HTML_PATH = path.resolve(__dirname, '../frontend/config-setup.html')
  * Check if app is in setup mode
  */
 export function isSetupMode(): boolean {
+  // If config already loaded and isSetupMode is false, we are NOT in setup mode
+  const currentConfig = require('./index').default || require('./index');
+  if (currentConfig && !currentConfig.isSetupMode) {
+    return false;
+  }
   return !configService.isConfigured();
 }
 

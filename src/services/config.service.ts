@@ -39,7 +39,9 @@ class ConfigService {
    * Check if configuration exists
    */
   isConfigured(): boolean {
-    return fs.existsSync(VARS_FILE);
+    if (fs.existsSync(VARS_FILE)) return true;
+    // Also consider configured if BOT_TOKEN and USER_ID exist in environment variables (.env)
+    return !!(process.env.BOT_TOKEN && (process.env.USER_ID || process.env.ADMIN_IDS));
   }
 
   /**
