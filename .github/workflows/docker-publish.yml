@@ -80,7 +80,6 @@ jobs:
         with:
           images: |
             ghcr.io/${{ github.repository }}
-            ${{ secrets.DOCKERHUB_USERNAME != '' && format('{0}/bot-vpn', secrets.DOCKERHUB_USERNAME) || '' }}
           tags: |
             type=raw,value=latest
             type=raw,value=${{ steps.meta-version.outputs.version }}
