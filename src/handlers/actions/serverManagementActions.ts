@@ -267,6 +267,61 @@ function registerEditServerMenuActions(bot) {
     );
   });
 
+  // Edit server port
+  bot.action('editserver_port', async (ctx) => {
+    try {
+      logger.info('Edit server port process started');
+      await ctx.answerCbQuery();
+
+      const servers = await dbAllAsync('SELECT id, nama_server, port FROM Server', []).catch(err => {
+        logger.error('❌ Kesalahan saat mengambil daftar server:', err.message);
+        throw new Error('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*');
+      });
+
+      if (servers.length === 0) {
+        return ctx.reply('⚠️ *PERHATIAN! Tidak ada server yang tersedia untuk diedit.*', { parse_mode: 'Markdown' });
+      }
+
+      const { Markup } = require('telegraf');
+      const buttons = servers.map(server => ([
+        Markup.button.callback(`${server.nama_server} (Port: ${server.port || 22})`, `edit_port_server_${server.id}`)
+      ]));
+
+      await ctx.reply('🔌 *Pilih Server untuk Edit Port SSH:*', {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard(buttons)
+      });
+    } catch (error) {
+      logger.error('❌ Kesalahan saat memulai proses edit port server:', error);
+      await ctx.reply(`❌ *${error}*`, { parse_mode: 'Markdown' });
+    }
+  });
+
+  // Handle edit port server selection
+  bot.action(/^edit_port_server_(\d+)$/, async (ctx) => {
+    const serverId = ctx.match[1];
+    await ctx.answerCbQuery();
+
+    const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]).catch(err => {
+      logger.error('❌ Server tidak ditemukan:', err?.message);
+      return null;
+    });
+
+    if (!server) {
+      return ctx.reply('❌ Server tidak ditemukan.', { parse_mode: 'Markdown' });
+    }
+
+    if (!global.userState) global.userState = {};
+    global.userState[ctx.chat.id] = { step: 'edit_port', serverId: serverId };
+
+    await ctx.editMessageText(
+      `🌐 *Server dipilih:* ${server.nama_server}\n` +
+      `Port SSH saat ini: *${server.port || 22}*\n\n` +
+      `💡 *Silakan ketik port SSH baru (misal: 22 atau 2222):*`,
+      { parse_mode: 'Markdown' }
+    );
+  });
+
   // Edit server domain
   bot.action('editserver_domain', async (ctx) => {
     try {

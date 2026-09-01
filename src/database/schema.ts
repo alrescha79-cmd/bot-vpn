@@ -121,6 +121,7 @@ async function initializeSchema() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       domain TEXT,
       auth TEXT,
+      port INTEGER DEFAULT 22,
       harga INTEGER,
       nama_server TEXT,
       quota INTEGER,
@@ -133,6 +134,7 @@ async function initializeSchema() {
     )`);
 
     // Add missing columns to Server table (migration)
+    await addColumnSafely('Server', 'port', 'INTEGER DEFAULT 22');
     await addColumnSafely('Server', 'isp', "TEXT DEFAULT 'Tidak diketahui'");
     await addColumnSafely('Server', 'lokasi', "TEXT DEFAULT 'Tidak diketahui'");
     await addColumnSafely('Server', 'created_at', 'TEXT DEFAULT CURRENT_TIMESTAMP');

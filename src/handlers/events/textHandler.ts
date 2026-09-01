@@ -601,6 +601,40 @@ function registerTextHandler(bot) {
         return;
       }
 
+      // Server edit port flow
+      if (state.step === 'edit_port') {
+        const port = parseInt(text.trim(), 10);
+        const serverId = state.serverId;
+
+        if (isNaN(port) || port < 1 || port > 65535) {
+          return ctx.reply('⚠️ *Port tidak valid.* Masukkan angka port antara 1 - 65535:', { parse_mode: 'Markdown' });
+        }
+
+        const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]).catch(err => {
+          logger.error('❌ Error getting server:', err);
+          return null;
+        });
+
+        if (!server) {
+          return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+        }
+
+        await dbRunAsync('UPDATE Server SET port = ? WHERE id = ?', [port, serverId]).catch(err => {
+          logger.error('❌ Error updating server port:', err);
+          throw err;
+        });
+
+        delete global.userState[ctx.chat.id];
+        await ctx.reply(
+          `✅ *Port SSH Server berhasil diperbarui!*\n\n` +
+          `Nama server: *${server.nama_server}*\n` +
+          `Host: *${server.domain}*\n` +
+          `Port SSH Baru: *${port}*`,
+          { parse_mode: 'Markdown' }
+        );
+        return;
+      }
+
       // Server edit domain flow (only handle text input after button selection)
       if (state.step === 'edit_domain') {
         const newDomain = text.trim();
@@ -726,6 +760,16 @@ function registerTextHandler(bot) {
         const auth = text;
         if (!auth) return ctx.reply('⚠️ *Password root tidak boleh kosong.* Silakan masukkan password root VPS yang valid.', { parse_mode: 'Markdown' });
         state.auth = auth;
+        state.step = 'addserver_port';
+        return ctx.reply('*🔌 Silakan masukkan Port SSH server (default: 22):*\n_Contoh: 22 atau 2222_', { parse_mode: 'Markdown' });
+      }
+
+      if (state.step === 'addserver_port') {
+        let port = parseInt(text, 10);
+        if (isNaN(port) || port < 1 || port > 65535) {
+          port = 22;
+        }
+        state.port = port;
         state.step = 'addserver_nama_server';
         return ctx.reply('*🏷️ Silakan masukkan nama server:*', { parse_mode: 'Markdown' });
       }
@@ -766,28 +810,27 @@ function registerTextHandler(bot) {
         const harga = parseFloat(text);
         if (isNaN(harga) || harga <= 0) return ctx.reply('⚠️ *Harga tidak valid.*', { parse_mode: 'Markdown' });
 
-        const { domain, auth, nama_server, quota, iplimit, batas_create_akun } = state;
+        const { domain, auth, port, nama_server, quota, iplimit, batas_create_akun } = state;
 
         try {
-          // Note: resolveDomainToIP and getISPAndLocation should be imported from utils
-          // For now, we'll use default values
           const isp = 'Tidak diketahui';
           const lokasi = 'Tidak diketahui';
+          const serverPort = port || 22;
 
-          logger.info(`📝 Attempting to add server: ${nama_server} (${domain})`);
-          logger.info(`📊 Server details - Quota: ${quota}GB, IP Limit: ${iplimit}, Price: ${harga}`);
+          logger.info(`📝 Attempting to add server: ${nama_server} (${domain}:${serverPort})`);
+          logger.info(`📊 Server details - Quota: ${quota}GB, IP Limit: ${iplimit}, Price: ${harga}, Port: ${serverPort}`);
 
-          // Use dbRunAsync instead of global.db.run
           const result = await dbRunAsync(`
-            INSERT INTO Server (domain, auth, nama_server, quota, iplimit, batas_create_akun, harga, total_create_akun, isp, lokasi)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-          `, [domain, auth, nama_server, quota, iplimit, batas_create_akun, harga, isp, lokasi]);
+            INSERT INTO Server (domain, auth, port, nama_server, quota, iplimit, batas_create_akun, harga, total_create_akun, isp, lokasi)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+          `, [domain, auth, serverPort, nama_server, quota, iplimit, batas_create_akun, harga, isp, lokasi]);
 
           logger.info(`✅ Server added successfully with ID: ${result.lastID}`);
 
           await ctx.reply(
             `✅ *Server berhasil ditambahkan!*\n\n` +
             `🌐 Domain: ${domain}\n` +
+            `🔌 Port SSH: ${serverPort}\n` +
             `📍 Lokasi: ${lokasi}\n` +
             `🏢 ISP: ${isp}\n` +
             `💸 Harga: Rp${harga} per hari\n` +

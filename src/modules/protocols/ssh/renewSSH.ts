@@ -191,7 +191,7 @@ echo "IP Limit: $ip_limit"
         })
         .connect({
           host: server.domain,
-          port: 22,
+          port: server.port || 22,
           username: 'root',
           password: server.auth,
           readyTimeout: 30000,

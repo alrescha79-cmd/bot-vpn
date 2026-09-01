@@ -44,6 +44,7 @@ class ServerQueries {
     const {
       domain,
       auth,
+      port,
       harga,
       nama_server,
       quota,
@@ -52,9 +53,9 @@ class ServerQueries {
     } = serverData;
 
     return dbRunAsync(
-      `INSERT INTO Server (domain, auth, harga, nama_server, quota, iplimit, batas_create_akun, total_create_akun)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
-      [domain, auth, harga, nama_server, quota, iplimit, batas_create_akun]
+      `INSERT INTO Server (domain, auth, port, harga, nama_server, quota, iplimit, batas_create_akun, total_create_akun)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+      [domain, auth, port || 22, harga, nama_server, quota, iplimit, batas_create_akun]
     );
   }
 

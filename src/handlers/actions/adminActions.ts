@@ -74,15 +74,15 @@ function registerServerMenuAction(bot) {
         ],
         [
           { text: '🌐 Edit Domain', callback_data: 'editserver_domain' },
-          { text: '🔑 Edit Auth', callback_data: 'editserver_auth' }
+          { text: '🔌 Edit Port', callback_data: 'editserver_port' }
         ],
         [
-          { text: '📊 Edit Quota', callback_data: 'editserver_quota' },
-          { text: '📶 Edit Limit Ip', callback_data: 'editserver_limit_ip' }
+          { text: '🔑 Edit Auth', callback_data: 'editserver_auth' },
+          { text: '📊 Edit Quota', callback_data: 'editserver_quota' }
         ],
         [
-          { text: '💵 Tambah Saldo', callback_data: 'addsaldo_user' },
-          { text: 'ℹ️ Detail Server', callback_data: 'detailserver' }
+          { text: '📶 Edit Limit Ip', callback_data: 'editserver_limit_ip' },
+          { text: '💵 Tambah Saldo', callback_data: 'addsaldo_user' }
         ],
         [
           { text: '🔢 Batas Create', callback_data: 'editserver_batas_create_akun' },

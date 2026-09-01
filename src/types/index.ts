@@ -25,6 +25,7 @@ export interface DatabaseServer {
   id: number;
   domain: string;
   auth: string;
+  port?: number;
   harga: number;
   nama_server: string;
   quota: number;

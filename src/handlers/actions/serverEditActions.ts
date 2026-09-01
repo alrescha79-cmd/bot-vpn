@@ -231,6 +231,7 @@ function registerServerDetailAction(bot) {
 
       const serverDetails = `📋 *Detail Server* 📋\n\n` +
         `🌐 *Domain:* \`${server.domain}\`\n` +
+        `🔌 *Port SSH:* \`${server.port || 22}\`\n` +
         `🔑 *Auth:* \`${server.auth}\`\n` +
         `🏷️ *Nama Server:* \`${server.nama_server}\`\n` +
         `📊 *Quota:* \`${server.quota} GB\`\n` +
