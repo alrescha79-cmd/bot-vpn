@@ -1,10 +1,10 @@
 # Multi-stage production Dockerfile for Bot Telegram VPN
-# Stage 1: Build TypeScript and prepare assets
+# Stage 1: Build TypeScript and compile native dependencies
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install build tools for native addons (sqlite3)
+# Install build tools for native addons (sqlite3, ssh2)
 RUN apk add --no-cache python3 make g++
 
 # Copy package manifests
@@ -19,6 +19,9 @@ COPY scripts ./scripts
 
 # Build TypeScript to ./dist and copy frontend assets
 RUN node scripts/build-clean.js
+
+# Prune devDependencies to keep only production modules
+RUN npm prune --omit=dev && npm cache clean --force
 
 # Stage 2: Production Runner
 FROM node:20-alpine AS runner
@@ -36,8 +39,8 @@ ENV DB_PATH=/app/data/botvpn.db
 # Copy package manifests
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm ci --omit=dev && npm cache clean --force
+# Copy pre-built production node_modules from builder stage (zero runtime rebuild required)
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy compiled dist, index.js, and helper files
 COPY --from=builder /app/dist ./dist
