@@ -25,7 +25,8 @@ console.log('🔨 Compiling TypeScript...');
 
 // Compile TypeScript
 try {
-  execSync('tsc', { stdio: 'inherit' });
+  const tscCmd = fs.existsSync('./node_modules/.bin/tsc') ? './node_modules/.bin/tsc' : 'npx tsc';
+  execSync(tscCmd, { stdio: 'inherit' });
   console.log('✅ TypeScript compilation complete');
 } catch (error) {
   console.error('❌ TypeScript compilation failed');
