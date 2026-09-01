@@ -2,38 +2,54 @@
 
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3.3-blue.svg)](https://www.typescriptlang.org/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](docs/DOCKER_SETUP.md)
+[![Docker Image](https://img.shields.io/badge/Docker-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/alrescha79-cmd/bot-vpn/pkgs/container/bot-vpn)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **Bot Telegram** untuk manajemen akun VPN multi-protocol dengan arsitektur production-ready. **Semua fitur & manajemen dilakukan via Telegram Bot** - web interface hanya untuk setup/edit konfigurasi awal serta webhook payment gateway.
 
 ---
 
-## 🐳 Quick Start dengan Docker (Sangat Direkomendasikan)
+## ⭐ Rekomendasi Utama: Deploy Instan dengan Docker
 
+Menggunakan **Docker & Pre-Built Image Resmi** adalah metode tercepat dan paling stabil karena tidak membutuhkan instalasi runtime Node.js/tools compiler di server host.
+
+### 1. Cek & Install Docker di VPS (Jika Belum Ada)
 ```bash
-# 1. Clone repo
-git clone https://github.com/alrescha79-cmd/bot-vpn.git /opt/bot-vpn
-cd /opt/bot-vpn
+# Cek apakah Docker sudah terpasang
+docker --version && docker compose version
 
-# 2. Setup environment / secret keys
-cp .env.example .env
+# Jika belum terinstall, jalankan:
+curl -fsSL https://get.docker.com | sudo bash && sudo usermod -aG docker $USER
+```
+
+### 2. Deploy 1-Menit di VPS
+```bash
+# Buat folder kerja
+mkdir -p /opt/bot-vpn && cd /opt/bot-vpn
+
+# Unduh template docker-compose & environment
+curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/docker-compose.yml -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/.env.example -o .env
+
+# Edit token Telegram & API Keys Anda
 nano .env
 
-# 3. Jalankan bot di background
-docker compose up -d --build
+# Tarik image resmi & jalankan bot
+docker compose pull
+docker compose up -d
 ```
-> 📖 **Panduan Lengkap Docker**: Lihat [Docker Setup Guide](docs/DOCKER_SETUP.md)
+
+> 📖 **Panduan Detail Docker**: Lihat [Docker Setup Guide](docs/DOCKER_SETUP.md) untuk panduan firewall, webhook URL, dan maintenance database.
 
 ---
 
-## 🚀 One-Line Installation/Update (PM2 / Host Linux)
+## 🚀 Opsi Lain: Instalasi Manual / PM2 (Host Linux)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/alrescha79-cmd/bot-vpn/main/scripts/install-production.sh | sudo bash
 ```
 
-> 📖 **Informasi lengkap**: Lihat [Production Installation Guide](docs/PRODUCTION_INSTALL.md) untuk detail setup dan konfigurasi.
+> 📖 **Informasi lengkap**: Lihat [Production Installation Guide](docs/PRODUCTION_INSTALL.md) untuk detail setup dan konfigurasi host PM2/systemd.
 
 ---
 > **🆕 What's New in v3.2.0:**

@@ -2,10 +2,10 @@ version: '3.8'
 
 services:
   bot-vpn:
+    image: ghcr.io/alrescha79-cmd/bot-vpn:latest
     build:
       context: .
       dockerfile: Dockerfile
-    image: bot-telegram-vpn:latest
     container_name: bot-vpn
     restart: unless-stopped
     ports:
@@ -20,8 +20,6 @@ services:
     volumes:
       # Persistent SQLite database and backups
       - ./data:/app/data
-      # Optional: mount .vars.json if not using .env
-      - ./.vars.json:/app/.vars.json:ro
     logging:
       driver: "json-file"
       options:
