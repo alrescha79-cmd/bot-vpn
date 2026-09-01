@@ -12,7 +12,7 @@ import type { BotContext, DatabaseUser, DatabaseServer } from "../../types";
 
 const { dbRunAsync, dbGetAsync } = require('../../database/connection');
 const logger = require('../../utils/logger');
-const { keyboard_nomor } = require('../../utils/keyboard');
+const { Markup } = require('telegraf');
 
 /**
  * Register edit server price action
@@ -38,9 +38,12 @@ function registerEditHargaAction(bot) {
     await ctx.reply(
       `🌐 *Server dipilih:* ${server.nama_server}\n` +
       `Harga saat ini: *Rp ${server.harga.toLocaleString('id-ID')}/hari*\n\n` +
-      `💡 *Silakan masukkan harga server baru (Rp/hari):*`,
+      `💰 *Silakan ketik harga server baru (Rp/hari):*\n` +
+      `_Contoh: 1000 atau 15000_`,
       {
-        reply_markup: { inline_keyboard: keyboard_nomor() },
+        reply_markup: {
+          inline_keyboard: [[{ text: '❌ Batal', callback_data: 'cancel_edit_server' }]]
+        },
         parse_mode: 'Markdown'
       }
     );
@@ -71,9 +74,12 @@ function registerEditBatasCreateAkunAction(bot) {
     await ctx.reply(
       `🌐 *Server dipilih:* ${server.nama_server}\n` +
       `Batas Create Akun saat ini: *${server.batas_create_akun}*\n\n` +
-      `💡 *Silakan masukkan batas create akun server baru:*`,
+      `🔢 *Silakan ketik batas create akun baru:*\n` +
+      `_Contoh: 100 atau 500_`,
       {
-        reply_markup: { inline_keyboard: keyboard_nomor() },
+        reply_markup: {
+          inline_keyboard: [[{ text: '❌ Batal', callback_data: 'cancel_edit_server' }]]
+        },
         parse_mode: 'Markdown'
       }
     );
@@ -133,9 +139,12 @@ function registerEditLimitIPAction(bot) {
     await ctx.reply(
       `🌐 *Server dipilih:* ${server.nama_server}\n` +
       `Limit IP saat ini: *${server.iplimit}*\n\n` +
-      `💡 *Silakan masukkan limit IP (Device) server baru:*`,
+      `📶 *Silakan ketik Limit IP (Device) server baru:*\n` +
+      `_Contoh: 1, 2, atau 0 untuk unlimited_`,
       {
-        reply_markup: { inline_keyboard: keyboard_nomor() },
+        reply_markup: {
+          inline_keyboard: [[{ text: '❌ Batal', callback_data: 'cancel_edit_server' }]]
+        },
         parse_mode: 'Markdown'
       }
     );
@@ -166,9 +175,12 @@ function registerEditQuotaAction(bot) {
     await ctx.reply(
       `🌐 *Server dipilih:* ${server.nama_server}\n` +
       `Kuota saat ini: *${server.quota} GB*\n\n` +
-      `💡 *Silakan masukkan kuota server baru (GB):*`,
+      `📊 *Silakan ketik kuota server baru (GB):*\n` +
+      `_Contoh: 100, 500, atau 0 untuk unlimited_`,
       {
-        reply_markup: { inline_keyboard: keyboard_nomor() },
+        reply_markup: {
+          inline_keyboard: [[{ text: '❌ Batal', callback_data: 'cancel_edit_server' }]]
+        },
         parse_mode: 'Markdown'
       }
     );
@@ -179,6 +191,43 @@ function registerEditQuotaAction(bot) {
  * Register server delete confirmation action
  */
 function registerConfirmDeleteServerAction(bot) {
+  // Step 1: Confirmation prompt
+  bot.action(/^ask_delete_server_(\d+)$/, async (ctx) => {
+    const serverId = ctx.match[1];
+
+    try {
+      await ctx.answerCbQuery();
+      const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]);
+
+      if (!server) {
+        return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+      }
+
+      const confirmMessage = 
+        `⚠️ *KONFIRMASI HAPUS SERVER*\n\n` +
+        `🖥️ *Nama Server:* \`${server.nama_server}\`\n` +
+        `🌐 *Host/Domain:* \`${server.domain}\`\n` +
+        `👤 *User SSH:* \`${server.user_ssh || 'root'}\`\n` +
+        `🔌 *Port:* \`${server.port || 22}\`\n\n` +
+        `🚨 *PERINGATAN: Apakah Anda yakin ingin menghapus server ini dari bot?*\n` +
+        `_Data server ini tidak dapat dikembalikan setelah dihapus._`;
+
+      await ctx.reply(confirmMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '🗑️ Ya, Hapus Server', callback_data: `confirm_delete_server_${serverId}` }],
+            [{ text: '❌ Batal', callback_data: 'deleteserver' }]
+          ]
+        }
+      });
+    } catch (error) {
+      logger.error('Kesalahan saat konfirmasi hapus server:', error);
+      await ctx.reply('❌ *Terjadi kesalahan saat memproses permintaan.*', { parse_mode: 'Markdown' });
+    }
+  });
+
+  // Step 2: Execute server deletion
   bot.action(/^confirm_delete_server_(\d+)$/, async (ctx) => {
     const serverId = ctx.match[1];
 
@@ -231,6 +280,7 @@ function registerServerDetailAction(bot) {
 
       const serverDetails = `📋 *Detail Server* 📋\n\n` +
         `🌐 *Domain:* \`${server.domain}\`\n` +
+        `👤 *User SSH:* \`${server.user_ssh || 'root'}\`\n` +
         `🔌 *Port SSH:* \`${server.port || 22}\`\n` +
         `🔑 *Auth:* \`${server.auth}\`\n` +
         `🏷️ *Nama Server:* \`${server.nama_server}\`\n` +
@@ -262,10 +312,18 @@ function registerAddSaldoUserAction(bot) {
     if (!global.userState) global.userState = {};
     global.userState[ctx.chat.id] = { step: 'add_saldo', userId: userId };
 
-    await ctx.reply('📊 *Silakan masukkan jumlah saldo yang ingin ditambahkan:*', {
-      reply_markup: { inline_keyboard: keyboard_nomor() },
-      parse_mode: 'Markdown'
-    });
+    await ctx.reply(
+      `📊 *Tambah Saldo Pengguna*\n\n` +
+      `User ID: \`${userId}\`\n\n` +
+      `💵 *Silakan ketik jumlah saldo yang ingin ditambahkan (Rp):*\n` +
+      `_Contoh: 10000 atau 50000_`,
+      {
+        reply_markup: {
+          inline_keyboard: [[{ text: '❌ Batal', callback_data: 'cancel_add_saldo' }]]
+        },
+        parse_mode: 'Markdown'
+      }
+    );
   });
 }
 

@@ -292,6 +292,9 @@ async function handlePaymentConfirmation(ctx, action) {
       user = { saldo: 0, role: 'user', reseller_level: 'silver' };
     }
 
+    const { isAdmin } = require('../../middleware/roleCheck');
+    const userIsAdmin = await isAdmin(userId);
+
     // Calculate price with reseller discount
     const diskon = user.role === 'reseller'
       ? user.reseller_level === 'gold' ? 0.2
@@ -301,11 +304,11 @@ async function handlePaymentConfirmation(ctx, action) {
 
     // For 3in1, price is 1.5x
     const priceMultiplier = protocol === '3in1' ? 1.5 : 1;
-    const hargaSatuan = Math.floor(server.harga * (1 - diskon) * priceMultiplier);
-    const totalHarga = hargaSatuan * duration;
+    const hargaSatuan = userIsAdmin ? 0 : Math.floor(server.harga * (1 - diskon) * priceMultiplier);
+    const totalHarga = userIsAdmin ? 0 : hargaSatuan * duration;
 
     // Check balance again
-    if (user.saldo < totalHarga) {
+    if (!userIsAdmin && user.saldo < totalHarga) {
       return ctx.editMessageText(
         `❌ *Saldo Tidak Mencukupi*\n\n` +
         `Saldo Anda hanya Rp${user.saldo.toLocaleString('id-ID')}.\n` +
@@ -319,8 +322,10 @@ async function handlePaymentConfirmation(ctx, action) {
       );
     }
 
-    // Deduct balance
-    await dbRunAsync('UPDATE users SET saldo = saldo - ? WHERE user_id = ?', [totalHarga, userId]);
+    // Deduct balance (if not admin)
+    if (totalHarga > 0) {
+      await dbRunAsync('UPDATE users SET saldo = saldo - ? WHERE user_id = ?', [totalHarga, userId]);
+    }
 
     // Handler mapping (use lowercase protocol)
     const handlerMap = {
@@ -385,7 +390,10 @@ async function handlePaymentConfirmation(ctx, action) {
     // Check for error message
     if (msg.startsWith('❌')) {
       // Refund if renewal failed
-      await dbRunAsync('UPDATE users SET saldo = saldo + ? WHERE user_id = ?', [totalHarga, userId]);
+      if (totalHarga > 0) {
+        await dbRunAsync('UPDATE users SET saldo = saldo + ? WHERE user_id = ?', [totalHarga, userId]);
+      }
+      delete global.userState[chatId];
       return ctx.reply(msg, { parse_mode: 'Markdown' });
     }
 

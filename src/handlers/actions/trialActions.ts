@@ -14,6 +14,7 @@ import type { BotContext, DatabaseUser, DatabaseServer } from "../../types";
 const { dbGetAsync, dbRunAsync } = require('../../database/connection');
 const { escapeMarkdown } = require('../../utils/markdown');
 const logger = require('../../utils/logger');
+const { isAdmin } = require('../../middleware/roleCheck');
 
 // Import trial modules
 const { trialssh } = require('../../modules/protocols/ssh/trialSSH');
@@ -32,6 +33,16 @@ const GROUP_ID = process.env.GROUP_ID ? parseInt(process.env.GROUP_ID, 10) : nul
  */
 async function checkTrialLimit(userId) {
   try {
+    const adminCheck = await isAdmin(userId);
+    if (adminCheck) {
+      return {
+        allowed: true,
+        count: 0,
+        max: Infinity,
+        role: 'admin'
+      };
+    }
+
     const user = await dbGetAsync(
       'SELECT role, last_trial_date, trial_count_today FROM users WHERE user_id = ?',
       [userId]
@@ -44,7 +55,7 @@ async function checkTrialLimit(userId) {
     const lastDate = user?.last_trial_date;
 
     // Set max trial based on role
-    const maxTrial = role === 'reseller' ? 10 : role === 'admin' ? Infinity : 1;
+    const maxTrial = role === 'reseller' ? 10 : (role === 'admin' || role === 'owner') ? Infinity : 2;
 
     // Reset trial count if different day
     if (lastDate !== today) {
@@ -95,7 +106,7 @@ async function logTrial(userId, username, type) {
  * @param {object} data - Trial data
  */
 async function sendTrialNotification(ctx, data) {
-  if (!GROUP_ID || isNaN(GROUP_ID)) return;
+  if (!GROUP_ID) return;
 
   try {
     const { protocol, serverName, role, trialCount, maxTrial } = data;
@@ -116,8 +127,8 @@ async function sendTrialNotification(ctx, data) {
 ━━━━━━━━━━━━━━━━━━━━━━━`.trim();
 
     await ctx.telegram.sendMessage(GROUP_ID, notif, { parse_mode: 'Markdown' });
-  } catch (error) {
-    logger.warn('Failed to send trial notification to group:', error.message);
+  } catch (error: any) {
+    logger.warn('Failed to send trial notification to group:', error?.message);
   }
 }
 
@@ -182,6 +193,8 @@ function registerTrialSSHAction(bot) {
 🌍 Domain: \`${domain}\`
 🏙️ Kota: \`${city}\`
 🔑 PubKey: \`${public_key}\`
+📦 Quota: 1 GB
+📱 Limit IP: 1 Device
 
 🔌 *PORT*
 ${ports}
@@ -278,6 +291,8 @@ function registerTrialVMESSAction(bot) {
 🏙️ Kota: ${city}
 📡 NS: ${ns_domain}
 🔑 PubKey: ${public_key}
+📦 Quota: 1 GB
+📱 Limit IP: 1 Device
 
 🔌 *PORT*
 TLS 443 | NTLS 80/8080 | gRPC 443
@@ -372,6 +387,8 @@ function registerTrialVLESSAction(bot) {
 🏙️ Kota: ${city}
 📡 NS: ${ns_domain}
 🔑 PubKey: ${public_key}
+📦 Quota: 1 GB
+📱 Limit IP: 1 Device
 
 🔌 *PORT*
 TLS 443 | NTLS 80/8080 | gRPC 443
@@ -461,19 +478,20 @@ function registerTrialTROJANAction(bot) {
 ⚡ *AKUN TROJAN TRIAL*
 
 👤 User: \`${username}\`
-🔐 UUID: \`${uuid}\`
+🔐 Pass/UUID: \`${uuid}\`
 🌍 Domain: \`${domain}\`
 🏙️ Kota: ${city}
 📡 NS: ${ns_domain}
 🔑 PubKey: ${public_key}
+📦 Quota: 1 GB
+📱 Limit IP: 1 Device
 
 🔌 *PORT*
-TLS 443 | NTLS 80/8080 | gRPC 443
+TLS 443 | gRPC 443
 
 🔗 *Link*
-TLS     : \`\`\`${link_tls}\`\`\`
-Non-TLS : \`\`\`${link_ntls}\`\`\`
-gRPC    : \`\`\`${link_grpc}\`\`\`
+TLS  : \`\`\`${link_tls}\`\`\`
+gRPC : \`\`\`${link_grpc}\`\`\`
 
 📆 *Expired:* ${expiration}
 `.trim();
@@ -564,6 +582,8 @@ function registerTrialSHADOWSOCKSAction(bot) {
 🏙️ Kota: \`${city}\`
 📡 NS: \`${ns_domain}\`
 🔑 PubKey: \`${public_key}\`
+📦 Quota: 1 GB
+📱 Limit IP: 1 Device
 
 🔌 *PORT*
 TLS 443 | NTLS 80/8080 | gRPC 443

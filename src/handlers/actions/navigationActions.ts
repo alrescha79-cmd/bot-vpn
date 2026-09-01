@@ -389,7 +389,7 @@ function registerAkunkuDeleteAction(bot) {
           buttons.push([
             Markup.button.callback(
               `  ${acc.username} (${acc.protocol}) - ${statusIcon}`,
-              `delete_confirm_${acc.id}`
+              `ask_delete_acc_${acc.id}`
             )
           ]);
           addedCount++;
@@ -416,6 +416,42 @@ function registerAkunkuDeleteAction(bot) {
  * Handle confirm delete account
  */
 function registerAkunkuConfirmDeleteAction(bot) {
+  // Step 1: Prompt confirmation
+  bot.action(/^ask_delete_acc_(.+)$/, async (ctx) => {
+    const accountId = ctx.match[1];
+    const userId = ctx.from.id;
+
+    try {
+      const { getAccountById } = require('../../repositories/accountRepository');
+      const account = await getAccountById(accountId);
+
+      if (!account) {
+        return ctx.reply('❌ Akun tidak ditemukan.');
+      }
+
+      await ctx.answerCbQuery();
+      const confirmMessage = 
+        `⚠️ *KONFIRMASI HAPUS AKUN*\n\n` +
+        `👤 *Username:* \`${account.username}\`\n` +
+        `🏪 *Protokol:* \`${account.protocol.toUpperCase()}\`\n` +
+        `🌐 *Server:* \`${account.server}\`\n\n` +
+        `🚨 *Apakah Anda yakin ingin menghapus akun ini?*\n` +
+        `_Akun akan langsung dihapus dari VPS dan sistem database._`;
+
+      await ctx.editMessageText(confirmMessage, {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('🗑️ Ya, Hapus Sekarang', `delete_confirm_${accountId}`)],
+          [Markup.button.callback('❌ Batal', 'akunku_delete')]
+        ])
+      });
+    } catch (err: any) {
+      logger.error('❌ Error in ask_delete_acc:', err);
+      await ctx.reply('❌ Gagal memproses konfirmasi hapus akun: ' + (err?.message || ''));
+    }
+  });
+
+  // Step 2: Execute deletion
   bot.action(/^delete_confirm_(.+)$/, async (ctx) => {
     const accountId = ctx.match[1];
     const userId = ctx.from.id;
@@ -481,6 +517,14 @@ function registerAkunkuConfirmDeleteAction(bot) {
       // Also delete from akun_aktif table
       const { dbRunAsync } = require('../../database/connection');
       await dbRunAsync('DELETE FROM akun_aktif WHERE username = ? AND UPPER(jenis) = UPPER(?)', [account.username, account.protocol]);
+
+      // Decrement total_create_akun on server
+      if (server && server.id) {
+        await dbRunAsync(
+          'UPDATE Server SET total_create_akun = total_create_akun - 1 WHERE id = ? AND total_create_akun > 0',
+          [server.id]
+        );
+      }
 
       const vpsStatus = vpsDeleteResult === 'SUCCESS'
         ? '✅ Berhasil dihapus dari server VPS'
@@ -704,6 +748,11 @@ function registerCancelActions(bot) {
   // Exclude cancel_payment_* because it's handled in callbackRouter
   bot.action(/cancel_(?!payment_)(.+)/, async (ctx) => {
     const [, operation] = ctx.match;
+
+    // Clear any active userState
+    if (global.userState && global.userState[ctx.chat.id]) {
+      delete global.userState[ctx.chat.id];
+    }
 
     await ctx.answerCbQuery('❌ Dibatalkan');
 

@@ -133,7 +133,7 @@ function registerDeleteServerAction(bot) {
       }
 
       const keyboard = servers.map(server => {
-        return [{ text: server.nama_server, callback_data: `confirm_delete_server_${server.id}` }];
+        return [{ text: server.nama_server, callback_data: `ask_delete_server_${server.id}` }];
       });
       keyboard.push([{ text: '🔙 Kembali ke Menu Utama', callback_data: 'kembali_ke_menu' }]);
 
@@ -263,6 +263,61 @@ function registerEditServerMenuActions(bot) {
       `🌐 *Server dipilih:* ${server.nama_server}\n` +
       `Auth/Password saat ini: *${server.auth}*\n\n` +
       `💡 *Silakan ketik auth/password baru:*`,
+      { parse_mode: 'Markdown' }
+    );
+  });
+
+  // Edit server user SSH
+  bot.action('editserver_user', async (ctx) => {
+    try {
+      logger.info('Edit server user SSH process started');
+      await ctx.answerCbQuery();
+
+      const servers = await dbAllAsync('SELECT id, nama_server, user_ssh FROM Server', []).catch(err => {
+        logger.error('❌ Kesalahan saat mengambil daftar server:', err.message);
+        throw new Error('⚠️ *PERHATIAN! Terjadi kesalahan saat mengambil daftar server.*');
+      });
+
+      if (servers.length === 0) {
+        return ctx.reply('⚠️ *PERHATIAN! Tidak ada server yang tersedia untuk diedit.*', { parse_mode: 'Markdown' });
+      }
+
+      const { Markup } = require('telegraf');
+      const buttons = servers.map(server => ([
+        Markup.button.callback(`${server.nama_server} (User: ${server.user_ssh || 'root'})`, `edit_user_server_${server.id}`)
+      ]));
+
+      await ctx.reply('👤 *Pilih Server untuk Edit User SSH:*', {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard(buttons)
+      });
+    } catch (error) {
+      logger.error('❌ Kesalahan saat memulai proses edit user server:', error);
+      await ctx.reply(`❌ *${error}*`, { parse_mode: 'Markdown' });
+    }
+  });
+
+  // Handle edit user server selection
+  bot.action(/^edit_user_server_(\d+)$/, async (ctx) => {
+    const serverId = ctx.match[1];
+    await ctx.answerCbQuery();
+
+    const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]).catch(err => {
+      logger.error('❌ Server tidak ditemukan:', err?.message);
+      return null;
+    });
+
+    if (!server) {
+      return ctx.reply('❌ Server tidak ditemukan.', { parse_mode: 'Markdown' });
+    }
+
+    if (!global.userState) global.userState = {};
+    global.userState[ctx.chat.id] = { step: 'edit_user_ssh', serverId: serverId };
+
+    await ctx.editMessageText(
+      `🌐 *Server dipilih:* ${server.nama_server}\n` +
+      `User SSH saat ini: *${server.user_ssh || 'root'}*\n\n` +
+      `💡 *Silakan ketik username SSH baru (misal: root, ubuntu, debian):*`,
       { parse_mode: 'Markdown' }
     );
   });

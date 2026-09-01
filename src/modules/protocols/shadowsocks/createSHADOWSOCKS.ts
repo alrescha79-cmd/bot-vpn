@@ -57,45 +57,54 @@ domain=$(cat /etc/xray/domain 2>/dev/null || hostname -f)
 city=$(cat /etc/xray/city 2>/dev/null || echo "Unknown")
 pubkey=$(cat /etc/slowdns/server.pub 2>/dev/null || echo "")
 
-mkdir -p /etc/xray/shadowsocks
-
 if [ ! -f "/etc/xray/shadowsocks/config.json" ]; then
-  echo '{"inbounds":[]}' > /etc/xray/shadowsocks/config.json
+  if [ -f "/etc/xray/config.json" ]; then
+    CONFIG_FILE="/etc/xray/config.json"
+  else
+    mkdir -p /etc/xray/shadowsocks
+    echo '{"inbounds":[]}' > /etc/xray/shadowsocks/config.json
+    CONFIG_FILE="/etc/xray/shadowsocks/config.json"
+  fi
+else
+  CONFIG_FILE="/etc/xray/shadowsocks/config.json"
 fi
 
-if grep -q "^### \$user " /etc/xray/shadowsocks/config.json 2>/dev/null; then
+if grep -q "^### \$user " "\$CONFIG_FILE" 2>/dev/null; then
   echo "ERROR:User already exists"
   exit 1
 fi
 
-sed -i '/#shadowsocks$/a\\### '"\$user \$exp_date"'\\
-},{"password": "'"\$uuid"'","email": "'"\$user"'","method": "aes-128-gcm"' /etc/xray/shadowsocks/config.json
+sed -i '/#shadowsocks\$/a\\### '"\$user \$exp_date"'\\
+},{"password": "'"\$uuid"'","email": "'"\$user"'","method": "aes-128-gcm"' "\$CONFIG_FILE" 2>/dev/null || sed -i '/#shadowsocks/a\\### '"\$user \$exp_date"'\\
+},{"password": "'"\$uuid"'","email": "'"\$user"'","method": "aes-128-gcm"' "\$CONFIG_FILE" 2>/dev/null || true
 
-sed -i '/#shadowsocksgrpc$/a\\### '"\$user \$exp_date"'\\
-},{"password": "'"\$uuid"'","email": "'"\$user"'","method": "aes-128-gcm"' /etc/xray/shadowsocks/config.json
+sed -i '/#shadowsocksgrpc\$/a\\### '"\$user \$exp_date"'\\
+},{"password": "'"\$uuid"'","email": "'"\$user"'","method": "aes-128-gcm"' "\$CONFIG_FILE" 2>/dev/null || true
 
 # Encode for SS link
 ss_base64=\$(echo -n "aes-128-gcm:\${uuid}" | base64 -w0)
 
-cat > /var/www/html/shadowsocks-\$user.txt <<EOF
+mkdir -p /var/www/html
+cat > /var/www/html/shadowsocks-\$user.txt <<EOF 2>/dev/null || true
 TLS Link : ss://\${ss_base64}@\${domain}:443#\${user}
 GRPC Link : ss://\${ss_base64}@\${domain}:443?plugin=grpc#\${user}
 EOF
 
 if [ "\$quota" != "0" ]; then
   quota_bytes=\$((quota * 1024 * 1024 * 1024))
-  echo "\$quota_bytes" > /etc/xray/shadowsocks/\${user}
-  echo "\$ip_limit" > /etc/xray/shadowsocks/\${user}IP
+  mkdir -p /etc/xray/shadowsocks
+  echo "\$quota_bytes" > /etc/xray/shadowsocks/\${user} 2>/dev/null || true
+  echo "\$ip_limit" > /etc/xray/shadowsocks/\${user}IP 2>/dev/null || true
 fi
 
 db_file="/etc/xray/shadowsocks/.shadowsocks.db"
 mkdir -p /etc/xray/shadowsocks
-touch \$db_file
+touch \$db_file 2>/dev/null || true
 grep -v "^### \${user} " "\$db_file" > "\$db_file.tmp" 2>/dev/null || true
 mv "\$db_file.tmp" "\$db_file" 2>/dev/null || true
-echo "### \${user} \${exp_date} \${uuid}" >> "\$db_file"
+echo "### \${user} \${exp_date} \${uuid}" >> "\$db_file" 2>/dev/null || true
 
-systemctl restart shadowsocks@config 2>/dev/null || systemctl restart xray@shadowsocks 2>/dev/null
+systemctl restart xray 2>/dev/null || systemctl restart shadowsocks@config 2>/dev/null || systemctl restart xray@shadowsocks 2>/dev/null || true
 
 ss_tls="ss://\${ss_base64}@\${domain}:443#\${user}"
 ss_grpc="ss://\${ss_base64}@\${domain}:443?plugin=grpc#\${user}"
@@ -121,8 +130,10 @@ EOFDATA
         console.log('🔨 Executing SHADOWSOCKS creation command...');
         
         let output = '';
+        const { wrapSSHCommand } = require('../../../services/ssh.service');
+        const wrappedCmd = wrapSSHCommand(cmd, server.user_ssh || 'root', server.auth);
         
-        conn.exec(cmd, (err, stream) => {
+        conn.exec(wrappedCmd, (err, stream) => {
           if (err) {
             clearTimeout(globalTimeout);
             if (!resolved) {
@@ -134,6 +145,14 @@ EOFDATA
             return;
           }
 
+          let exitCode = 0;
+
+          stream.on('exit', (code) => {
+            if (code !== undefined && code !== null) {
+              exitCode = code;
+            }
+          });
+
           stream.on('close', (code, signal) => {
             clearTimeout(globalTimeout);
             conn.end();
@@ -141,10 +160,12 @@ EOFDATA
             if (resolved) return;
             resolved = true;
             
-            console.log(`📝 Command finished with code: ${code}`);
+            const finalCode = (code !== undefined && code !== null) ? code : exitCode;
+            console.log(`📝 Command finished with code: ${finalCode}`);
+            console.log(`📄 Output: ${output.trim()}`);
             
-            if (code !== 0) {
-              console.error('❌ Command failed with exit code:', code);
+            if (finalCode !== 0) {
+              console.error('❌ Command failed with exit code:', finalCode);
               if (output.includes('ERROR:User already exists')) {
                 return resolve('❌ Username sudah digunakan. Gunakan username lain.');
               }
@@ -164,9 +185,13 @@ EOFDATA
                 throw new Error('Status not success');
               }
 
-              const varsPath = path.join(__dirname, '../../../../.vars.json');
-              const vars = JSON.parse(fs.readFileSync(varsPath, 'utf8'));
-              const namaStore = vars.NAMA_STORE || 'Default Store';
+              let namaStore = 'Default Store';
+              try {
+                const config = require('../../../config').default || require('../../../config');
+                namaStore = config.NAMA_STORE || 'Default Store';
+              } catch (cfgErr) {
+                namaStore = process.env.NAMA_STORE || 'Default Store';
+              }
               
               const expDate = new Date();
               expDate.setDate(expDate.getDate() + parseInt(exp));
@@ -246,7 +271,7 @@ ${data.ss_grpc_link}
       .connect({
         host: server.domain,
         port: server.port || 22,
-        username: 'root',
+        username: server.user_ssh || 'root',
         password: server.auth,
         readyTimeout: 30000,
         keepaliveInterval: 10000

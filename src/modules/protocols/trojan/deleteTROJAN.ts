@@ -44,38 +44,58 @@ user="${username}"
 
 echo "DEBUG:Deleting TROJAN user=$user"
 
-# Check if user exists
-if ! grep -q "^### $user " /etc/xray/trojan/config.json 2>/dev/null; then
-  echo "ERROR:User not found"
-  exit 1
+# Setup config file
+if [ -f "/etc/xray/config.json" ]; then
+  CONFIG_FILE="/etc/xray/config.json"
+elif [ -f "/etc/xray/trojan/config.json" ]; then
+  CONFIG_FILE="/etc/xray/trojan/config.json"
+else
+  CONFIG_FILE="/etc/xray/trojan/config.json"
 fi
 
-# Get UUID before deletion
-uuid=$(grep -E "^### $user " /etc/xray/trojan/.trojan.db | cut -d ' ' -f 4)
-echo "DEBUG:UUID: $uuid"
+DB_FILE="/etc/xray/trojan/.trojan.db"
 
-# Remove from config.json
-sed -i "/^### $user /d" /etc/xray/trojan/config.json
-sed -i "/$uuid/d" /etc/xray/trojan/config.json 2>/dev/null || true
+# Get UUID before deletion if db exists
+uuid=""
+if [ -f "\$DB_FILE" ]; then
+  uuid=\$(grep -E "^### \$user " "\$DB_FILE" 2>/dev/null | awk '{print \$4}' | head -n1)
+fi
+if [ -z "\$uuid" ] && [ -f "\$CONFIG_FILE" ]; then
+  uuid=\$(grep -B1 "\"email\": \"\$user\"" "\$CONFIG_FILE" 2>/dev/null | grep -oE '[0-9a-fA-F-]{36}' | head -n1)
+fi
+echo "DEBUG:UUID: \$uuid"
+
+# Remove from config file
+if [ -f "\$CONFIG_FILE" ]; then
+  sed -i "/^### \$user /d" "\$CONFIG_FILE" 2>/dev/null || true
+  if [ -n "\$uuid" ]; then
+    sed -i "/\$uuid/d" "\$CONFIG_FILE" 2>/dev/null || true
+  fi
+  sed -i "/\"email\": \"\$user\"/d" "\$CONFIG_FILE" 2>/dev/null || true
+fi
 
 # Remove from database
-sed -i "/^### $user /d" /etc/xray/trojan/.trojan.db
+if [ -f "\$DB_FILE" ]; then
+  sed -i "/^### \$user /d" "\$DB_FILE" 2>/dev/null || true
+fi
 
-# Remove quota/limit files
-rm -f /etc/xray/trojan/$user /etc/xray/trojan/\${user}IP
+# Remove quota/limit and html files
+rm -f /etc/xray/trojan/\$user /etc/xray/trojan/\${user}IP /var/www/html/trojan-\$user.txt 2>/dev/null || true
 
 # Restart service
-systemctl restart trojan@config 2>/dev/null || systemctl restart xray@trojan 2>/dev/null
+systemctl restart xray 2>/dev/null || systemctl restart trojan@config 2>/dev/null || systemctl restart xray@trojan 2>/dev/null || true
 
 echo "SUCCESS"
-echo "Deleted: $user"
+echo "Deleted: \$user"
 `;
 
                 console.log('🔨 Executing TROJAN delete command...');
 
                 let output = '';
+                const { wrapSSHCommand } = require('../../../services/ssh.service');
+                const wrappedCmd = wrapSSHCommand(cmd, server.user_ssh || 'root', server.auth);
 
-                conn.exec(cmd, (err, stream) => {
+                conn.exec(wrappedCmd, (err, stream) => {
                     if (err) {
                         clearTimeout(globalTimeout);
                         if (!resolved) {
@@ -87,6 +107,14 @@ echo "Deleted: $user"
                         return;
                     }
 
+                    let exitCode = 0;
+
+                    stream.on('exit', (code) => {
+                      if (code !== undefined && code !== null) {
+                        exitCode = code;
+                      }
+                    });
+
                     stream.on('close', (code, signal) => {
                         clearTimeout(globalTimeout);
                         conn.end();
@@ -94,14 +122,12 @@ echo "Deleted: $user"
                         if (resolved) return;
                         resolved = true;
 
-                        console.log(`📝 Command finished with code: ${code}`);
+                        const finalCode = (code !== undefined && code !== null) ? code : exitCode;
+                        console.log(`📝 Command finished with code: ${finalCode}`);
                         console.log(`📄 Output: ${output.trim()}`);
 
-                        if (code !== 0) {
-                            console.error('❌ Command failed with exit code:', code);
-                            if (output.includes('ERROR:User not found')) {
-                                return resolve('⚠️ Username tidak ditemukan di server (mungkin sudah dihapus).');
-                            }
+                        if (finalCode !== 0) {
+                            console.error('❌ Command failed with exit code:', finalCode);
                             return resolve('❌ Gagal menghapus akun TROJAN di server.');
                         }
 
@@ -140,7 +166,7 @@ echo "Deleted: $user"
                 .connect({
                     host: server.domain,
                     port: server.port || 22,
-                    username: 'root',
+                    username: server.user_ssh || 'root',
                     password: server.auth,
                     readyTimeout: 30000,
                     keepaliveInterval: 10000

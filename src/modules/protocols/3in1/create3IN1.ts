@@ -79,26 +79,41 @@ for protocol in vmess vless trojan; do
   fi
 done
 
-# Add VMESS user
-sed -i '/#vmess$/a\\### '"\$user \$exp_date"'\\
-},{"id": "'"\$uuid"'","email": "'"\$user"'"' /etc/xray/vmess/config.json
+# Setup config file targets
+if [ -f "/etc/xray/config.json" ]; then
+  CONFIG_VMESS="/etc/xray/config.json"
+  CONFIG_VLESS="/etc/xray/config.json"
+  CONFIG_TROJAN="/etc/xray/config.json"
+else
+  mkdir -p /etc/xray/vmess /etc/xray/vless /etc/xray/trojan
+  CONFIG_VMESS="/etc/xray/vmess/config.json"
+  CONFIG_VLESS="/etc/xray/vless/config.json"
+  CONFIG_TROJAN="/etc/xray/trojan/config.json"
+fi
 
-sed -i '/#vmessgrpc$/a\\### '"\$user \$exp_date"'\\
-},{"id": "'"\$uuid"'","email": "'"\$user"'"' /etc/xray/vmess/config.json
+# Add VMESS user
+sed -i '/#vmess\$/a\\### '"\$user \$exp_date"'\\
+},{"id": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_VMESS" 2>/dev/null || sed -i '/#vmess/a\\### '"\$user \$exp_date"'\\
+},{"id": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_VMESS" 2>/dev/null || true
+
+sed -i '/#vmessgrpc\$/a\\### '"\$user \$exp_date"'\\
+},{"id": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_VMESS" 2>/dev/null || true
 
 # Add VLESS user
-sed -i '/#vless$/a\\### '"\$user \$exp_date"'\\
-},{"id": "'"\$uuid"'","email": "'"\$user"'"' /etc/xray/vless/config.json
+sed -i '/#vless\$/a\\### '"\$user \$exp_date"'\\
+},{"id": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_VLESS" 2>/dev/null || sed -i '/#vless/a\\### '"\$user \$exp_date"'\\
+},{"id": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_VLESS" 2>/dev/null || true
 
-sed -i '/#vlessgrpc$/a\\### '"\$user \$exp_date"'\\
-},{"id": "'"\$uuid"'","email": "'"\$user"'"' /etc/xray/vless/config.json
+sed -i '/#vlessgrpc\$/a\\### '"\$user \$exp_date"'\\
+},{"id": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_VLESS" 2>/dev/null || true
 
 # Add TROJAN user
-sed -i '/#trojan$/a\\### '"\$user \$exp_date"'\\
-},{"password": "'"\$uuid"'","email": "'"\$user"'"' /etc/xray/trojan/config.json
+sed -i '/#trojan\$/a\\### '"\$user \$exp_date"'\\
+},{"password": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_TROJAN" 2>/dev/null || sed -i '/#trojan/a\\### '"\$user \$exp_date"'\\
+},{"password": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_TROJAN" 2>/dev/null || true
 
-sed -i '/#trojangrpc$/a\\### '"\$user \$exp_date"'\\
-},{"password": "'"\$uuid"'","email": "'"\$user"'"' /etc/xray/trojan/config.json
+sed -i '/#trojangrpc\$/a\\### '"\$user \$exp_date"'\\
+},{"password": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_TROJAN" 2>/dev/null || true
 
 # Save quota and IP limit for all protocols
 if [ "\$quota" != "0" ]; then
@@ -182,7 +197,11 @@ GRPC: \${trojan_grpc}
 EOF
 
 # Restart services
-systemctl restart vmess@config vless@config trojan@config 2>/dev/null || systemctl restart xray@vmess xray@vless xray@trojan 2>/dev/null
+systemctl restart xray 2>/dev/null || {
+  systemctl restart vmess@config 2>/dev/null || true
+  systemctl restart vless@config 2>/dev/null || true
+  systemctl restart trojan@config 2>/dev/null || true
+}
 
 cat <<EOFDATA
 {
@@ -208,8 +227,10 @@ EOFDATA
         console.log('🔨 Executing 3IN1 creation command...');
         
         let output = '';
+        const { wrapSSHCommand } = require('../../../services/ssh.service');
+        const wrappedCmd = wrapSSHCommand(cmd, server.user_ssh || 'root', server.auth);
         
-        conn.exec(cmd, (err, stream) => {
+        conn.exec(wrappedCmd, (err, stream) => {
           if (err) {
             clearTimeout(globalTimeout);
             if (!resolved) {
@@ -221,6 +242,14 @@ EOFDATA
             return;
           }
 
+          let exitCode = 0;
+
+          stream.on('exit', (code) => {
+            if (code !== undefined && code !== null) {
+              exitCode = code;
+            }
+          });
+
           stream.on('close', (code, signal) => {
             clearTimeout(globalTimeout);
             conn.end();
@@ -228,15 +257,16 @@ EOFDATA
             if (resolved) return;
             resolved = true;
             
-            console.log(`📝 Command finished with code: ${code}`);
+            const finalCode = (code !== undefined && code !== null) ? code : exitCode;
+            console.log(`📝 Command finished with code: ${finalCode}`);
             console.log(`📄 Output: ${output.trim()}`);
             
-            if (code !== 0) {
-              console.error('❌ Command failed with exit code:', code);
+            if (finalCode !== 0) {
+              console.error('❌ Command failed with exit code:', finalCode);
               if (output.includes('ERROR:User already exists')) {
                 return resolve('❌ Username sudah digunakan. Gunakan username lain.');
               }
-              return resolve('❌ Gagal membuat akun 3IN1 di server (exit code ' + code + ').');
+              return resolve('❌ Gagal membuat akun 3IN1 di server.');
             }
 
             try {
@@ -253,9 +283,13 @@ EOFDATA
                 throw new Error('Status not success');
               }
 
-              const varsPath = path.join(__dirname, '../../../../.vars.json');
-              const vars = JSON.parse(fs.readFileSync(varsPath, 'utf8'));
-              const namaStore = vars.NAMA_STORE || 'Default Store';
+              let namaStore = 'Default Store';
+              try {
+                const config = require('../../../config').default || require('../../../config');
+                namaStore = config.NAMA_STORE || 'Default Store';
+              } catch (cfgErr) {
+                namaStore = process.env.NAMA_STORE || 'Default Store';
+              }
               
               const expDate = new Date();
               expDate.setDate(expDate.getDate() + parseInt(exp));
@@ -366,7 +400,7 @@ ${data.trojan_grpc_link}
       .connect({
         host: server.domain,
         port: server.port || 22,
-        username: 'root',
+        username: server.user_ssh || 'root',
         password: server.auth,
         readyTimeout: 30000,
         keepaliveInterval: 10000

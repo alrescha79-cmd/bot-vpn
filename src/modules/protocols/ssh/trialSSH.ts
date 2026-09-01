@@ -48,8 +48,12 @@ exp=\$(date -d "+\$duration minutes" +"%Y-%m-%d %H:%M:%S")
 useradd -M -N -s /bin/false "\$user" 2>/dev/null || exit 1
 echo "\$user:\$password" | chpasswd || exit 1
 
+# Save IP limit (1 IP)
+mkdir -p /etc/ssh/limit
+echo "1" > "/etc/ssh/limit/\$user" 2>/dev/null || true
+
 # Auto delete after 1 hour
-(nohup bash -c "sleep 3600; userdel -f \$user 2>/dev/null" >/dev/null 2>&1 &)
+(nohup bash -c "sleep 3600; userdel -f \$user 2>/dev/null; rm -f /etc/ssh/limit/\$user 2>/dev/null" >/dev/null 2>&1 &)
 
 cat <<EOFDATA
 {
@@ -69,8 +73,10 @@ EOFDATA
         console.log('🔨 Executing trial SSH command...');
         
         let output = '';
+        const { wrapSSHCommand } = require('../../../services/ssh.service');
+        const wrappedCmd = wrapSSHCommand(cmd, server.user_ssh || 'root', server.auth);
         
-        conn.exec(cmd, { timeout: 40000 }, (err, stream) => {
+        conn.exec(wrappedCmd, { timeout: 40000 }, (err, stream) => {
           if (err) {
             clearTimeout(globalTimeout);
             if (!resolved) {
@@ -82,6 +88,14 @@ EOFDATA
             return;
           }
 
+          let exitCode = 0;
+
+          stream.on('exit', (code) => {
+            if (code !== undefined && code !== null) {
+              exitCode = code;
+            }
+          });
+
           stream.on('close', (code, signal) => {
             clearTimeout(globalTimeout);
             conn.end();
@@ -89,12 +103,13 @@ EOFDATA
             if (resolved) return;
             resolved = true;
             
-            console.log(`📝 Command finished with code: ${code}`);
+            const finalCode = (code !== undefined && code !== null) ? code : exitCode;
+            console.log(`📝 Command finished with code: ${finalCode}`);
             console.log(`📄 Output: ${output.trim()}`);
             
-            if (code !== 0) {
-              console.error('❌ Command failed with exit code:', code);
-              return resolve({ status: 'error', message: `Gagal membuat trial SSH (exit code ${code}).` });
+            if (finalCode !== 0) {
+              console.error('❌ Command failed with exit code:', finalCode);
+              return resolve({ status: 'error', message: `Gagal membuat trial SSH (exit code ${finalCode}).` });
             }
 
             try {
@@ -160,7 +175,7 @@ EOFDATA
       .connect({
         host: server.domain,
         port: server.port || 22,
-        username: 'root',
+        username: server.user_ssh || 'root',
         password: server.auth,
         readyTimeout: 30000,
         keepaliveInterval: 10000

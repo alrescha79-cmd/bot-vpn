@@ -66,8 +66,10 @@ echo "SUCCESS"
         console.log('🔨 Executing command...');
         
         let output = '';
+        const { wrapSSHCommand } = require('../../../services/ssh.service');
+        const wrappedCmd = wrapSSHCommand(cmd, server.user_ssh || 'root', server.auth);
         
-        conn.exec(cmd, (err, stream) => {
+        conn.exec(wrappedCmd, (err, stream) => {
           if (err) {
             clearTimeout(globalTimeout);
             if (!resolved) {
@@ -79,22 +81,31 @@ echo "SUCCESS"
             return;
           }
 
+          let exitCode = 0;
+
+          stream.on('exit', (code) => {
+            if (code !== undefined && code !== null) {
+              exitCode = code;
+            }
+          });
+
           stream.on('close', (code, signal) => {
             clearTimeout(globalTimeout);
             conn.end();
             
-            if (resolved) return; // Sudah di-resolve
+            if (resolved) return;
             resolved = true;
             
-            console.log(`📝 Command finished with code: ${code}`);
+            const finalCode = (code !== undefined && code !== null) ? code : exitCode;
+            console.log(`📝 Command finished with code: ${finalCode}`);
             console.log(`📄 Output: ${output.trim()}`);
             
-            if (code !== 0) {
-              console.error('❌ Command failed with exit code:', code);
+            if (finalCode !== 0) {
+              console.error('❌ Command failed with exit code:', finalCode);
               if (output.includes('ERROR:User already exists')) {
                 return resolve('❌ Username sudah digunakan. Gunakan username lain.');
               }
-              return resolve('❌ Gagal membuat akun SSH di server (exit code ' + code + ').');
+              return resolve('❌ Gagal membuat akun SSH di server (exit code ' + finalCode + ').');
             }
 
             if (!output.includes('SUCCESS')) {
@@ -106,9 +117,13 @@ echo "SUCCESS"
             const expDateDisplay = new Date();
             expDateDisplay.setDate(expDateDisplay.getDate() + parseInt(exp));
             
-            const varsPath = require('path').join(__dirname, '../../../../.vars.json');
-            const vars = JSON.parse(require('fs').readFileSync(varsPath, 'utf8'));
-            const namaStore = vars.NAMA_STORE || 'Default Store';
+            let namaStore = 'Default Store';
+            try {
+              const config = require('../../../config').default || require('../../../config');
+              namaStore = config.NAMA_STORE || 'Default Store';
+            } catch (cfgErr) {
+              namaStore = process.env.NAMA_STORE || 'Default Store';
+            }
             
             const msg = `
          🔥 *SSH PREMIUM ACCOUNT*
@@ -176,7 +191,7 @@ echo "SUCCESS"
       .connect({
         host: server.domain,
         port: server.port || 22,
-        username: 'root',
+        username: server.user_ssh || 'root',
         password: server.auth,
         readyTimeout: 30000,
         keepaliveInterval: 10000

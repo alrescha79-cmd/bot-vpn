@@ -2,12 +2,35 @@
 import type { BotContext, DatabaseUser, DatabaseServer } from "../types";
 /**
  * SSH Service
- * SSH connection management and command execution
+ * SSH connection management, command wrapper with root/sudo support
  */
 
 const { Client } = require('ssh2');
 const { SSH_TIMEOUT_MS } = require('../config/constants');
 const logger = require('../utils/logger');
+
+/**
+ * Wrap command with sudo if user is not root
+ * @param {string} command - Original command
+ * @param {string} userSsh - SSH Username (root or non-root)
+ * @param {string} auth - User password for sudo stdin
+ * @returns {string} Executable wrapped command
+ */
+function wrapSSHCommand(command: string, userSsh: string = 'root', auth: string = ''): string {
+  // If user is root, execute directly
+  if (!userSsh || userSsh.toLowerCase() === 'root') {
+    return command;
+  }
+  // Encode command as base64 to avoid quote escaping and subshell corruption issues
+  const base64Cmd = Buffer.from(command).toString('base64');
+  const cleanAuth = auth ? auth.replace(/'/g, "'\\''") : '';
+  
+  if (cleanAuth) {
+    return `echo '${cleanAuth}' | sudo -S -p '' bash -c "$(echo '${base64Cmd}' | base64 -d)"`;
+  } else {
+    return `sudo -n bash -c "$(echo '${base64Cmd}' | base64 -d)"`;
+  }
+}
 
 class SSHService {
   /**
@@ -32,7 +55,11 @@ class SSHService {
       }, timeout);
 
       conn.on('ready', () => {
-        conn.exec(command, (err, stream) => {
+        const user = serverConfig.user_ssh || serverConfig.username || 'root';
+        const pass = serverConfig.auth || serverConfig.password || '';
+        const wrappedCmd = wrapSSHCommand(command, user, pass);
+
+        conn.exec(wrappedCmd, (err, stream) => {
           if (err) {
             clearTimeout(timeoutId);
             if (!resolved) {
@@ -81,7 +108,7 @@ class SSHService {
 
       conn.connect({
         host: serverConfig.host || serverConfig.domain,
-        username: serverConfig.username || 'root',
+        username: serverConfig.user_ssh || serverConfig.username || 'root',
         password: serverConfig.password || serverConfig.auth,
         port: serverConfig.port || 22,
         readyTimeout: timeout
@@ -152,3 +179,5 @@ class SSHService {
 }
 
 module.exports = SSHService;
+module.exports.SSHService = SSHService;
+module.exports.wrapSSHCommand = wrapSSHCommand;

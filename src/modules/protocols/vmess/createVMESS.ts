@@ -61,26 +61,31 @@ domain=$(cat /etc/xray/domain 2>/dev/null || hostname -f)
 city=$(cat /etc/xray/city 2>/dev/null || echo "Unknown")
 pubkey=$(cat /etc/slowdns/server.pub 2>/dev/null || echo "")
 
-# Create directory if not exists
-mkdir -p /etc/xray/vmess
-
-# Backup config if not exists
 if [ ! -f "/etc/xray/vmess/config.json" ]; then
-  echo '{"inbounds":[]}' > /etc/xray/vmess/config.json
+  if [ -f "/etc/xray/config.json" ]; then
+    CONFIG_FILE="/etc/xray/config.json"
+  else
+    mkdir -p /etc/xray/vmess
+    echo '{"inbounds":[]}' > /etc/xray/vmess/config.json
+    CONFIG_FILE="/etc/xray/vmess/config.json"
+  fi
+else
+  CONFIG_FILE="/etc/xray/vmess/config.json"
 fi
 
 # Check if user already exists
-if grep -q "^### \$user " /etc/xray/vmess/config.json 2>/dev/null; then
+if grep -q "^### \$user " "\$CONFIG_FILE" 2>/dev/null; then
   echo "ERROR:User already exists"
   exit 1
 fi
 
 # Add user to config
-sed -i '/#vmess$/a\\### '"\$user \$exp_date"'\\
-},{"id": "'"\$uuid"'","email": "'"\$user"'"' /etc/xray/vmess/config.json
+sed -i '/#vmess\$/a\\### '"\$user \$exp_date"'\\
+},{"id": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_FILE" 2>/dev/null || sed -i '/#vmess/a\\### '"\$user \$exp_date"'\\
+},{"id": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_FILE" 2>/dev/null || true
 
-sed -i '/#vmessgrpc$/a\\### '"\$user \$exp_date"'\\
-},{"id": "'"\$uuid"'","email": "'"\$user"'"' /etc/xray/vmess/config.json
+sed -i '/#vmessgrpc\$/a\\### '"\$user \$exp_date"'\\
+},{"id": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_FILE" 2>/dev/null || true
 
 # Generate VMESS links in base64 JSON format
 vmess_json_tls=\$(cat <<VMESS_EOF | base64 -w 0
@@ -219,6 +224,9 @@ vmess_json_grpc=\$(cat <<VMESS_EOF | base64 -w 0
 VMESS_EOF
 )
 
+# Restart service
+systemctl restart xray 2>/dev/null || systemctl restart vmess@config 2>/dev/null || systemctl restart xray@vmess 2>/dev/null || true
+
 cat <<EOFDATA
 {
   "status": "success",
@@ -240,8 +248,10 @@ EOFDATA
         console.log('🔨 Executing VMESS creation command...');
         
         let output = '';
+        const { wrapSSHCommand } = require('../../../services/ssh.service');
+        const wrappedCmd = wrapSSHCommand(cmd, server.user_ssh || 'root', server.auth);
         
-        conn.exec(cmd, (err, stream) => {
+        conn.exec(wrappedCmd, (err, stream) => {
           if (err) {
             clearTimeout(globalTimeout);
             if (!resolved) {
@@ -253,6 +263,14 @@ EOFDATA
             return;
           }
 
+          let exitCode = 0;
+
+          stream.on('exit', (code) => {
+            if (code !== undefined && code !== null) {
+              exitCode = code;
+            }
+          });
+
           stream.on('close', (code, signal) => {
             clearTimeout(globalTimeout);
             conn.end();
@@ -260,15 +278,16 @@ EOFDATA
             if (resolved) return;
             resolved = true;
             
-            console.log(`📝 Command finished with code: ${code}`);
+            const finalCode = (code !== undefined && code !== null) ? code : exitCode;
+            console.log(`📝 Command finished with code: ${finalCode}`);
             console.log(`📄 Output: ${output.trim()}`);
             
-            if (code !== 0) {
-              console.error('❌ Command failed with exit code:', code);
+            if (finalCode !== 0) {
+              console.error('❌ Command failed with exit code:', finalCode);
               if (output.includes('ERROR:User already exists')) {
                 return resolve('❌ Username sudah digunakan. Gunakan username lain.');
               }
-              return resolve('❌ Gagal membuat akun VMESS di server (exit code ' + code + ').');
+              return resolve('❌ Gagal membuat akun VMESS di server (exit code ' + finalCode + ').');
             }
 
             try {
@@ -285,9 +304,13 @@ EOFDATA
                 throw new Error('Status not success');
               }
 
-              const varsPath = path.join(__dirname, '../../../../.vars.json');
-              const vars = JSON.parse(fs.readFileSync(varsPath, 'utf8'));
-              const namaStore = vars.NAMA_STORE || 'Default Store';
+              let namaStore = 'Default Store';
+              try {
+                const config = require('../../../config').default || require('../../../config');
+                namaStore = config.NAMA_STORE || 'Default Store';
+              } catch (cfgErr) {
+                namaStore = process.env.NAMA_STORE || 'Default Store';
+              }
               
               const expDate = new Date();
               expDate.setDate(expDate.getDate() + parseInt(exp));
@@ -369,7 +392,7 @@ ${data.vmess_grpc_link}
       .connect({
         host: server.domain,
         port: server.port || 22,
-        username: 'root',
+        username: server.user_ssh || 'root',
         password: server.auth,
         readyTimeout: 30000,
         keepaliveInterval: 10000

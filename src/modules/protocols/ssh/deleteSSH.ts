@@ -44,17 +44,11 @@ user="${username}"
 
 echo "DEBUG:Deleting SSH user=$user"
 
-# Check if user exists
-if ! id "$user" &>/dev/null; then
-  echo "ERROR:User not found"
-  exit 1
-fi
-
-# Delete system user
-userdel -r "$user" 2>/dev/null || userdel "$user"
+# Delete system user if exists
+userdel -r "$user" 2>/dev/null || userdel "$user" 2>/dev/null || true
 
 # Remove limit file
-rm -f /etc/ssh/limit/$user
+rm -f /etc/ssh/limit/$user /var/www/html/ssh-$user.txt 2>/dev/null || true
 
 # Remove from database if exists
 sed -i "/^### $user /d" /etc/ssh/.ssh.db 2>/dev/null || true
@@ -66,8 +60,10 @@ echo "Deleted: $user"
                 console.log('🔨 Executing SSH delete command...');
 
                 let output = '';
+                const { wrapSSHCommand } = require('../../../services/ssh.service');
+                const wrappedCmd = wrapSSHCommand(cmd, server.user_ssh || 'root', server.auth);
 
-                conn.exec(cmd, (err, stream) => {
+                conn.exec(wrappedCmd, (err, stream) => {
                     if (err) {
                         clearTimeout(globalTimeout);
                         if (!resolved) {
@@ -79,6 +75,14 @@ echo "Deleted: $user"
                         return;
                     }
 
+                    let exitCode = 0;
+
+                    stream.on('exit', (code) => {
+                      if (code !== undefined && code !== null) {
+                        exitCode = code;
+                      }
+                    });
+
                     stream.on('close', (code, signal) => {
                         clearTimeout(globalTimeout);
                         conn.end();
@@ -86,14 +90,12 @@ echo "Deleted: $user"
                         if (resolved) return;
                         resolved = true;
 
-                        console.log(`📝 Command finished with code: ${code}`);
+                        const finalCode = (code !== undefined && code !== null) ? code : exitCode;
+                        console.log(`📝 Command finished with code: ${finalCode}`);
                         console.log(`📄 Output: ${output.trim()}`);
 
-                        if (code !== 0) {
-                            console.error('❌ Command failed with exit code:', code);
-                            if (output.includes('ERROR:User not found')) {
-                                return resolve('⚠️ Username tidak ditemukan di server (mungkin sudah dihapus).');
-                            }
+                        if (finalCode !== 0) {
+                            console.error('❌ Command failed with exit code:', finalCode);
                             return resolve('❌ Gagal menghapus akun SSH di server.');
                         }
 
@@ -132,7 +134,7 @@ echo "Deleted: $user"
                 .connect({
                     host: server.domain,
                     port: server.port || 22,
-                    username: 'root',
+                    username: server.user_ssh || 'root',
                     password: server.auth,
                     readyTimeout: 30000,
                     keepaliveInterval: 10000

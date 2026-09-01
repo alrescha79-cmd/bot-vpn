@@ -46,27 +46,40 @@ exp=\$(date -d "+\$duration minutes" +"%Y-%m-%d %H:%M:%S")
 
 # Check if config file exists and has markers
 if [ ! -f "/etc/xray/vmess/config.json" ]; then
-  echo "ERROR: /etc/xray/vmess/config.json not found" >&2
-  exit 1
+  if [ -f "/etc/xray/config.json" ]; then
+    CONFIG_FILE="/etc/xray/config.json"
+  else
+    echo "ERROR: /etc/xray/config.json or /etc/xray/vmess/config.json not found" >&2
+    exit 1
+  fi
+else
+  CONFIG_FILE="/etc/xray/vmess/config.json"
 fi
 
-if ! grep -q '#vmess$' /etc/xray/vmess/config.json; then
-  echo "ERROR: Marker #vmess not found in config.json" >&2
+if ! grep -q '#vmess' "\$CONFIG_FILE"; then
+  echo "ERROR: Marker #vmess not found in \$CONFIG_FILE" >&2
   exit 1
 fi
 
 # Add user to config
 sed -i '/#vmess\$/a\\### '"\$user \$exp"'\\
-},{"id": "'"\$uuid"'","email": "'"\$user"'"' /etc/xray/vmess/config.json
+},{"id": "'"\$uuid"'","alterId": '"0"',"email": "'"\$user"'"' "\$CONFIG_FILE" 2>/dev/null || sed -i '/#vmess/a\\### '"\$user \$exp"'\\
+},{"id": "'"\$uuid"'","alterId": '"0"',"email": "'"\$user"'"' "\$CONFIG_FILE"
 
 sed -i '/#vmessgrpc\$/a\\### '"\$user \$exp"'\\
-},{"id": "'"\$uuid"'","email": "'"\$user"'"' /etc/xray/vmess/config.json
+},{"id": "'"\$uuid"'","alterId": '"0"',"email": "'"\$user"'"' "\$CONFIG_FILE" 2>/dev/null || true
+
+# Save quota (1GB) and IP limit (1 IP)
+quota_bytes=\$((1 * 1024 * 1024 * 1024))
+mkdir -p /etc/xray/vmess
+echo "\$quota_bytes" > "/etc/xray/vmess/\${user}" 2>/dev/null || true
+echo "1" > "/etc/xray/vmess/\${user}IP" 2>/dev/null || true
 
 # Schedule auto-delete
-(nohup bash -c "sleep 3600; sed -i '/\$user/d' /etc/xray/vmess/config.json; systemctl restart vmess@config 2>/dev/null" >/dev/null 2>&1 &)
+(nohup bash -c "sleep 3600; sed -i '/\$user/d' \$CONFIG_FILE; rm -f /etc/xray/vmess/\$user /etc/xray/vmess/\${user}IP 2>/dev/null; systemctl restart xray 2>/dev/null || systemctl restart vmess@config 2>/dev/null" >/dev/null 2>&1 &)
 
 # Restart service
-systemctl restart vmess@config 2>/dev/null || true
+systemctl restart xray 2>/dev/null || systemctl restart vmess@config 2>/dev/null || true
 
 systemctl restart vmess@config
 
@@ -95,8 +108,10 @@ EOFDATA
         console.log('🔨 Executing trial VMESS command...');
         
         let output = '';
+        const { wrapSSHCommand } = require('../../../services/ssh.service');
+        const wrappedCmd = wrapSSHCommand(cmd, server.user_ssh || 'root', server.auth);
         
-        conn.exec(cmd, (err, stream) => {
+        conn.exec(wrappedCmd, (err, stream) => {
           if (err) {
             clearTimeout(globalTimeout);
             if (!resolved) {
@@ -108,6 +123,14 @@ EOFDATA
             return;
           }
 
+          let exitCode = 0;
+
+          stream.on('exit', (code) => {
+            if (code !== undefined && code !== null) {
+              exitCode = code;
+            }
+          });
+
           stream.on('close', (code, signal) => {
             clearTimeout(globalTimeout);
             conn.end();
@@ -115,17 +138,20 @@ EOFDATA
             if (resolved) return;
             resolved = true;
             
-            console.log(`📝 Command finished with code: ${code}`);
+            const finalCode = (code !== undefined && code !== null) ? code : exitCode;
+            console.log(`📝 Command finished with code: ${finalCode}`);
             
-            if (code !== 0) {
-              console.error('❌ Command failed with exit code:', code);
-              return resolve({ status: 'error', message: `Gagal membuat trial VMESS (exit code ${code}).` });
+            if (finalCode !== 0) {
+              console.error('❌ Command failed with exit code:', finalCode);
+              return resolve({ status: 'error', message: `Gagal membuat trial VMESS (exit code ${finalCode}).` });
             }
 
             try {
+              console.log(`📄 RAW Output: ${output}`);
               const jsonStart = output.indexOf('{');
               const jsonEnd = output.lastIndexOf('}');
               if (jsonStart === -1 || jsonEnd === -1) {
+                console.error('❌ Output did not contain JSON object. Output was:', output);
                 throw new Error('No JSON found in output');
               }
               const jsonStr = output.substring(jsonStart, jsonEnd + 1);
@@ -135,7 +161,7 @@ EOFDATA
               resolve(result);
             } catch (e) {
               console.error('❌ Failed to parse JSON:', e.message);
-              resolve({ status: 'error', message: 'Gagal parsing output dari server.' });
+              resolve({ status: 'error', message: output.trim() || 'Gagal parsing output dari server.' });
             }
           })
           .on('data', (data) => {
@@ -166,7 +192,7 @@ EOFDATA
       .connect({
         host: server.domain,
         port: server.port || 22,
-        username: 'root',
+        username: server.user_ssh || 'root',
         password: server.auth,
         readyTimeout: 30000,
         keepaliveInterval: 10000

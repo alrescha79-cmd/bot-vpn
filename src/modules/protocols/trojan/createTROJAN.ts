@@ -57,42 +57,51 @@ domain=$(cat /etc/xray/domain 2>/dev/null || hostname -f)
 city=$(cat /etc/xray/city 2>/dev/null || echo "Unknown")
 pubkey=$(cat /etc/slowdns/server.pub 2>/dev/null || echo "")
 
-mkdir -p /etc/xray/trojan
-
 if [ ! -f "/etc/xray/trojan/config.json" ]; then
-  echo '{"inbounds":[]}' > /etc/xray/trojan/config.json
+  if [ -f "/etc/xray/config.json" ]; then
+    CONFIG_FILE="/etc/xray/config.json"
+  else
+    mkdir -p /etc/xray/trojan
+    echo '{"inbounds":[]}' > /etc/xray/trojan/config.json
+    CONFIG_FILE="/etc/xray/trojan/config.json"
+  fi
+else
+  CONFIG_FILE="/etc/xray/trojan/config.json"
 fi
 
-if grep -q "^### \$user " /etc/xray/trojan/config.json 2>/dev/null; then
+if grep -q "^### \$user " "\$CONFIG_FILE" 2>/dev/null; then
   echo "ERROR:User already exists"
   exit 1
 fi
 
-sed -i '/#trojan$/a\\### '"\$user \$exp_date"'\\
-},{"password": "'"\$uuid"'","email": "'"\$user"'"' /etc/xray/trojan/config.json
+sed -i '/#trojan\$/a\\### '"\$user \$exp_date"'\\
+},{"password": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_FILE" 2>/dev/null || sed -i '/#trojan/a\\### '"\$user \$exp_date"'\\
+},{"password": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_FILE" 2>/dev/null || true
 
-sed -i '/#trojangrpc$/a\\### '"\$user \$exp_date"'\\
-},{"password": "'"\$uuid"'","email": "'"\$user"'"' /etc/xray/trojan/config.json
+sed -i '/#trojangrpc\$/a\\### '"\$user \$exp_date"'\\
+},{"password": "'"\$uuid"'","email": "'"\$user"'"' "\$CONFIG_FILE" 2>/dev/null || true
 
-cat > /var/www/html/trojan-\$user.txt <<EOF
+mkdir -p /var/www/html
+cat > /var/www/html/trojan-\$user.txt <<EOF 2>/dev/null || true
 TLS Link : trojan://\${uuid}@\${domain}:443?path=/trojan-ws&security=tls&host=\${domain}&type=ws&sni=\${domain}#\${user}
 GRPC Link : trojan://\${uuid}@\${domain}:443?mode=gun&security=tls&type=grpc&serviceName=trojan-grpc&sni=\${domain}#\${user}
 EOF
 
 if [ "\$quota" != "0" ]; then
   quota_bytes=\$((quota * 1024 * 1024 * 1024))
-  echo "\$quota_bytes" > /etc/xray/trojan/\${user}
-  echo "\$ip_limit" > /etc/xray/trojan/\${user}IP
+  mkdir -p /etc/xray/trojan
+  echo "\$quota_bytes" > /etc/xray/trojan/\${user} 2>/dev/null || true
+  echo "\$ip_limit" > /etc/xray/trojan/\${user}IP 2>/dev/null || true
 fi
 
 db_file="/etc/xray/trojan/.trojan.db"
 mkdir -p /etc/xray/trojan
-touch \$db_file
+touch \$db_file 2>/dev/null || true
 grep -v "^### \${user} " "\$db_file" > "\$db_file.tmp" 2>/dev/null || true
 mv "\$db_file.tmp" "\$db_file" 2>/dev/null || true
-echo "### \${user} \${exp_date} \${uuid}" >> "\$db_file"
+echo "### \${user} \${exp_date} \${uuid}" >> "\$db_file" 2>/dev/null || true
 
-systemctl restart trojan@config 2>/dev/null || systemctl restart xray@trojan 2>/dev/null
+systemctl restart xray 2>/dev/null || systemctl restart trojan@config 2>/dev/null || systemctl restart xray@trojan 2>/dev/null || true
 
 trojan_tls="trojan://\${uuid}@\${domain}:443?path=/trojan-ws&security=tls&host=\${domain}&type=ws&sni=\${domain}#\${user}"
 trojan_grpc="trojan://\${uuid}@\${domain}:443?mode=gun&security=tls&type=grpc&serviceName=trojan-grpc&sni=\${domain}#\${user}"
@@ -117,8 +126,10 @@ EOFDATA
         console.log('🔨 Executing TROJAN creation command...');
         
         let output = '';
+        const { wrapSSHCommand } = require('../../../services/ssh.service');
+        const wrappedCmd = wrapSSHCommand(cmd, server.user_ssh || 'root', server.auth);
         
-        conn.exec(cmd, (err, stream) => {
+        conn.exec(wrappedCmd, (err, stream) => {
           if (err) {
             clearTimeout(globalTimeout);
             if (!resolved) {
@@ -130,6 +141,14 @@ EOFDATA
             return;
           }
 
+          let exitCode = 0;
+
+          stream.on('exit', (code) => {
+            if (code !== undefined && code !== null) {
+              exitCode = code;
+            }
+          });
+
           stream.on('close', (code, signal) => {
             clearTimeout(globalTimeout);
             conn.end();
@@ -137,10 +156,11 @@ EOFDATA
             if (resolved) return;
             resolved = true;
             
-            console.log(`📝 Command finished with code: ${code}`);
+            const finalCode = (code !== undefined && code !== null) ? code : exitCode;
+            console.log(`📝 Command finished with code: ${finalCode}`);
             
-            if (code !== 0) {
-              console.error('❌ Command failed with exit code:', code);
+            if (finalCode !== 0) {
+              console.error('❌ Command failed with exit code:', finalCode);
               if (output.includes('ERROR:User already exists')) {
                 return resolve('❌ Username sudah digunakan. Gunakan username lain.');
               }
@@ -160,9 +180,13 @@ EOFDATA
                 throw new Error('Status not success');
               }
 
-              const varsPath = path.join(__dirname, '../../../../.vars.json');
-              const vars = JSON.parse(fs.readFileSync(varsPath, 'utf8'));
-              const namaStore = vars.NAMA_STORE || 'Default Store';
+              let namaStore = 'Default Store';
+              try {
+                const config = require('../../../config').default || require('../../../config');
+                namaStore = config.NAMA_STORE || 'Default Store';
+              } catch (cfgErr) {
+                namaStore = process.env.NAMA_STORE || 'Default Store';
+              }
               
               const expDate = new Date();
               expDate.setDate(expDate.getDate() + parseInt(exp));
@@ -238,7 +262,7 @@ ${data.trojan_grpc_link}
       .connect({
         host: server.domain,
         port: server.port || 22,
-        username: 'root',
+        username: server.user_ssh || 'root',
         password: server.auth,
         readyTimeout: 30000,
         keepaliveInterval: 10000

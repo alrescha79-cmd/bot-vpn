@@ -119,8 +119,9 @@ async function initializeSchema() {
     // Server table
     await dbRunAsync(`CREATE TABLE IF NOT EXISTS Server (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      domain TEXT,
+      domain TEXT UNIQUE,
       auth TEXT,
+      user_ssh TEXT DEFAULT 'root',
       port INTEGER DEFAULT 22,
       harga INTEGER,
       nama_server TEXT,
@@ -134,6 +135,7 @@ async function initializeSchema() {
     )`);
 
     // Add missing columns to Server table (migration)
+    await addColumnSafely('Server', 'user_ssh', "TEXT DEFAULT 'root'");
     await addColumnSafely('Server', 'port', 'INTEGER DEFAULT 22');
     await addColumnSafely('Server', 'isp', "TEXT DEFAULT 'Tidak diketahui'");
     await addColumnSafely('Server', 'lokasi', "TEXT DEFAULT 'Tidak diketahui'");

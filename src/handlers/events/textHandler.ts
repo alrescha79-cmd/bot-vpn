@@ -601,6 +601,39 @@ function registerTextHandler(bot) {
         return;
       }
 
+      // Server edit user SSH flow
+      if (state.step === 'edit_user_ssh') {
+        let userSsh = text.trim();
+        if (!userSsh || userSsh === '.' || userSsh.toLowerCase() === 'root') {
+          userSsh = 'root';
+        }
+        const serverId = state.serverId;
+
+        const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]).catch(err => {
+          logger.error('❌ Error getting server:', err);
+          return null;
+        });
+
+        if (!server) {
+          return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+        }
+
+        await dbRunAsync('UPDATE Server SET user_ssh = ? WHERE id = ?', [userSsh, serverId]).catch(err => {
+          logger.error('❌ Error updating server user_ssh:', err);
+          throw err;
+        });
+
+        delete global.userState[ctx.chat.id];
+        await ctx.reply(
+          `✅ *User SSH Server berhasil diperbarui!*\n\n` +
+          `Nama server: *${server.nama_server}*\n` +
+          `Host: *${server.domain}*\n` +
+          `User SSH Baru: *${userSsh}*`,
+          { parse_mode: 'Markdown' }
+        );
+        return;
+      }
+
       // Server edit port flow
       if (state.step === 'edit_port') {
         const port = parseInt(text.trim(), 10);
@@ -668,6 +701,190 @@ function registerTextHandler(bot) {
           `Status: Aktif`,
           { parse_mode: 'Markdown' }
         );
+        return;
+      }
+
+      // Server edit harga flow
+      if (state.step === 'edit_harga') {
+        const harga = parseInt(text.trim(), 10);
+        const serverId = state.serverId;
+
+        if (isNaN(harga) || harga < 0) {
+          return ctx.reply('⚠️ *Harga tidak valid.* Masukkan angka harga yang valid (contoh: 1000):', { parse_mode: 'Markdown' });
+        }
+
+        const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]).catch(err => {
+          logger.error('❌ Error getting server:', err);
+          return null;
+        });
+
+        if (!server) {
+          return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+        }
+
+        await dbRunAsync('UPDATE Server SET harga = ? WHERE id = ?', [harga, serverId]).catch(err => {
+          logger.error('❌ Error updating server harga:', err);
+          throw err;
+        });
+
+        delete global.userState[ctx.chat.id];
+        await ctx.reply(
+          `✅ *Harga Server berhasil diperbarui!*\n\n` +
+          `Nama server: *${server.nama_server}*\n` +
+          `Harga Baru: *Rp ${harga.toLocaleString('id-ID')}/hari*`,
+          { parse_mode: 'Markdown' }
+        );
+        return;
+      }
+
+      // Server edit batas create akun flow
+      if (state.step === 'edit_batas_create_akun') {
+        const batas = parseInt(text.trim(), 10);
+        const serverId = state.serverId;
+
+        if (isNaN(batas) || batas < 0) {
+          return ctx.reply('⚠️ *Batas create akun tidak valid.* Masukkan angka yang valid (contoh: 100):', { parse_mode: 'Markdown' });
+        }
+
+        const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]).catch(err => {
+          logger.error('❌ Error getting server:', err);
+          return null;
+        });
+
+        if (!server) {
+          return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+        }
+
+        await dbRunAsync('UPDATE Server SET batas_create_akun = ? WHERE id = ?', [batas, serverId]).catch(err => {
+          logger.error('❌ Error updating server batas_create_akun:', err);
+          throw err;
+        });
+
+        delete global.userState[ctx.chat.id];
+        await ctx.reply(
+          `✅ *Batas Create Akun Server berhasil diperbarui!*\n\n` +
+          `Nama server: *${server.nama_server}*\n` +
+          `Batas Create Akun Baru: *${batas}*`,
+          { parse_mode: 'Markdown' }
+        );
+        return;
+      }
+
+      // Server edit limit IP flow
+      if (state.step === 'edit_limit_ip') {
+        const limitIp = parseInt(text.trim(), 10);
+        const serverId = state.serverId;
+
+        if (isNaN(limitIp) || limitIp < 0) {
+          return ctx.reply('⚠️ *Limit IP tidak valid.* Masukkan angka yang valid (contoh: 2, atau 0 untuk unlimited):', { parse_mode: 'Markdown' });
+        }
+
+        const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]).catch(err => {
+          logger.error('❌ Error getting server:', err);
+          return null;
+        });
+
+        if (!server) {
+          return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+        }
+
+        await dbRunAsync('UPDATE Server SET iplimit = ? WHERE id = ?', [limitIp, serverId]).catch(err => {
+          logger.error('❌ Error updating server iplimit:', err);
+          throw err;
+        });
+
+        delete global.userState[ctx.chat.id];
+        await ctx.reply(
+          `✅ *Limit IP Server berhasil diperbarui!*\n\n` +
+          `Nama server: *${server.nama_server}*\n` +
+          `Limit IP Baru: *${limitIp === 0 ? 'Unlimited' : `${limitIp} Device`}*`,
+          { parse_mode: 'Markdown' }
+        );
+        return;
+      }
+
+      // Server edit quota flow
+      if (state.step === 'edit_quota') {
+        const quota = parseInt(text.trim(), 10);
+        const serverId = state.serverId;
+
+        if (isNaN(quota) || quota < 0) {
+          return ctx.reply('⚠️ *Kuota tidak valid.* Masukkan angka yang valid dalam GB (contoh: 100, atau 0 untuk unlimited):', { parse_mode: 'Markdown' });
+        }
+
+        const server = await dbGetAsync('SELECT * FROM Server WHERE id = ?', [serverId]).catch(err => {
+          logger.error('❌ Error getting server:', err);
+          return null;
+        });
+
+        if (!server) {
+          return ctx.reply('⚠️ *Server tidak ditemukan.*', { parse_mode: 'Markdown' });
+        }
+
+        await dbRunAsync('UPDATE Server SET quota = ? WHERE id = ?', [quota, serverId]).catch(err => {
+          logger.error('❌ Error updating server quota:', err);
+          throw err;
+        });
+
+        delete global.userState[ctx.chat.id];
+        await ctx.reply(
+          `✅ *Kuota Server berhasil diperbarui!*\n\n` +
+          `Nama server: *${server.nama_server}*\n` +
+          `Kuota Baru: *${quota === 0 ? 'Unlimited' : `${quota} GB`}*`,
+          { parse_mode: 'Markdown' }
+        );
+        return;
+      }
+
+      // Add saldo to user flow
+      if (state.step === 'add_saldo') {
+        const amount = parseInt(text.trim(), 10);
+        const targetUserId = state.userId;
+
+        if (isNaN(amount) || amount <= 0) {
+          return ctx.reply('⚠️ *Jumlah saldo tidak valid.* Masukkan angka saldo positif (contoh: 50000):', { parse_mode: 'Markdown' });
+        }
+
+        let targetUser = await dbGetAsync('SELECT * FROM users WHERE user_id = ?', [targetUserId]).catch(err => {
+          logger.error('❌ Error getting user:', err);
+          return null;
+        });
+
+        if (!targetUser) {
+          await dbRunAsync(
+            `INSERT INTO users (user_id, username, saldo, role, reseller_level) VALUES (?, ?, 0, 'user', 'silver')`,
+            [targetUserId, 'user']
+          );
+          targetUser = { user_id: targetUserId, saldo: 0 };
+        }
+
+        await dbRunAsync('UPDATE users SET saldo = saldo + ? WHERE user_id = ?', [amount, targetUserId]).catch(err => {
+          logger.error('❌ Error updating user saldo:', err);
+          throw err;
+        });
+
+        delete global.userState[ctx.chat.id];
+
+        // Notify admin
+        await ctx.reply(
+          `✅ *Saldo Berhasil Ditambahkan!*\n\n` +
+          `👤 *User ID:* \`${targetUserId}\`\n` +
+          `💵 *Nominal:* \`Rp ${amount.toLocaleString('id-ID')}\`\n` +
+          `💰 *Total Saldo Baru:* \`Rp ${(targetUser.saldo + amount).toLocaleString('id-ID')}\``,
+          { parse_mode: 'Markdown' }
+        );
+
+        // Notify target user if accessible
+        try {
+          await bot.telegram.sendMessage(
+            targetUserId,
+            `💰 *Saldo Anda telah ditambahkan oleh Admin sebesar Rp ${amount.toLocaleString('id-ID')}!*\n` +
+            `Total saldo sekarang: *Rp ${(targetUser.saldo + amount).toLocaleString('id-ID')}*`,
+            { parse_mode: 'Markdown' }
+          );
+        } catch (notifyErr: any) {
+          logger.warn(`Could not notify user ${targetUserId}:`, notifyErr.message);
+        }
         return;
       }
 
@@ -745,20 +962,51 @@ function registerTextHandler(bot) {
       }
 
       // Add server flow (step-by-step)
-      // Note: These flows reference resolveDomainToIP and getISPAndLocation
-      // which should be extracted from app.js to utils/serverUtils.js
-
       if (state.step === 'addserver') {
-        const domain = text;
+        const domain = text.trim();
         if (!domain) return ctx.reply('⚠️ *Domain tidak boleh kosong.* Silakan masukkan domain server yang valid.', { parse_mode: 'Markdown' });
+
+        // Check if domain or IP already exists
+        const existingServer = await dbGetAsync('SELECT id, nama_server FROM Server WHERE LOWER(domain) = LOWER(?)', [domain]).catch(err => {
+          logger.error('❌ Error checking existing domain:', err.message);
+          return null;
+        });
+
+        if (existingServer) {
+          delete global.userState[ctx.chat.id];
+          return ctx.reply(
+            `❌ *Gagal Menambahkan Server!*\n\n` +
+            `Domain/IP \`${domain}\` sudah terdaftar pada server *${existingServer.nama_server}*.\n` +
+            `Gunakan domain atau IP server yang berbeda.`,
+            { parse_mode: 'Markdown' }
+          );
+        }
+
         state.domain = domain;
+        state.step = 'addserver_user';
+        return ctx.reply(
+          `👤 *Silakan masukkan Username SSH server (default: root):*\n` +
+          `_Ketik root atau nama user lain (misal: ubuntu, debian, admin)_`,
+          { parse_mode: 'Markdown' }
+        );
+      }
+
+      if (state.step === 'addserver_user') {
+        let userSsh = text.trim();
+        if (!userSsh || userSsh === '.' || userSsh.toLowerCase() === 'root') {
+          userSsh = 'root';
+        }
+        state.user_ssh = userSsh;
         state.step = 'addserver_auth';
-        return ctx.reply('*🔑 Silakan masukkan password root VPS:*', { parse_mode: 'Markdown' });
+        return ctx.reply(
+          `🔑 *Silakan masukkan password SSH ${userSsh === 'root' ? 'root' : `user ${userSsh} (sudo)`}:*`,
+          { parse_mode: 'Markdown' }
+        );
       }
 
       if (state.step === 'addserver_auth') {
         const auth = text;
-        if (!auth) return ctx.reply('⚠️ *Password root tidak boleh kosong.* Silakan masukkan password root VPS yang valid.', { parse_mode: 'Markdown' });
+        if (!auth) return ctx.reply('⚠️ *Password tidak boleh kosong.* Silakan masukkan password yang valid.', { parse_mode: 'Markdown' });
         state.auth = auth;
         state.step = 'addserver_port';
         return ctx.reply('*🔌 Silakan masukkan Port SSH server (default: 22):*\n_Contoh: 22 atau 2222_', { parse_mode: 'Markdown' });
@@ -810,27 +1058,29 @@ function registerTextHandler(bot) {
         const harga = parseFloat(text);
         if (isNaN(harga) || harga <= 0) return ctx.reply('⚠️ *Harga tidak valid.*', { parse_mode: 'Markdown' });
 
-        const { domain, auth, port, nama_server, quota, iplimit, batas_create_akun } = state;
+        const { domain, auth, user_ssh, port, nama_server, quota, iplimit, batas_create_akun } = state;
 
         try {
           const isp = 'Tidak diketahui';
           const lokasi = 'Tidak diketahui';
           const serverPort = port || 22;
+          const sshUser = user_ssh || 'root';
 
-          logger.info(`📝 Attempting to add server: ${nama_server} (${domain}:${serverPort})`);
+          logger.info(`📝 Attempting to add server: ${nama_server} (${sshUser}@${domain}:${serverPort})`);
           logger.info(`📊 Server details - Quota: ${quota}GB, IP Limit: ${iplimit}, Price: ${harga}, Port: ${serverPort}`);
 
           const result = await dbRunAsync(`
-            INSERT INTO Server (domain, auth, port, nama_server, quota, iplimit, batas_create_akun, harga, total_create_akun, isp, lokasi)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-          `, [domain, auth, serverPort, nama_server, quota, iplimit, batas_create_akun, harga, isp, lokasi]);
+            INSERT INTO Server (domain, auth, user_ssh, port, nama_server, quota, iplimit, batas_create_akun, harga, total_create_akun, isp, lokasi)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+          `, [domain, auth, sshUser, serverPort, nama_server, quota, iplimit, batas_create_akun, harga, isp, lokasi]);
 
           logger.info(`✅ Server added successfully with ID: ${result.lastID}`);
 
           await ctx.reply(
             `✅ *Server berhasil ditambahkan!*\n\n` +
-            `🌐 Domain: ${domain}\n` +
-            `🔌 Port SSH: ${serverPort}\n` +
+            `🌐 Domain/Host: \`${domain}\`\n` +
+            `👤 User SSH: \`${sshUser}\`\n` +
+            `🔌 Port SSH: \`${serverPort}\`\n` +
             `📍 Lokasi: ${lokasi}\n` +
             `🏢 ISP: ${isp}\n` +
             `💸 Harga: Rp${harga} per hari\n` +
@@ -908,6 +1158,9 @@ async function showPaymentConfirmation(ctx, state) {
       user = { saldo: 0, role: 'user', reseller_level: 'silver' };
     }
 
+    const { isAdmin } = require('../../middleware/roleCheck');
+    const userIsAdmin = await isAdmin(userId);
+
     // Calculate price with reseller discount
     const diskon = user.role === 'reseller'
       ? user.reseller_level === 'gold' ? 0.2
@@ -917,8 +1170,8 @@ async function showPaymentConfirmation(ctx, state) {
 
     // For 3in1, price is 1.5x
     const priceMultiplier = type === '3in1' ? 1.5 : 1;
-    const hargaSatuan = Math.floor(server.harga * (1 - diskon) * priceMultiplier);
-    const totalHarga = hargaSatuan * duration;
+    const hargaSatuan = userIsAdmin ? 0 : Math.floor(server.harga * (1 - diskon) * priceMultiplier);
+    const totalHarga = userIsAdmin ? 0 : hargaSatuan * duration;
 
     // Protocol label
     const protocolLabels = {
@@ -931,7 +1184,9 @@ async function showPaymentConfirmation(ctx, state) {
     };
 
     // Check balance
-    const cukup = user.saldo >= totalHarga;
+    const cukup = userIsAdmin || (user.saldo >= totalHarga);
+
+    const priceText = userIsAdmin ? '*Rp 0 (Admin Free)*' : `*Rp ${totalHarga.toLocaleString('id-ID')}*`;
 
     const message = `
 💳 *Konfirmasi Pembayaran*
@@ -940,7 +1195,7 @@ async function showPaymentConfirmation(ctx, state) {
 🌐 Host: \`${server.domain}\`
 👤 Username: \`${username}\`
 ⏱ Masa aktif: *${duration} Hari*
-💰 Total harga: *Rp ${totalHarga.toLocaleString('id-ID')}*
+💰 Total harga: ${priceText}
 💵 Saldo tersedia: *Rp ${user.saldo.toLocaleString('id-ID')}*
     `.trim();
 

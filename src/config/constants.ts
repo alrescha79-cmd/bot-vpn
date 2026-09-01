@@ -114,7 +114,7 @@ const constants: Constants = {
   // Trial Configuration
   TRIAL_DURATION_MINUTES: 60,
   DAILY_TRIAL_LIMITS: {
-    user: 1,
+    user: 2,
     reseller: 10,
     admin: Infinity
   },

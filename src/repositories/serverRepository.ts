@@ -42,14 +42,14 @@ async function getServerById(serverId) {
  * @returns {Promise<Object>}
  */
 async function createServer(serverData) {
-  const { domain, auth, port, harga, nama_server, quota, iplimit, batas_create_akun, isp, lokasi } = serverData;
+  const { domain, auth, user_ssh, port, harga, nama_server, quota, iplimit, batas_create_akun, isp, lokasi } = serverData;
   
   try {
     return await dbRun(`
       INSERT INTO Server 
-      (domain, auth, port, harga, nama_server, quota, iplimit, batas_create_akun, isp, lokasi)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [domain, auth, port || 22, harga, nama_server, quota, iplimit, batas_create_akun, isp || null, lokasi || null]);
+      (domain, auth, user_ssh, port, harga, nama_server, quota, iplimit, batas_create_akun, isp, lokasi)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [domain, auth, user_ssh || 'root', port || 22, harga, nama_server, quota, iplimit, batas_create_akun, isp || null, lokasi || null]);
   } catch (err) {
     logger.error('❌ Error creating server:', err.message);
     throw err;
