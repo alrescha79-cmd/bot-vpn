@@ -14,10 +14,17 @@ Panduan komprehensif instalasi **Bot Telegram VPN Multi-Protocol** menggunakan *
 
 ---
 
-## 🛠️ Langkah 1: Cek Versi & Install Docker di VPS
+## 🛠️ Langkah 1: Masuk Sebagai User Root & Install Docker di VPS
 
-### 1. Cek Apakah Docker Sudah Terinstall di VPS
-Buka terminal VPS dan jalankan:
+> ⚠️ **WAJIB**: Jalankan seluruh perintah instalasi dan docker-compose di VPS menggunakan **user root** (`sudo -i` atau `sudo su`) untuk mencegah error permission pada volume SQLite `./data`, pembuatan socket, dan binding port.
+
+### 1. Masuk ke User Root
+```bash
+sudo -i
+```
+
+### 2. Cek Apakah Docker Sudah Terinstall di VPS
+Jalankan:
 ```bash
 docker --version
 docker compose version
@@ -26,21 +33,18 @@ docker compose version
 - Jika muncul output seperti `Docker version 24.x.x` atau `26.x.x` dan `Docker Compose version v2.x.x`, lewati langkah instalasi Docker dan lanjut ke **Langkah 2**.
 - Jika muncul `command not found`, lakukan instalasi berikut:
 
-### 2. Install Docker Resmi (Ubuntu / Debian / CentOS / AlmaLinux)
+### 3. Install Docker Resmi (Ubuntu / Debian / CentOS / AlmaLinux)
 
 ```bash
 # 1. Update paket & install curl
-sudo apt update && sudo apt install -y curl
+apt update && apt install -y curl
 
 # 2. Install Docker Engine & Docker Compose via script resmi
-curl -fsSL https://get.docker.com | sudo bash
+curl -fsSL https://get.docker.com | bash
 
-# 3. Beri permission user aktif ke group docker (agar bisa run docker tanpa sudo)
-sudo usermod -aG docker $USER
-
-# 4. Aktifkan & start service docker
-sudo systemctl enable docker
-sudo systemctl start docker
+# 3. Aktifkan & start service docker
+systemctl enable docker
+systemctl start docker
 ```
 
 Verifikasi kembali:
@@ -53,7 +57,7 @@ docker compose version
 
 ## 🚀 Langkah 2: Deploy Cepat Menggunakan Image Pre-Built (Metode Paling Cepat)
 
-Anda **tidak perlu clone seluruh source code** jika menggunakan image pre-built. Cukup siapkan 1 folder di VPS:
+Pastikan Anda masih berada dalam sesi root (`sudo -i`). Anda **tidak perlu clone seluruh source code** jika menggunakan image pre-built. Cukup siapkan 1 folder di VPS:
 
 ### 1. Buat Direktori Kerja
 ```bash

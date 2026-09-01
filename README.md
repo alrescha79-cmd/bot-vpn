@@ -13,16 +13,23 @@
 
 Menggunakan **Docker & Pre-Built Image Resmi** adalah metode tercepat dan paling stabil karena tidak membutuhkan instalasi runtime Node.js/tools compiler di server host.
 
-### 1. Cek & Install Docker di VPS (Jika Belum Ada)
+> ⚠️ **PENTING**: Semua proses instalasi dan eksekusi Docker **wajib masuk sebagai user root** (jalankan `sudo -i` atau `sudo su`) agar tidak ada kendala permission folder dan socket Docker.
+
+### 1. Masuk ke User Root
+```bash
+sudo -i
+```
+
+### 2. Cek & Install Docker di VPS (Jika Belum Ada)
 ```bash
 # Cek apakah Docker sudah terpasang
 docker --version && docker compose version
 
-# Jika belum terinstall, jalankan:
-curl -fsSL https://get.docker.com | sudo bash && sudo usermod -aG docker $USER
+# Jika belum terinstall, jalankan instalasi otomatis:
+curl -fsSL https://get.docker.com | bash
 ```
 
-### 2. Deploy 1-Menit di VPS
+### 3. Deploy 1-Menit di VPS
 ```bash
 # Buat folder kerja
 mkdir -p /opt/bot-vpn && cd /opt/bot-vpn
