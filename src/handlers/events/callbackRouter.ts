@@ -73,6 +73,10 @@ function registerCallbackRouter(bot) {
 
     // === 2️⃣ USER STATE HANDLING (EDIT OPERATIONS) ===
     if (userStateData) {
+      if (['add_saldo', 'edit_batas_create_akun', 'edit_limit_ip', 'edit_quota', 'edit_harga'].includes(userStateData.step) &&
+          (ctx.chat?.type !== 'private' || !await require('../../middleware/roleCheck').isAdmin(ctx.from.id))) {
+        return ctx.reply('Operasi admin hanya tersedia di chat pribadi untuk admin.');
+      }
       switch (userStateData.step) {
         case 'add_saldo':
           return await handleAddSaldo(ctx, userStateData, data);
@@ -244,9 +248,8 @@ async function handleAdminRestoreAllList(ctx) {
  * Handle restore from specific file
  */
 async function handleRestoreFile(ctx, fileName, userId) {
-  const filePath = path.join(BACKUP_DIR, fileName);
-
   try {
+    const filePath = require('../../utils/validation').safeBackupPath(BACKUP_DIR, fileName);
     if (!fs.existsSync(filePath)) {
       return ctx.reply(`❌ *File tidak ditemukan:* \`${fileName}\``, { parse_mode: 'Markdown' });
     }
@@ -264,13 +267,8 @@ async function handleRestoreFile(ctx, fileName, userId) {
  * Handle restore from uploaded file
  */
 async function handleRestoreUploadedFile(ctx, fileName, userId) {
-  const filePath = path.join(UPLOAD_DIR, fileName);
-
-  if (!fs.existsSync(filePath)) {
-    return ctx.reply(`❌ File tidak ditemukan: ${fileName}`);
-  }
-
   try {
+    const filePath = require('../../utils/validation').safeBackupPath(UPLOAD_DIR, fileName);
     fs.copyFileSync(filePath, DB_PATH);
     await ctx.editMessageText(`✅ Restore berhasil dari upload: ${fileName}`);
     logger.info(`[RESTORE_UPLOAD] User ${userId} restored uploaded file ${fileName}`);
@@ -307,9 +305,8 @@ async function handleDeleteFileConfirm(ctx, fileName) {
  * Handle confirm delete backup file
  */
 async function handleConfirmDelete(ctx, fileName, userId) {
-  const filePath = path.join(BACKUP_DIR, fileName);
-
   try {
+    const filePath = require('../../utils/validation').safeBackupPath(BACKUP_DIR, fileName);
     if (!fs.existsSync(filePath)) {
       return ctx.reply(`❌ *File tidak ditemukan:* \`${fileName}\``, { parse_mode: 'Markdown' });
     }
@@ -327,13 +324,8 @@ async function handleConfirmDelete(ctx, fileName, userId) {
  * Handle delete uploaded file
  */
 async function handleDeleteUploadedFile(ctx, fileName, userId) {
-  const filePath = path.join(UPLOAD_DIR, fileName);
-
-  if (!fs.existsSync(filePath)) {
-    return ctx.reply(`❌ *File tidak ditemukan:* \`${fileName}\``, { parse_mode: 'Markdown' });
-  }
-
   try {
+    const filePath = require('../../utils/validation').safeBackupPath(UPLOAD_DIR, fileName);
     fs.unlinkSync(filePath);
     await ctx.editMessageText(`🗑 *File upload dihapus:* \`${fileName}\``, { parse_mode: 'Markdown' });
     logger.info(`[DELETE_UPLOAD] User ${userId} deleted ${fileName}`);
@@ -355,7 +347,7 @@ async function handleCheckPaymentStatus(ctx, invoiceId, userId) {
 
     const deposit = await getPendingDeposit(invoiceId);
 
-    if (!deposit) {
+    if (!deposit || String(deposit.user_id) !== String(userId)) {
       return await ctx.answerCbQuery('❌ Deposit tidak ditemukan', { show_alert: true });
     }
 
@@ -364,7 +356,7 @@ async function handleCheckPaymentStatus(ctx, invoiceId, userId) {
     }
 
     // Check payment status from API
-    const statusResult = await checkPaymentStatus(invoiceId);
+    const statusResult = await checkPaymentStatus(invoiceId, deposit.payment_method);
 
     if (statusResult.success && statusResult.status === 'paid') {
       const { handleSuccessfulPayment } = require('../../services/depositService');
@@ -388,7 +380,7 @@ async function handleCancelPayment(ctx, invoiceId, userId) {
   try {
     const deposit = await getPendingDeposit(invoiceId);
 
-    if (!deposit) {
+    if (!deposit || String(deposit.user_id) !== String(userId)) {
       return await ctx.answerCbQuery('❌ Deposit tidak ditemukan', { show_alert: true });
     }
 
@@ -438,7 +430,7 @@ async function handleUploadProof(ctx, invoiceId, userId) {
   try {
     const deposit = await getPendingDeposit(invoiceId);
 
-    if (!deposit) {
+    if (!deposit || String(deposit.user_id) !== String(userId)) {
       return await ctx.answerCbQuery('❌ Deposit tidak ditemukan', { show_alert: true });
     }
 

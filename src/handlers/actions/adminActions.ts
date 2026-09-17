@@ -188,7 +188,7 @@ function registerListUsersAction(bot) {
  * Handle list servers action
  */
 function registerListServersAction(bot) {
-  bot.action('listserver', async (ctx) => {
+  bot.action('listserver', require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     try {
       const rows = await dbAllAsync('SELECT * FROM Server ORDER BY id');
 
@@ -199,7 +199,6 @@ function registerListServersAction(bot) {
       const list = rows.map((row, i) => {
         return `${i + 1}. *${row.nama_server}*\n` +
           `   🌐 Domain     : ${row.domain}\n` +
-          `   🔑 Auth           : ${row.auth}\n` +
           `   🌍 IP Limit      : ${row.iplimit}\n` +
           `   📦 Harga         : Rp${row.harga.toLocaleString('id-ID')}\n` +
           `   🧮 Total Akun : ${row.total_create_akun}`;

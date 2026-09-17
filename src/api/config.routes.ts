@@ -12,6 +12,16 @@ const { handleDuitkuNotification } = require('./duitku.webhook');
 
 const router = Router();
 
+router.use('/config', (req, res, next) => {
+  const token = process.env.CONFIG_API_TOKEN;
+  if (!token || req.get('Authorization') !== `Bearer ${token}`) {
+    res.status(403).json({ error: 'Configuration access denied' });
+    return;
+  }
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+
 /**
  * GET /api/config
  * Get current configuration status and data

@@ -430,6 +430,7 @@
 
     <script>
         const API_BASE = '/api/config';
+        const configToken = window.prompt('Masukkan CONFIG_API_TOKEN yang diatur pada server:') || '';
 
         function toggleSecret(id) {
             const input = document.getElementById(id);
@@ -448,7 +449,8 @@
 
         async function init() {
             try {
-                const res = await fetch(API_BASE);
+                const res = await fetch(API_BASE, { headers: { Authorization: `Bearer ${configToken}` } });
+                if (!res.ok) throw new Error('Akses konfigurasi ditolak');
                 const data = await res.json();
 
                 if (data.configured && data.config) {
@@ -505,7 +507,7 @@
 
                 const res = await fetch(API_BASE, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${configToken}` },
                     body: JSON.stringify(payload)
                 });
                 const result = await res.json();

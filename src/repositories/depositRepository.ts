@@ -70,7 +70,7 @@ async function getAllPendingDeposits() {
 async function updateDepositStatus(uniqueCode, status) {
   try {
     return await dbRun(
-      'UPDATE pending_deposits SET status = ? WHERE unique_code = ?',
+      "UPDATE pending_deposits SET status = ? WHERE unique_code = ? AND status = 'pending'",
       [status, uniqueCode]
     );
   } catch (err) {
@@ -123,7 +123,7 @@ async function deleteExpiredDeposits(expiryTime) {
 async function updateDepositProof(uniqueCode, proofImageId, status) {
   try {
     return await dbRun(
-      'UPDATE pending_deposits SET proof_image_id = ?, status = ? WHERE unique_code = ?',
+      "UPDATE pending_deposits SET proof_image_id = ?, status = ? WHERE unique_code = ? AND status = 'pending' AND payment_method = 'static_qris'",
       [proofImageId, status, uniqueCode]
     );
   } catch (err) {
@@ -155,20 +155,7 @@ async function getAwaitingVerificationDeposits() {
  * @returns {Promise<Object>}
  */
 async function approveDeposit(uniqueCode, adminId, notes = '') {
-  try {
-    return await dbRun(
-      `UPDATE pending_deposits SET 
-        status = 'paid', 
-        admin_approved_by = ?, 
-        admin_approved_at = datetime('now'),
-        admin_notes = ?
-      WHERE unique_code = ?`,
-      [adminId, notes, uniqueCode]
-    );
-  } catch (err) {
-    logger.error('❌ Error approving deposit:', err.message);
-    throw err;
-  }
+  return settleDeposit(uniqueCode, adminId, notes);
 }
 
 /**
@@ -186,7 +173,7 @@ async function rejectDeposit(uniqueCode, adminId, notes = '') {
         admin_approved_by = ?, 
         admin_approved_at = datetime('now'),
         admin_notes = ?
-      WHERE unique_code = ?`,
+      WHERE unique_code = ? AND status = 'awaiting_verification'`,
       [adminId, notes, uniqueCode]
     );
   } catch (err) {
@@ -195,7 +182,75 @@ async function rejectDeposit(uniqueCode, adminId, notes = '') {
   }
 }
 
+let settlementQueue: Promise<any> = Promise.resolve();
+
+function settleDeposit(uniqueCode, adminId = null, notes = '') {
+  const result = settlementQueue.then(() => settleDepositTransaction(uniqueCode, adminId, notes));
+  settlementQueue = result.catch(() => undefined);
+  return result;
+}
+
+async function settleDepositTransaction(uniqueCode, adminId, notes) {
+  const sqlite3 = require('sqlite3');
+  const { DB_PATH } = require('../config/constants');
+  const connection = await new Promise<any>((resolve, reject) => {
+    const db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READWRITE, err => err ? reject(err) : resolve(db));
+  });
+  connection.configure('busyTimeout', 5000);
+  const run = (sql, params = []) => new Promise<any>((resolve, reject) => {
+    connection.run(sql, params, function (err) {
+      if (err) reject(err);
+      else resolve({ changes: this.changes });
+    });
+  });
+  const get = (sql, params = []) => new Promise<any>((resolve, reject) => {
+    connection.get(sql, params, (err, row) => err ? reject(err) : resolve(row));
+  });
+  let transaction = false;
+  try {
+    await run('BEGIN IMMEDIATE');
+    transaction = true;
+    const deposit = await get('SELECT * FROM pending_deposits WHERE unique_code = ?', [uniqueCode]);
+    const expectedStatus = adminId === null ? 'pending' : 'awaiting_verification';
+    if (!deposit || deposit.status !== expectedStatus) {
+      await run('ROLLBACK');
+      transaction = false;
+      return null;
+    }
+    if (adminId !== null && deposit.payment_method !== 'static_qris') {
+      throw new Error('Invalid manual deposit');
+    }
+    const amount = Number(deposit.amount);
+    if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('Invalid deposit amount');
+    const user = await get('SELECT * FROM users WHERE user_id = ?', [deposit.user_id]);
+    if (!user || !Number.isSafeInteger(Number(user.saldo) + amount)) throw new Error('Invalid deposit beneficiary');
+    const claim = await run(
+      "UPDATE pending_deposits SET status = 'paid' WHERE unique_code = ? AND status = ?",
+      [uniqueCode, expectedStatus]
+    );
+    if (claim.changes !== 1) throw new Error('Deposit claim failed');
+    const credit = await run('UPDATE users SET saldo = saldo + ? WHERE user_id = ?', [amount, deposit.user_id]);
+    if (credit.changes !== 1) throw new Error('Deposit credit failed');
+    if (adminId !== null) {
+      await run(
+        "UPDATE pending_deposits SET admin_approved_by = ?, admin_approved_at = datetime('now'), admin_notes = ? WHERE unique_code = ?",
+        [adminId, notes, uniqueCode]
+      );
+    }
+    const creditedUser = await get('SELECT * FROM users WHERE user_id = ?', [deposit.user_id]);
+    await run('COMMIT');
+    transaction = false;
+    return { deposit, user, amount, newSaldo: creditedUser.saldo };
+  } catch (err) {
+    if (transaction) await run('ROLLBACK');
+    throw err;
+  } finally {
+    await new Promise<void>((resolve, reject) => connection.close(err => err ? reject(err) : resolve()));
+  }
+}
+
 module.exports = {
+  settleDeposit,
   createPendingDeposit,
   getPendingDeposit,
   getAllPendingDeposits,

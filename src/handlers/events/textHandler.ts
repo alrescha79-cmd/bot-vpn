@@ -522,6 +522,12 @@ function registerTextHandler(bot) {
 
     if (!state || typeof state !== 'object') return;
 
+    const adminState = /^(edit_|addserver)/.test(state.step || '') ||
+      ['add_saldo', 'await_level_change', 'await_broadcast_message', 'await_reseller_id', 'await_downgrade_id', 'reset_komisi_input', 'await_restore_upload'].includes(state.step);
+    if (adminState && (ctx.chat.type !== 'private' || !await require('../../middleware/roleCheck').isAdmin(ctx.from.id))) {
+      return ctx.reply('Operasi admin hanya tersedia di chat pribadi untuk admin.');
+    }
+
     try {
       // Service creation/renewal flows
       if (state.step?.startsWith('username_') || state.step?.startsWith('password_') || state.step?.startsWith('exp_')) {
@@ -1252,7 +1258,7 @@ function registerPhotoHandler(bot) {
       // Get deposit info
       const deposit = await getPendingDeposit(invoiceId);
 
-      if (!deposit) {
+      if (!deposit || String(deposit.user_id) !== userId || deposit.payment_method !== 'static_qris') {
         await ctx.reply('❌ *Deposit tidak ditemukan*', { parse_mode: 'Markdown' });
         delete global.userState[chatId];
         return;
@@ -1269,7 +1275,8 @@ function registerPhotoHandler(bot) {
       const fileId = photo.file_id;
 
       //Save file_id and update status
-      await updateDepositProof(invoiceId, fileId, 'awaiting_verification');
+      const updated = await updateDepositProof(invoiceId, fileId, 'awaiting_verification');
+      if (updated.changes !== 1) return ctx.reply('Deposit sudah diproses.');
 
       // Send confirmation to user
       await ctx.reply(

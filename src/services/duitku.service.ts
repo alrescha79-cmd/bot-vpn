@@ -78,6 +78,7 @@ export function verifyDuitkuCallbackSignature(
   merchantOrderId: string,
   signature: string
 ): boolean {
+  if (!config.DUITKU_API_KEY || !config.DUITKU_MERCHANT_CODE || merchantCode !== config.DUITKU_MERCHANT_CODE) return false;
   const raw = `${merchantCode}${amount}${merchantOrderId}${config.DUITKU_API_KEY}`;
   const hash = crypto.createHash('md5').update(raw).digest('hex');
   return hash === signature;

@@ -8,7 +8,6 @@ import { verifyDuitkuCallbackSignature } from '../services/duitku.service';
 
 const logger = require('../utils/logger');
 const { getPendingDeposit, updateDepositStatus } = require('../repositories/depositRepository');
-const { getUserById, updateUserSaldo } = require('../repositories/userRepository');
 
 let config: any;
 try {
@@ -53,6 +52,10 @@ export async function handleDuitkuNotification(req: Request, res: Response, bot:
       return res.status(404).send('NOT FOUND');
     }
 
+    if (deposit.payment_method !== 'duitku' || Number(amount) !== Number(deposit.amount)) {
+      return res.status(400).send('DEPOSIT MISMATCH');
+    }
+
     if (deposit.status !== 'pending') {
       return res.status(200).send('SUCCESS');
     }
@@ -60,14 +63,12 @@ export async function handleDuitkuNotification(req: Request, res: Response, bot:
     // resultCode "00" = SUCCESS
     if (resultCode === '00') {
       const userId = deposit.user_id;
-      const depositAmount = deposit.amount || deposit.original_amount || Number(amount);
-
-      await updateDepositStatus(merchantOrderId, 'paid');
-      const user = await getUserById(userId);
+      const { settleDeposit } = require('../repositories/depositRepository');
+      const settlement = await settleDeposit(merchantOrderId);
+      if (!settlement) return res.status(200).send('SUCCESS');
+      const { user, newSaldo, amount: depositAmount } = settlement;
 
       if (user) {
-        const newSaldo = user.saldo + depositAmount;
-        await updateUserSaldo(userId, newSaldo);
 
         if (deposit.qr_message_id && bot) {
           try {

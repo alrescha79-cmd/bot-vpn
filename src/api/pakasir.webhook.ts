@@ -18,7 +18,6 @@
 // Use require for CommonJS modules  
 const logger = require('../utils/logger');
 const { getPendingDeposit, updateDepositStatus } = require('../repositories/depositRepository');
-const { getUserById, updateUserSaldo } = require('../repositories/userRepository');
 
 // Import config properly
 let config: any;
@@ -50,7 +49,7 @@ interface PakasirWebhookPayload {
  */
 function verifyPakasirWebhook(payload: PakasirWebhookPayload): boolean {
   // Verify project matches our configured project
-  if (payload.project !== config.PAKASIR_PROJECT) {
+  if (!config.PAKASIR_API_KEY || !config.PAKASIR_PROJECT || payload.project !== config.PAKASIR_PROJECT) {
     logger.warn(`Invalid Pakasir webhook: project mismatch (received: ${payload.project}, expected: ${config.PAKASIR_PROJECT})`);
     return false;
   }
@@ -91,7 +90,7 @@ async function handlePakasirNotification(req: any, res: any, bot: any) {
     }
 
     const orderId = payload.order_id;
-    const status = payload.status;
+    let status = payload.status;
     const amount = payload.amount;
 
     // Get pending deposit
@@ -105,11 +104,19 @@ async function handlePakasirNotification(req: any, res: any, bot: any) {
       });
     }
 
-    // Verify amount matches
-    if (deposit.amount !== amount && deposit.original_amount !== amount) {
-      logger.warn(`Amount mismatch for order ${orderId}: expected ${deposit.amount}, received ${amount}`);
-      // Still process but log warning - Pakasir might add fees
+    if (deposit.payment_method !== 'pakasir' || Number(deposit.amount) !== Number(amount)) {
+      return res.status(400).json({ success: false, message: 'Deposit mismatch' });
     }
+
+    const { checkPakasirPaymentStatus } = require('../services/pakasir.service');
+    const verified = await checkPakasirPaymentStatus(orderId, deposit.amount);
+    if (!verified.success) {
+      return res.status(503).json({ success: false, message: 'Payment verification unavailable' });
+    }
+    if (verified.status === 'paid' && Number(verified.amount) !== Number(deposit.amount)) {
+      return res.status(400).json({ success: false, message: 'Payment amount mismatch' });
+    }
+    status = verified.status === 'paid' ? 'completed' : verified.status;
 
     // Check if already processed
     if (deposit.status !== 'pending') {
@@ -181,22 +188,10 @@ async function handleSuccessfulPakasirPayment(
 
     logger.info(`Pakasir payment successful (webhook): ${orderId} for user ${userId}`);
 
-    // Update deposit status
-    await updateDepositStatus(orderId, 'paid');
-
-    // Get current user
-    const user = await getUserById(userId);
-
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // Use original deposit amount (not the amount from webhook which might include fee)
-    const depositAmount = deposit.amount || deposit.original_amount || amount;
-    
-    // Update user saldo
-    const newSaldo = user.saldo + depositAmount;
-    await updateUserSaldo(userId, newSaldo);
+    const { settleDeposit } = require('../repositories/depositRepository');
+    const settlement = await settleDeposit(orderId);
+    if (!settlement) return;
+    const { user, newSaldo, amount: depositAmount } = settlement;
 
     // Update QR message if exists
     if (deposit.qr_message_id) {

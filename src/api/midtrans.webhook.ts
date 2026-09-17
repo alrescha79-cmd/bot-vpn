@@ -9,8 +9,6 @@ import type { BotContext } from "../types";
 const crypto = require('crypto');
 const logger = require('../utils/logger');
 const { getPendingDeposit, updateDepositStatus } = require('../repositories/depositRepository');
-const { getUserById } = require('../repositories/userRepository');
-const { updateUserSaldo } = require('../repositories/userRepository');
 
 // Import config properly
 let config: any;
@@ -43,6 +41,7 @@ interface MidtransNotification {
 function verifySignature(notification: MidtransNotification): boolean {
   const { order_id, status_code, gross_amount, signature_key } = notification;
   const serverKey = config.SERVER_KEY;
+  if (!serverKey || !config.MERCHANT_ID) return false;
 
   // Create signature string
   const signatureString = `${order_id}${status_code}${gross_amount}${serverKey}`;
@@ -92,6 +91,10 @@ async function handleMidtransNotification(req: any, res: any, bot: any) {
         success: false,
         message: 'Deposit not found'
       });
+    }
+
+    if (deposit.payment_method !== 'midtrans' || Number(notification.gross_amount) !== Number(deposit.amount)) {
+      return res.status(400).json({ success: false, message: 'Deposit mismatch' });
     }
 
     // Check if already processed
@@ -160,19 +163,11 @@ async function handleSuccessfulPayment(bot: any, deposit: any, orderId: string, 
 
     logger.info(`Payment successful (webhook): ${orderId} for user ${userId}`);
 
-    // Update deposit status
-    await updateDepositStatus(orderId, 'paid');
-
-    // Get current user
-    const user = await getUserById(userId);
-
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // Update user saldo
-    const newSaldo = user.saldo + amount;
-    await updateUserSaldo(userId, newSaldo);
+    const { settleDeposit } = require('../repositories/depositRepository');
+    const settlement = await settleDeposit(orderId);
+    if (!settlement) return;
+    const { user, newSaldo } = settlement;
+    amount = settlement.amount;
 
     // Update QR message if exists
     if (deposit.qr_message_id) {

@@ -18,7 +18,7 @@ const { Markup } = require('telegraf');
  * Register edit server price action
  */
 function registerEditHargaAction(bot) {
-  bot.action(/edit_harga_(\d+)/, async (ctx) => {
+  bot.action(/edit_harga_(\d+)/, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     const serverId = ctx.match[1];
     const userId = ctx.from.id;
 
@@ -54,7 +54,7 @@ function registerEditHargaAction(bot) {
  * Register edit account creation limit action
  */
 function registerEditBatasCreateAkunAction(bot) {
-  bot.action(/edit_batas_create_akun_(\d+)/, async (ctx) => {
+  bot.action(/edit_batas_create_akun_(\d+)/, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     const serverId = ctx.match[1];
     const userId = ctx.from.id;
 
@@ -90,7 +90,7 @@ function registerEditBatasCreateAkunAction(bot) {
  * Register view total account creation action (display only)
  */
 function registerEditTotalCreateAkunAction(bot) {
-  bot.action(/edit_total_create_akun_(\d+)/, async (ctx) => {
+  bot.action(/edit_total_create_akun_(\d+)/, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     const serverId = ctx.match[1];
     const userId = ctx.from.id;
 
@@ -119,7 +119,7 @@ function registerEditTotalCreateAkunAction(bot) {
  * Register edit IP limit action
  */
 function registerEditLimitIPAction(bot) {
-  bot.action(/edit_limit_ip_(\d+)/, async (ctx) => {
+  bot.action(/edit_limit_ip_(\d+)/, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     const serverId = ctx.match[1];
     const userId = ctx.from.id;
 
@@ -155,7 +155,7 @@ function registerEditLimitIPAction(bot) {
  * Register edit quota action
  */
 function registerEditQuotaAction(bot) {
-  bot.action(/edit_quota_(\d+)/, async (ctx) => {
+  bot.action(/edit_quota_(\d+)/, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     const serverId = ctx.match[1];
     const userId = ctx.from.id;
 
@@ -192,7 +192,7 @@ function registerEditQuotaAction(bot) {
  */
 function registerConfirmDeleteServerAction(bot) {
   // Step 1: Confirmation prompt
-  bot.action(/^ask_delete_server_(\d+)$/, async (ctx) => {
+  bot.action(/^ask_delete_server_(\d+)$/, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     const serverId = ctx.match[1];
 
     try {
@@ -228,7 +228,7 @@ function registerConfirmDeleteServerAction(bot) {
   });
 
   // Step 2: Execute server deletion
-  bot.action(/^confirm_delete_server_(\d+)$/, async (ctx) => {
+  bot.action(/^confirm_delete_server_(\d+)$/, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     const serverId = ctx.match[1];
 
     try {
@@ -264,7 +264,7 @@ function registerConfirmDeleteServerAction(bot) {
  * Register server detail view action
  */
 function registerServerDetailAction(bot) {
-  bot.action(/^server_detail_(\d+)$/, async (ctx) => {
+  bot.action(/^server_detail_(\d+)$/, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     const serverId = ctx.match[1];
 
     try {
@@ -303,7 +303,7 @@ function registerServerDetailAction(bot) {
  * Register add balance to user action
  */
 function registerAddSaldoUserAction(bot) {
-  bot.action(/add_saldo_(\d+)/, async (ctx) => {
+  bot.action(/add_saldo_(\d+)/, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     const userId = ctx.match[1];
 
     logger.info(`Admin ${ctx.from.id} memilih untuk menambahkan saldo user dengan ID: ${userId}`);

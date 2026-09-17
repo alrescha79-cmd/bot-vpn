@@ -663,8 +663,7 @@ function registerApproveDepositAction(bot) {
     }
 
     try {
-      const { getPendingDeposit, approveDeposit } = require('../../repositories/depositRepository');
-      const { getUserById, updateUserSaldo } = require('../../repositories/userRepository');
+      const { getPendingDeposit, settleDeposit } = require('../../repositories/depositRepository');
 
       const deposit = await getPendingDeposit(invoiceId);
 
@@ -676,18 +675,9 @@ function registerApproveDepositAction(bot) {
         return ctx.answerCbQuery(`ℹ️ Deposit sudah ${deposit.status}`, { show_alert: true });
       }
 
-      // Get user
-      const depositUser = await getUserById(deposit.user_id);
-      if (!depositUser) {
-        return ctx.answerCbQuery('❌ User tidak ditemukan', { show_alert: true });
-      }
-
-      // Approve deposit
-      await approveDeposit(invoiceId, userId, 'Approved by admin');
-
-      // Update user balance
-      const newBalance = depositUser.saldo + deposit.amount;
-      await updateUserSaldo(deposit.user_id, newBalance);
+      const settlement = await settleDeposit(invoiceId, userId, 'Approved by admin');
+      if (!settlement) return ctx.answerCbQuery('Deposit sudah diproses', { show_alert: true });
+      const { user: depositUser, newSaldo: newBalance } = settlement;
 
       // Log to topup_log
       await dbRunAsync(

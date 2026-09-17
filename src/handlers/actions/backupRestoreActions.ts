@@ -178,7 +178,7 @@ function registerConfirmRestoreAction(bot) {
       const fileName = ctx.match[1];
       await ctx.answerCbQuery();
 
-      const backupPath = path.join(BACKUP_DIR, fileName);
+      const backupPath = require('../../utils/validation').safeBackupPath(BACKUP_DIR, fileName);
       const dbPath = DB_PATH;
 
       // Check if backup file exists
@@ -278,7 +278,7 @@ function registerConfirmDeleteAction(bot) {
       const fileName = ctx.match[1];
       await ctx.answerCbQuery();
 
-      const backupPath = path.join(BACKUP_DIR, fileName);
+      const backupPath = require('../../utils/validation').safeBackupPath(BACKUP_DIR, fileName);
 
       // Check if backup file exists
       if (!fs.existsSync(backupPath)) {

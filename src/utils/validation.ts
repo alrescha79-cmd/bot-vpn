@@ -119,7 +119,20 @@ export function validateDuration(days: any): ValidationResult {
   return { valid: true, value: num };
 }
 
+export function safeBackupPath(directory: string, filename: string): string {
+  const fs = require('fs');
+  const path = require('path');
+  if (typeof filename !== 'string' || !/^[A-Za-z0-9_-][A-Za-z0-9_.-]*\.db$/.test(filename)) {
+    throw new Error('Invalid backup filename');
+  }
+  const root = fs.realpathSync(directory);
+  const candidate = path.join(root, filename);
+  if (!fs.lstatSync(candidate).isFile()) throw new Error('Invalid backup file');
+  return candidate;
+}
+
 module.exports = {
+  safeBackupPath,
   validateUsername,
   isPositiveNumber,
   isValidDomain,

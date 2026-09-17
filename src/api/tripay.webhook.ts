@@ -8,7 +8,6 @@ import { verifyTripayWebhookSignature } from '../services/tripay.service';
 
 const logger = require('../utils/logger');
 const { getPendingDeposit, updateDepositStatus } = require('../repositories/depositRepository');
-const { getUserById, updateUserSaldo } = require('../repositories/userRepository');
 
 let config: any;
 try {
@@ -64,14 +63,12 @@ export async function handleTripayNotification(req: Request, res: Response, bot:
 
     if (payload.status === 'PAID') {
       const userId = deposit.user_id;
-      const depositAmount = deposit.amount || deposit.original_amount || payload.total_amount;
-
-      await updateDepositStatus(orderId, 'paid');
-      const user = await getUserById(userId);
+      const { settleDeposit } = require('../repositories/depositRepository');
+      const settlement = await settleDeposit(orderId);
+      if (!settlement) return res.status(200).json({ success: true, message: 'Already processed' });
+      const { user, newSaldo, amount: depositAmount } = settlement;
 
       if (user) {
-        const newSaldo = user.saldo + depositAmount;
-        await updateUserSaldo(userId, newSaldo);
 
         // Update message in chat if message_id exists
         if (deposit.qr_message_id && bot) {

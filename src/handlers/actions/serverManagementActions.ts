@@ -18,7 +18,7 @@ const logger = require('../../utils/logger');
  * Register add server action
  */
 function registerAddServerAction(bot) {
-  bot.action('addserver', async (ctx) => {
+  bot.action('addserver', require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     try {
       logger.info('📥 Proses tambah server dimulai');
       await ctx.answerCbQuery();
@@ -37,7 +37,7 @@ function registerAddServerAction(bot) {
  * Register detail server action
  */
 function registerDetailServerAction(bot) {
-  bot.action('detailserver', async (ctx) => {
+  bot.action('detailserver', require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     try {
       logger.info('📋 Proses detail server dimulai');
       await ctx.answerCbQuery();
@@ -83,7 +83,7 @@ function registerDetailServerAction(bot) {
  * Register list server action
  */
 function registerListServerAction(bot) {
-  bot.action('listserver', async (ctx) => {
+  bot.action('listserver', require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     try {
       logger.info('📜 Proses daftar server dimulai');
       await ctx.answerCbQuery();
@@ -117,7 +117,7 @@ function registerListServerAction(bot) {
  * Register delete server action
  */
 function registerDeleteServerAction(bot) {
-  bot.action('deleteserver', async (ctx) => {
+  bot.action('deleteserver', require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     try {
       logger.info('🗑️ Proses hapus server dimulai');
       await ctx.answerCbQuery();
@@ -154,7 +154,7 @@ function registerDeleteServerAction(bot) {
  * Register reset database action
  */
 function registerResetDBAction(bot) {
-  bot.action('resetdb', async (ctx) => {
+  bot.action('resetdb', require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     try {
       await ctx.answerCbQuery();
       await ctx.reply('🚨 *PERHATIAN! Anda akan menghapus semua server yang tersedia. Apakah Anda yakin?*', {
@@ -177,7 +177,7 @@ function registerResetDBAction(bot) {
  * Register confirm reset database action
  */
 function registerConfirmResetDBAction(bot) {
-  bot.action('confirm_resetdb', async (ctx) => {
+  bot.action('confirm_resetdb', require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     try {
       await ctx.answerCbQuery();
       await dbRunAsync('DELETE FROM Server').catch(err => {
@@ -196,7 +196,7 @@ function registerConfirmResetDBAction(bot) {
  * Register cancel reset database action
  */
 function registerCancelResetDBAction(bot) {
-  bot.action('cancel_resetdb', async (ctx) => {
+  bot.action('cancel_resetdb', require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     try {
       await ctx.answerCbQuery();
       await ctx.reply('❌ *Proses reset database dibatalkan.*', { parse_mode: 'Markdown' });
@@ -212,7 +212,7 @@ function registerCancelResetDBAction(bot) {
  */
 function registerEditServerMenuActions(bot) {
   // Edit server auth
-  bot.action('editserver_auth', async (ctx) => {
+  bot.action('editserver_auth', require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     try {
       logger.info('Edit server auth process started');
       await ctx.answerCbQuery();
@@ -242,7 +242,7 @@ function registerEditServerMenuActions(bot) {
   });
 
   // Handle edit auth server selection
-  bot.action(/^edit_auth_server_(\d+)$/, async (ctx) => {
+  bot.action(/^edit_auth_server_(\d+)$/, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     const serverId = ctx.match[1];
     await ctx.answerCbQuery();
 
@@ -268,7 +268,7 @@ function registerEditServerMenuActions(bot) {
   });
 
   // Edit server user SSH
-  bot.action('editserver_user', async (ctx) => {
+  bot.action('editserver_user', require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     try {
       logger.info('Edit server user SSH process started');
       await ctx.answerCbQuery();
@@ -298,7 +298,7 @@ function registerEditServerMenuActions(bot) {
   });
 
   // Handle edit user server selection
-  bot.action(/^edit_user_server_(\d+)$/, async (ctx) => {
+  bot.action(/^edit_user_server_(\d+)$/, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     const serverId = ctx.match[1];
     await ctx.answerCbQuery();
 
@@ -323,7 +323,7 @@ function registerEditServerMenuActions(bot) {
   });
 
   // Edit server port
-  bot.action('editserver_port', async (ctx) => {
+  bot.action('editserver_port', require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     try {
       logger.info('Edit server port process started');
       await ctx.answerCbQuery();
@@ -353,7 +353,7 @@ function registerEditServerMenuActions(bot) {
   });
 
   // Handle edit port server selection
-  bot.action(/^edit_port_server_(\d+)$/, async (ctx) => {
+  bot.action(/^edit_port_server_(\d+)$/, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     const serverId = ctx.match[1];
     await ctx.answerCbQuery();
 
@@ -378,7 +378,7 @@ function registerEditServerMenuActions(bot) {
   });
 
   // Edit server domain
-  bot.action('editserver_domain', async (ctx) => {
+  bot.action('editserver_domain', require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     try {
       logger.info('Edit server domain process started');
       await ctx.answerCbQuery();
@@ -408,7 +408,7 @@ function registerEditServerMenuActions(bot) {
   });
 
   // Handle edit domain server selection
-  bot.action(/^edit_domain_server_(\d+)$/, async (ctx) => {
+  bot.action(/^edit_domain_server_(\d+)$/, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     const serverId = ctx.match[1];
     await ctx.answerCbQuery();
 
@@ -434,7 +434,7 @@ function registerEditServerMenuActions(bot) {
   });
 
   // Edit server nama
-  bot.action('nama_server_edit', async (ctx) => {
+  bot.action('nama_server_edit', require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     try {
       logger.info('Edit server nama process started');
       await ctx.answerCbQuery();
@@ -464,7 +464,7 @@ function registerEditServerMenuActions(bot) {
   });
 
   // Handle edit nama server selection
-  bot.action(/^edit_nama_server_(\d+)$/, async (ctx) => {
+  bot.action(/^edit_nama_server_(\d+)$/, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     const serverId = ctx.match[1];
     await ctx.answerCbQuery();
 
@@ -490,7 +490,7 @@ function registerEditServerMenuActions(bot) {
   });
 
   // Edit server harga (with buttons)
-  bot.action('editserver_harga', async (ctx) => {
+  bot.action('editserver_harga', require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
     try {
       logger.info('Edit server harga process started');
       await ctx.answerCbQuery();
@@ -533,7 +533,7 @@ function registerEditServerMenuActions(bot) {
   ];
 
   editActions.forEach(({ action, step, title, callback_prefix }) => {
-    bot.action(action, async (ctx) => {
+    bot.action(action, require('../../middleware/roleCheck').requireAdmin, async (ctx) => {
       try {
         logger.info(`${action} process started`);
         await ctx.answerCbQuery();

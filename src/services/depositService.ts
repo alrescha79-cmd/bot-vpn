@@ -15,7 +15,6 @@ const logger = require('../utils/logger');
 const { keyboard_nomor } = require('../utils/keyboard');
 const { generateQRIS, checkPaymentStatus, generateQRImageURL, isQRISConfigured } = require('./qris.service');
 const { createPendingDeposit, updateDepositStatus, getPendingDeposit } = require('../repositories/depositRepository');
-const { getUserById, updateUserSaldo } = require('../repositories/userRepository');
 const { Markup } = require('telegraf');
 
 // Import config properly
@@ -409,19 +408,13 @@ async function handleSuccessfulPayment(ctx, invoiceId, userId, amount, messageId
   try {
     logger.info(`Payment successful: ${invoiceId} for user ${userId}`);
 
-    // Update deposit status
-    await updateDepositStatus(invoiceId, 'paid');
-
-    // Get current user
-    const user = await getUserById(userId);
-
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // Update user saldo
-    const newSaldo = user.saldo + amount;
-    await updateUserSaldo(userId, newSaldo);
+    const { settleDeposit } = require('../repositories/depositRepository');
+    const settlement = await settleDeposit(invoiceId);
+    if (!settlement) return;
+    const { user, newSaldo } = settlement;
+    userId = settlement.deposit.user_id;
+    amount = settlement.amount;
+    messageId = settlement.deposit.qr_message_id;
 
     // Update QR message
     try {
