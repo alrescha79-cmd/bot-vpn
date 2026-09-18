@@ -231,9 +231,7 @@ jobs:
           files: |
             ${{ env.ARCHIVE_NAME }}
             ${{ env.ZIP_NAME }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+       
       - name: Release Summary
         run: |
           echo "✅ Release ${{ needs.check-version.outputs.version }} published successfully!"
